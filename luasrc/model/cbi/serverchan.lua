@@ -164,6 +164,7 @@ blockedmac:depends({macmechanism="block"})
 local apply = luci.http.formvalue("cbi.apply")
  if apply then
      io.popen("kill -9 `pgrep -f serverchan` >/dev/null 2>&1")
+     io.popen("kill -9 `pgrep -f serverchan` >/dev/null 2>&1")
      io.popen("/usr/bin/serverchan/serverchan &")
 end
 return m
