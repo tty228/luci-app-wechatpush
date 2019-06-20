@@ -124,7 +124,7 @@ end
 sheep=s:taboption("tab_basic4", ListValue,"serverchan_sheep",translate("免打扰时段设置"),translate("在指定整点时间段内，暂停推送消息<br/>免打扰时间中，定时推送也会被阻止。"))
 sheep:value("0",translate("关闭"))
 sheep:value("1",translate("模式一：脚本挂起，不检测设备"))
-sheep:value("2",translate("模式二：脚本继续运行但不发送消息"))
+--[[sheep:value("2",translate("模式二：脚本继续运行但不发送消息"))--]]
 sheep.rmempty = true 
 sheep.optional = true
 sheep=s:taboption("tab_basic4", ListValue,"starttime",translate("免打扰开始时间"))
@@ -163,8 +163,7 @@ blockedmac:depends({macmechanism="block"})
 
 local apply = luci.http.formvalue("cbi.apply")
  if apply then
-     io.popen("kill -9 `pgrep -f serverchan` >/dev/null 2>&1")
-     io.popen("kill -9 `pgrep -f serverchan` >/dev/null 2>&1")
-     io.popen("/usr/bin/serverchan/serverchan &")
+     io.popen("/etc/init.d/serverchan stop")
+     io.popen("/etc/init.d/serverchan start")
 end
 return m

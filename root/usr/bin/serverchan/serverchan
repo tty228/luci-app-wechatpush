@@ -158,6 +158,10 @@ else
 				sleep 60
 				continue
 				done
+				unset title
+				unset content
+				rm -f ${dir}title >/dev/null 2>&1
+				rm -f ${dir}content >/dev/null 2>&1
 			else
 			#echo "免打扰模式一"
 			# 模式二：脚本继续运行但不发送消息
@@ -217,6 +221,7 @@ if [ "$1" ] ;then
 		
 		if ( echo ${ip_ms} | grep -q ms ); then
 		# 如果连接成功
+		sleep 1
 			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】$(cat /var/dhcp.leases | grep -w $1 |awk '{print $4}' ) $1 连接成功" >> ${logfile};fi
 			if [ ! -z "$send_enable" ] && [ "$send_enable" -ne 3 ] ; then
 			# 如果定时任务没有运行
@@ -297,6 +302,7 @@ if [ "$1" ] ;then
 	if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then  echo "`date "+%H:%M:%S"`  设备 $(cat ${dir}ipAddress | grep -w $1 |awk '{print $3}') $1 依然坚挺" >> ${logfile};fi
 	else
 	# 如果连接失败
+	sleep 1
 		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】设备 $(cat ${dir}ipAddress | grep -w $1 |awk '{print $3}' ) $1 断开连接" >> ${logfile};fi
 		if [ ! -z "$send_enable" ] && [ "$send_enable" -ne 3 ] && [ ! -z "$ip_ms" ] ; then
 		# 如果定时任务没有运行
@@ -369,7 +375,7 @@ function send(){
 			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then  echo "`date "+%H:%M:%S"`  检测客户端列表" >> ${logfile};fi
 			
 			if [ ! -f "${dir}ipAddress" ] ; then > ${dir}ipAddress;fi
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【设备连接】开始进行设备下线检测" >> ${logfile};fi
+			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【连接】开始进行设备下线检测" >> ${logfile};fi
 			IPLIST=$(cat ${dir}ipAddress| awk  '{print $1}' )
 			for ip in $IPLIST; do
 			if [ ! -z "$ip" ] ; then
@@ -378,7 +384,7 @@ function send(){
 			done
 			wait
 			
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【设备连接】开始进行设备接入检测" >> ${logfile};fi
+			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【连接】开始进行设备接入检测" >> ${logfile};fi
 			IPLISTrow=$(grep -c "" ${dir}ipAddress)
 			IPLIST=$(cat /proc/net/arp | grep "0x2" | awk  '{print $1}' | grep -v "^$" | sort -u)
 			for  ip in $IPLIST; do
@@ -477,8 +483,6 @@ while [ "$serverchan_enable" -eq "1" ] ;
 do
 if [ -f ${logfile} ] ; then clean_log;fi
 
-serverchan_disturb
-
 #if [ ! -z "$enable" ] && [ "$enable" -eq "1" ] ; then
 	check=`curl -k -s -w "%{http_code}" "http://www.163.com" -o /dev/null`
 	if [ ! -z "$check" ] && [ "$check" -eq "200" ] ; then
@@ -548,13 +552,12 @@ serverchan_disturb
 				
 		#设备下线提醒
 		if [ ! -z "$serverchan_down" ] && [ "$serverchan_down" -eq "1" ] ; then
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【设备连接】开始进行设备下线检测" >> ${logfile};fi
+			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【离线】开始进行设备下线检测" >> ${logfile};fi
 		fi
 		IPLIST=$(cat ${dir}ipAddress| awk  '{print $1}' )
 			#从 ipAddress 文件中读取上次检测到的在线列表
 			for ip in $IPLIST; do
 			# 如果 ip 列表不为空
-			sleep 1
 			send_enable=`uci get serverchan.serverchan.send_enable`>/dev/null 2>&1
 			if [ ! -z "$ip" ] && [ "$send_enable" -ne 3 ] ; then
 				down $ip &
@@ -571,7 +574,7 @@ serverchan_disturb
 		
 		#新设备接入
 		if [ ! -z "$serverchan_up" ] && [ "$serverchan_up" -eq "1" ] ; then
-		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【设备连接】开始进行设备接入检测" >> ${logfile};fi
+		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【连接】开始进行设备接入检测" >> ${logfile};fi
 			echo "" >/dev/null
 			#echo "新设备接入"
 			#从 arp 缓存中读取 0x2 在线列表
@@ -580,7 +583,6 @@ serverchan_disturb
 			#忽略列表不检测
 			#只检测关注列表
 			# 如果 “ip 列表不为空” 
-			sleep 1
 			send_enable=`uci get serverchan.serverchan.send_enable`>/dev/null 2>&1
 			if [ ! -z "$ip" ] && [ "$send_enable" -ne 3 ] ; then
 				# 如果 “忽略列表为空” 并且  “关注列表为空” 
@@ -622,13 +624,13 @@ serverchan_disturb
 		#负载状态报警
 		if [ ! -z "$cpuload_enable" ] && [ "$cpuload_enable" -eq "1" ] ; then
 			
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then  echo "`date "+%H:%M:%S"` 【设备状态】正在检测 CPU 负载" >> ${logfile};fi
+			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then  echo "`date "+%H:%M:%S"` 【负载】正在检测 CPU 负载" >> ${logfile};fi
 			cpu_fuzai=`cat /proc/loadavg | awk '{print $1}'`
 			cpuload=`uci get serverchan.serverchan.cpuload`>/dev/null 2>&1
 			
 			if [ ! -z "$cpuload" ] && [ `expr $cpu_fuzai \> $cpuload` -eq "1" ] ; then
 				cpuload_n=$(($cpuload_n+1))
-				echo "`date "+%H:%M:%S"` 【设备报警】当前 CPU 负载过高: ${cpu_fuzai}" >> ${logfile}
+				echo "`date "+%H:%M:%S"` 【！！警报！！】当前 CPU 负载过高: ${cpu_fuzai}" >> ${logfile}
 			elif [ "$cpuload_n" -ge "5" ] ;then
 				cpuload_n=$(($cpuload_n+1))
 			else
@@ -658,12 +660,12 @@ serverchan_disturb
 		
 		#温度状态报警
 		if [ ! -z "$temperature_enable" ] && [ "$temperature_enable" -eq "1" ] ; then
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then  echo "`date "+%H:%M:%S"` 【设备状态】正在检测 CPU 温度" >> ${logfile};fi
+			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then  echo "`date "+%H:%M:%S"` 【温度】正在检测 CPU 温度" >> ${logfile};fi
 			cpu_wendu=`cut -c1-2 /sys/class/thermal/thermal_zone0/temp`
 			temperature=`uci get serverchan.serverchan.temperature`>/dev/null 2>&1
 			if [ ! -z "$temperature" ] && [ "$cpu_wendu" -gt "$temperature" ] ; then
 				Temperature_n=$(($Temperature_n+1))
-				echo "`date "+%H:%M:%S"` 【设备报警】当前 CPU 温度过高: ${cpu_wendu}" >> ${logfile}
+				echo "`date "+%H:%M:%S"` 【！！警报！！】当前 CPU 温度过高: ${cpu_wendu}" >> ${logfile}
 			elif [ "$Temperature_n" -ge "5" ] ;then
 				Temperature_n=$(($Temperature_n+1))
 			else
@@ -692,7 +694,7 @@ serverchan_disturb
 
 	else
 		if [ ! -z"$network_enable" ] && [ "$network_enable" -eq "200" ] ; then
-			echo "`date "+%H:%M:%S"`  【！！！】当前网络不通！停止检测！ " >> ${logfile}
+			echo "`date "+%H:%M:%S"`  【！！！！】当前网络不通！停止检测！ " >> ${logfile}
 			network_enable="404"
 		fi
 	fi
@@ -713,6 +715,8 @@ serverchan_disturb
 		continue
 		done
 	fi
+	
+	serverchan_disturb
 	
 	if [ -f "${dir}title" ] ; then title=`cat ${dir}title` ;fi
 	if [ -f "${dir}content" ] ; then content=`cat ${dir}content` ;fi
