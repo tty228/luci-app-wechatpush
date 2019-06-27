@@ -795,7 +795,7 @@ get_config
 	fi
 
 if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【等待】我累了，$sleeptime 秒后再回来" >> ${logfile};fi
-if [ -z "$serverchan_enable" ] || [ "$serverchan_enable" -eq "0" ] ; then exit;fi
+get_config
 sleep ${sleeptime}
 continue
 done
