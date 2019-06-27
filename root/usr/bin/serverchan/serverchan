@@ -26,7 +26,7 @@ debuglevel=`uci get serverchan.serverchan.debuglevel` >/dev/null 2>&1
 if [ -z "$debuglevel" ] ; then logfile="/dev/null";else logfile="/tmp/serverchan/server_chan.log";fi
 if [ -z "$serverchan_enable" ] ; then echo "`date "+%H:%M:%S"` 【！！！】无法读取程序开关 " >> ${logfile};fi
 #if [ -z "$serverchan_enable" ] || [ "$serverchan_enable" -eq "0" ] ; then echo "`date "+%H:%M:%S"` 【！！！】程序未启用，即将关闭 " >> ${logfile};fi
-#if [ -z "$serverchan_enable" ] || [ "$serverchan_enable" -eq "0" ] ; then exit;fi
+if [ -z "$serverchan_enable" ] || [ "$serverchan_enable" -eq "0" ] ; then exit;fi
 if [ -z "$serverchan_sckey" ] ; then echo "`date "+%H:%M:%S"` 【！！！】无法读取 SCKEY" >> ${logfile};fi
 if [ -z "$serverchan_sckey" ] ; then exit;fi
 if [ -z "$serverchan_sckey" ] && [ "${#serverchan_sckey}" -lt  "50" ] ; then echo "`date "+%H:%M:%S"` 【！！！】请填入正确的 SCKEY " >> ${logfile};fi
@@ -47,7 +47,8 @@ function serverchan_exit(){
 	done
 	if [ -z "$serverchan_enable" ] || [ "$serverchan_enable" -eq "0" ] ; then kill -9 `pgrep -f serverchan`;fi
 }
-serverchan_exit &
+#serverchan_exit &
+#与wait冲突，待解决
 
 # 初始化
 function serverchan_init(){
@@ -208,7 +209,7 @@ else
 	continue
 	done
 	if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】文件锁已释放，开始下一次" >> ${logfile};fi
-	> ${dir}serverchan.lock
+	LockFile
 fi
 }
 
@@ -305,11 +306,10 @@ if [ "$1" ] ;then
 				unset title
 				unset content
 			fi
-		rm -f ${dir}serverchan.lock >/dev/null 2>&1
 		else
 			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then  echo "`date "+%H:%M:%S"`  设备 $ip_name $1 连接失败" >> ${logfile};fi
 		fi
-	
+		rm -f ${dir}serverchan.lock >/dev/null 2>&1
 	else
 		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then  echo "`date "+%H:%M:%S"` $ip_name $1 已存在，跳过" >> ${logfile};fi
 	fi
@@ -795,6 +795,7 @@ get_config
 	fi
 
 if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【等待】我累了，$sleeptime 秒后再回来" >> ${logfile};fi
+if [ -z "$serverchan_enable" ] || [ "$serverchan_enable" -eq "0" ] ; then exit;fi
 sleep ${sleeptime}
 continue
 done
