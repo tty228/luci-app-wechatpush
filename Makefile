@@ -8,7 +8,7 @@ include $(TOPDIR)/rules.mk
 LUCI_TITLE:=LuCI support for serverchan
 LUCI_DEPENDS:=+iputils-arping +curl 
 LUCI_PKGARCH:=all
-PKG_NAME:=serverchan
+PKG_NAME:=luci-app-serverchan
 PKG_VERSION:=1.0
 PKG_RELEASE:=40
 
