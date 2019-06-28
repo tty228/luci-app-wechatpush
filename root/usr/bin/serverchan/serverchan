@@ -153,6 +153,7 @@ else
 					echo "`date "+%H:%M:%S"` 【免打扰】夜深了，该休息了" >> ${logfile}
 					sheep_str=1
 				fi
+				get_config
 				if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ] ; then enable=1;else enable=0;fi
 				enable_detection 60
 				continue
