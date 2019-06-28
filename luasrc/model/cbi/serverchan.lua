@@ -1,6 +1,9 @@
 local nt = require "luci.sys".net
 local log=require"nixio.fs"
 local e=luci.model.uci.cursor()
+local net = require "luci.model.network".init()
+local sys = require "luci.sys"
+local ifaces = sys.net:devices()
 
 m=Map("serverchan",translate("ServerChan"),translate("「Server酱」，英文名「ServerChan」，是一款从服务器推送报警信息和日志到微信的工具。"))
 
@@ -29,6 +32,12 @@ debuglevel:value("1",translate("简单"))
 debuglevel:value("2",translate("详细"))
 debuglevel.rmempty = true 
 debuglevel.optional = true
+
+device_aliases= s:taboption("tab_basic", DynamicList, "device_aliases", translate("设备别名"))
+device_aliases.rmempty = true 
+device_aliases.optional = true
+device_aliases.description = translate("<br/> 请输入设备 MAC 和设备别名，用“-”隔开，如：<br/> XX:XX:XX:XX:XX:XX-我的手机")
+
 
 e=s:taboption("log",TextValue,"log")
 e:depends({debuglevel="1"})
@@ -148,6 +157,7 @@ mac=s:taboption("tab_basic4", ListValue,"macmechanism",translate("MAC过滤"))
 mac:value("",translate("disable"))
 mac:value("allow",translate("忽略列表内设备"))
 mac:value("block",translate("仅通知列表内设备"))
+mac:value("interface",translate("仅通知此接口设备"))
 
 allowedmac = s:taboption("tab_basic4", DynamicList, "serverchan_whitelist", translate("忽略列表"))
 nt.mac_hints(function(mac, name) allowedmac :value(mac, "%s (%s)" %{ mac, name }) end)
@@ -160,6 +170,21 @@ nt.mac_hints(function(mac, name) blockedmac:value(mac, "%s (%s)" %{ mac, name })
 blockedmac.rmempty = true 
 blockedmac.optional = true
 blockedmac:depends({macmechanism="block"})
+
+n = s:taboption("tab_basic4", ListValue, "serverchan_interface", translate("Interface name"))
+n:depends({macmechanism="interface"})
+for _, iface in ipairs(ifaces) do
+	if not (iface == "lo" or iface:match("^ifb.*")) then
+		local nets = net:get_interface(iface)
+		nets = nets and nets:get_networks() or {}
+		for k, v in pairs(nets) do
+			nets[k] = nets[k].sid
+		end
+		nets = table.concat(nets, ",")
+		n:value(iface, ((#nets > 0) and "%s (%s)" % {iface, nets} or iface))
+	end
+end
+
 
 local apply = luci.http.formvalue("cbi.apply")
  if apply then
