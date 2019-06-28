@@ -74,6 +74,7 @@ a= s:taboption("tab_basic2", Value, "temperature", "温度报警阈值")
 a.rmempty = true 
 a.placeholder = "80"
 a:depends({temperature_enable="1"})
+a.description = translate("<br/>设备报警只会在连续五次超过阈值的时候才会推送<br/>而且一个小时内不会再提醒第二次")
 
 e=s:taboption("tab_basic3", ListValue,"send_mode",translate("定时任务设定"))
 e.default="disable"
@@ -171,7 +172,7 @@ blockedmac.rmempty = true
 blockedmac.optional = true
 blockedmac:depends({macmechanism="block"})
 
-n = s:taboption("tab_basic4", ListValue, "serverchan_interface", translate("Interface name"))
+n = s:taboption("tab_basic4", ListValue, "serverchan_interface", translate("接口名称"))
 n:depends({macmechanism="interface"})
 for _, iface in ipairs(ifaces) do
 	if not (iface == "lo" or iface:match("^ifb.*")) then
