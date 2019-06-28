@@ -37,7 +37,7 @@ if [ -z "$serverchan_ip" ] || [ "$serverchan_ip" -ne "0" ] && [ "$serverchan_ip"
 if [ -z "$serverchan_up" ] || [ "$serverchan_up" -ne "0" ] && [ "$serverchan_up" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【！！！】无法读取 设备上线提醒 开关" >> ${logfile};fi
 if [ -z "$serverchan_down" ] || [ "$serverchan_down" -ne "0" ] && [ "$serverchan_down" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【！！！】无法读取 设备下线提醒 开关" >> ${logfile};fi
 }
-if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】等待 5s，确保 luci 设置已保存" >> ${logfile};fi
+#等待 5s，确保 luci 设置已保存
 sleep 5
 get_config
 
@@ -96,8 +96,6 @@ send_mode=`uci get serverchan.serverchan.send_mode`>/dev/null 2>&1
 if [ ! -z "$send_mode" ] ; then
 	if [ "$send_mode" -eq "1" ] ; then
 		regular_time=`uci get serverchan.serverchan.regular_time`>/dev/null 2>&1
-		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】regular_time=$regular_time" >> ${logfile};fi
-		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】创建指定时间计划任务" >> ${logfile};fi
 		if ( echo `crontab -l` | grep "serverchan" | grep -q " $regular_time " ); then
 			echo "" >/dev/null
 		elif ( echo `crontab -l` | grep -q "serverchan" ); then
@@ -112,8 +110,6 @@ if [ ! -z "$send_mode" ] ; then
 		fi
 	elif [ "$send_mode" -eq "2" ] ; then
 		interval_time=`uci get serverchan.serverchan.interval_time`>/dev/null 2>&1
-		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】interval_time=$interval_time" >> ${logfile};fi
-		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】创建间隔时间计划任务" >> ${logfile};fi
 		if ( echo `crontab -l` | grep "serverchan" | grep -q "*/$interval_time " ); then
 			echo "" >/dev/null
 		elif ( echo `crontab -l` | grep -q "serverchan" ); then
@@ -129,7 +125,6 @@ if [ ! -z "$send_mode" ] ; then
 	fi
 elif [ -z "$send_mode" ] ; then
 	if ( echo `crontab -l` | grep -q "serverchan" ); then
-		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】删除计划任务" >> ${logfile};fi
 		crontab -l > conf && sed -i "/serverchan/d" conf && crontab conf && rm -f conf
 		/etc/init.d/cron stop
 		/etc/init.d/cron start
@@ -141,20 +136,16 @@ serverchan_cron
 #免打扰检测
 function serverchan_disturb(){
 if [ ! -z "$serverchan_sheep" ] && [ "$serverchan_sheep" -eq "0" ] ; then
-	#echo "" >/dev/null
-	if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】未开启免打扰" >> ${logfile};fi
+	echo "" >/dev/null
 else
 	echo "" >/dev/null
-	if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】免打扰开关已启用，检测运行时间和模式" >> ${logfile};fi
 	if [ ! -z "$starttime" ] && [ ! -z "$endtime" ] ;then
 	if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ] ; then enable=1;else enable=0;fi
 
 		if [ "$enable" -eq "1" ] ;then
 			if [ "$serverchan_sheep" -eq "2" ] ; then serverchan_sckey=`uci get serverchan.serverchan.serverchan_sckey` >/dev/null 2>&1;fi
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】当前时间正确，继续运行" >> ${logfile};fi
 		else
 			if [ "$serverchan_sheep" -eq "1" ] ; then
-				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】模式一：脚本挂起，不检测设备" >> ${logfile};fi
 				sheep_str=0
 				while [ $enable -eq "0" ] ;
 				do
@@ -171,7 +162,7 @@ else
 				rm -f ${dir}title >/dev/null 2>&1
 				rm -f ${dir}content >/dev/null 2>&1
 			else
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】模式二：脚本继续运行但不发送消息" >> ${logfile};fi
+			#模式二：脚本继续运行但不发送消息，暂时移除
 			serverchan_sckey=""
 			fi
 		fi
@@ -194,18 +185,14 @@ if [ -f ${logfile} ] ; then clean_log;fi
 #文件锁
 function LockFile()
 {
-if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】调用文件锁" >> ${logfile};fi
 if [ ! -f "${dir}serverchan.lock" ] ; then
 	> ${dir}serverchan.lock
-	if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】创建文件锁" >> ${logfile};fi
 else
 	while [ -f "${dir}serverchan.lock" ] ;
 	do
-	if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】文件锁已经存在，一秒后再次检测" >> ${logfile};fi
 	#sleep 1
 	continue
 	done
-	if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】文件锁已释放，开始下一次" >> ${logfile};fi
 	LockFile
 fi
 }
@@ -237,16 +224,13 @@ if [ "$1" ] ;then
 		
 		if ( echo ${ip_ms} | grep -q ms );then
 			echo "" >/dev/null
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】$ip_name $1 连接成功，设备在线" >> ${logfile};fi
 		else
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】$ip_name $1 连接失败，尝试发送断开请求" >> ${logfile};fi
 			local ip_ms=`ping -c 1 -w 2  $1` && echo "" >/dev/null
 			
 			if ( echo ${ip_ms} | grep -q ms );then
-				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】$ip_name $1 拒绝断开请求，设备在线" >> ${logfile};fi
+				echo "" >/dev/null
 			else
 				echo "" >/dev/null
-				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】$ip_name $1 暂停2s，再一次尝试" >> ${logfile};fi
 				sleep 2
 				local ip_ms=`echo $(arping -I $(cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 10 -f -w 5 $1)` && echo "" >/dev/null
 			fi
@@ -277,7 +261,6 @@ if [ "$1" ] ;then
 		if [ -z "$ip_name" ] ; then ip_name="未知设备";fi
 		if [ -z "$ip_name" ] ; then echo "`date "+%H:%M:%S"` 获取 $1 设备名超时，暂停跳过" >> ${logfile};fi
 		
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】$ip_name $1 连接成功" >> ${logfile};fi
 			if [ ! -z "$send_enable" ] && [ "$send_enable" -ne 3 ] ; then
 			# 如果定时任务没有运行
 				if [ -f "${dir}title" ] ; then title=`cat ${dir}title` ;fi
@@ -304,8 +287,6 @@ if [ "$1" ] ;then
 					
 				echo $title >${dir}title
 				echo -n $content >>${dir}content
-				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】title=$title" >> ${logfile};fi
-				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】content=$content" >> ${logfile};fi
 			else
 				# 如果定时任务运行
 				echo "`date "+%H:%M:%S"`  新设备 $ip_name $1 连接了" >> ${logfile}
@@ -346,19 +327,17 @@ if [ "$1" ] ;then
 		if [ -z "$ip_name" ] ; then ip_name="未知设备";fi
 		echo "$1 $ip_mac $ip_name" >> ${dir}ipAddress
 	fi
-	if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】检测 $ip_name $1 连接状态" >> ${logfile};fi
+
 	local ip_ms=`echo $(arping -I $(cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 10 -f -w 3 $1)` && echo "" >/dev/null
 	if ( echo ${ip_ms} | grep -q ms );then
-		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】$ip_name $1 连接成功，设备在线" >> ${logfile};fi
+		echo "" >/dev/null
 	else
-		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】$ip_name $1 连接失败，尝试发送断开请求" >> ${logfile};fi
 		local ip_ms=`ping -c 1 -w 2  $1` && echo "" >/dev/null
 
 		if ( echo ${ip_ms} | grep -q ms );then
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】$ip_name $1 拒绝断开请求，设备在线" >> ${logfile};fi
+			echo "" >/dev/null
 		else
 			echo "" >/dev/null
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】$ip_name $1 暂停2s，再一次尝试" >> ${logfile};fi
 			sleep 3
 			local ip_ms=`echo $(arping -I $(cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 10 -f -w 10 $1)` && echo "" >/dev/null
 		fi
@@ -373,7 +352,6 @@ if [ "$1" ] ;then
 	else
 	# 如果连接失败
 	LockFile
-		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】设备 $ip_name $1 断开连接" >> ${logfile};fi
 		if [ ! -z "$send_enable" ] && [ "$send_enable" -ne 3 ] && [ ! -z "$ip_ms" ] ; then
 		# 如果定时任务没有运行
 			if [ ! -z "$serverchan_down" ] && [ "$serverchan_down" -eq "1" ] ; then
@@ -395,8 +373,6 @@ if [ "$1" ] ;then
 				echo "`date "+%H:%M:%S"`  【微信推送】设备 $ip_name $1 断开连接 " >> ${logfile}
 				echo $title >${dir}title
 				echo -n $content >>${dir}content
-				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】title=$title" >> ${logfile};fi
-				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】content=$content" >> ${logfile};fi
 			fi
 		echo "`date "+%H:%M:%S"`  设备 $ip_name $1 断开连接 " >> ${logfile}
 		sed -i "/$1/d" ${dir}ipAddress
@@ -465,9 +441,7 @@ function send(){
 			done
 			wait
 			
-			if [ "$IPLISTrow" -eq $(grep -c "" ${dir}ipAddress) ] ; then echo "`date "+%H:%M:%S"` 没有新设备连接" >> ${logfile};fi
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】检测 完毕" >> ${logfile};fi
-			
+			if [ "$IPLISTrow" -eq $(grep -c "" ${dir}ipAddress) ] ; then echo "`date "+%H:%M:%S"` 没有新设备连接" >> ${logfile};fi			
 			send_content=${send_content}"%0D%0A%0D%0A---%0D%0A%0D%0A#### 在线设备%0D%0A%0D%0A";
 			
 			IPLIST=$(cat ${dir}ipAddress| awk '{print $1" "$3}' )
@@ -493,8 +467,6 @@ function send(){
 	uci set serverchan.serverchan.send_enable=0
 	uci commit serverchan
 	echo "`date "+%H:%M:%S"`  【微信推送】定时发送状态消息" >> ${logfile}
-	if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】send_title=$send_title" >> ${logfile};fi
-	if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】send_content=$send_content" >> ${logfile};fi
 	exit
 }
 
@@ -611,10 +583,7 @@ get_config
 					
 					content="%0D%0A%0D%0A---%0D%0A%0D%0A""####外网IP地址变化%0D%0A%0D%0A>当前IP：${hostIP}"
 					echo $title >${dir}title
-					echo -n $content >>${dir}content
-					if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】title=$title" >> ${logfile};fi
-					if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】content=$content" >> ${logfile};fi
-					
+					echo -n $content >>${dir}content					
 				fi
 				
 			else
@@ -635,9 +604,6 @@ get_config
 				content="%0D%0A%0D%0A---%0D%0A%0D%0A""####路由器重新启动%0D%0A%0D%0A>当前IP：${hostIP}"
 				echo $title >${dir}title
 				echo -n $content >>${dir}content
-				
-				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】title=$title" >> ${logfile};fi
-				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】content=$content" >> ${logfile};fi
 			fi
 			if [ -f ${logfile} ] ; then clean_log;fi
 		fi
@@ -797,12 +763,9 @@ get_config
 				content="%0D%0A%0D%0A---%0D%0A%0D%0A""####CPU 负载过高%0D%0A%0D%0A>CPU 负载已连续五分钟超过预设%0D%0A%0D%0A>接下来一小时不再提示%0D%0A%0D%0A>当前负载：${cpu_fuzai}"
 				echo $title >${dir}title
 				echo -n $content >>${dir}content
-				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】title=$title" >> ${logfile};fi
-				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】content=$content" >> ${logfile};fi
 			elif [ "$cpuload_n" -ge "60" ] ;then
 				cpuload_n=0
 			fi
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】cpuload_n=$cpuload_n" >> ${logfile};fi
 		fi
 		
 		#温度状态报警
@@ -831,12 +794,9 @@ get_config
 				content="%0D%0A%0D%0A---%0D%0A%0D%0A""####CPU 温度过高%0D%0A%0D%0A>CPU 温度已连续五分钟超过预设%0D%0A%0D%0A>接下来一小时不再提示%0D%0A%0D%0A>当前温度：${cpu_wendu}"
 				echo $title >${dir}title
 				echo -n $content >>${dir}content
-				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】title=$title" >> ${logfile};fi
-				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】content=$content" >> ${logfile};fi
 			elif [ "$Temperature_n" -ge "60" ] ;then
 				Temperature_n=0
 			fi
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】Temperature_n=$Temperature_n" >> ${logfile};fi
 		fi
 
 	else
@@ -875,8 +835,6 @@ get_config
 	if [ ! -z "$title" ] && [ ! -z "$content" ] ; then
 		nowtime=`date "+%Y-%m-%d %H:%M:%S"`
 		curl -s "http://sc.ftqq.com/$serverchan_sckey.send?text=${title}" -d "&desp=${nowtime}%0D%0A%0D%0A${content}" >/dev/null
-		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】title=$title" >> ${logfile};fi
-		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then echo "`date "+%H:%M:%S"` 【调试】content=$content" >> ${logfile};fi
 		unset title
 		unset content
 		rm -f ${dir}title >/dev/null 2>&1
