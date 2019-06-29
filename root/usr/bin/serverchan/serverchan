@@ -398,13 +398,13 @@ function send(){
 	router_temp=`uci get serverchan.serverchan.router_temp` >/dev/null 2>&1
 		if [ ! -z "$router_temp" ] && [ "$router_temp" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A""---%0D%0A%0D%0A#### 设备温度%0D%0A%0D%0A     CPU：`cut -c1-2 /sys/class/thermal/thermal_zone0/temp`%e2%84%83";fi
 	router_wan=`uci get serverchan.serverchan.router_wan` >/dev/null 2>&1
-		send_WANIP=$(ubus call network.interface.wan status | grep '\"address\"' | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
+		send_wanIP=$(ubus call network.interface.wan status | grep '\"address\"' | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
 		send_hostIP=$(curl -k -s  "http://members.3322.org/dyndns/getip")
 		if [ ! -z "$router_wan" ] && [ "$router_wan" -eq "1" ] ; then
-			send_content=${send_content}"%0D%0A%0D%0A""---%0D%0A%0D%0A#### WAN 口信息%0D%0A%0D%0A     WAN ip：$send_WANIP"
+			send_content=${send_content}"%0D%0A%0D%0A""---%0D%0A%0D%0A#### WAN 口信息%0D%0A%0D%0A     WAN ip：$send_wanIP"
 			send_content=${send_content}"%0D%0A%0D%0A""     外网 ip：$send_hostIP"
 			if [ ! -z "$send_content" ] && [ ! -z "$router_wan" ] ; then
-				if ( echo ${send_WANIP} | grep -q ${send_hostIP} );then echo "" >/dev/null;else send_content=${send_content}"%0D%0A%0D%0A""     外网 ip 与接口 ip 不一致，你的 ip 不是公网 ip";fi
+				if ( echo ${send_wanIP} | grep -q ${send_hostIP} );then echo "" >/dev/null;else send_content=${send_content}"%0D%0A%0D%0A""     外网 ip 与接口 ip 不一致，你的 ip 不是公网 ip";fi
 			else
 				send_content=${send_content}"%0D%0A%0D%0A""     ip 获取失败"
 			fi
@@ -540,8 +540,13 @@ do
 if [ -f ${logfile} ] ; then clean_log;fi
 get_config
 
-#if [ ! -z "$enable" ] && [ "$enable" -eq "1" ] ; then
-	check=`curl -k -s -w "%{http_code}" "http://www.163.com"  -A "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.47 Safari/536.11Mozilla/5.0 (Windows NT 6.1) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.47 Safari/536.11" -o /dev/null`
+function rand_geturl(){
+	urllist="https://www.163.com https://www.qq.com https://www.baidu.com https://www.qidian.com https://www.douban.com"
+	url_str=$( echo "$urllist" | awk -v i="`awk 'BEGIN{srand();sum=rand()*5+ 1;printf("%d",sum)}'`" '{print $i}' )
+	check=`curl -k -s -w "%{http_code}" $url_str  -A "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.47 Safari/536.11Mozilla/5.0 (Windows NT 6.1) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.47 Safari/536.11" -o /dev/null`
+}
+	rand_geturl
+	if [ -z "$check" ] || [ "$check" -ne "200" ] ; then sleep 1 && rand_geturl;fi
 	if [ ! -z "$check" ] && [ "$check" -eq "200" ] ; then
 		if [ ! -z "$network_enable" ] && [ "$network_enable" -eq "404" ] ; then echo "`date "+%H:%M:%S"` 【网络状态】网络恢复正常.." >> ${logfile};else echo "" >/dev/null;fi
 		network_enable="200"
@@ -553,18 +558,18 @@ get_config
 			nowtime=`date "+%Y-%m-%d %H:%M:%S"`
 			#查询当前ip
 			#hostIP=$(curl -k -s  "http://members.3322.org/dyndns/getip")
-			hostIP=$(ubus call network.interface.wan status | grep '\"address\"' | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
+			wanIP=$(ubus call network.interface.wan status | grep '\"address\"' | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
 			#查询ip历史记录
 			if [ -f ${dir}ip ] ; then lastIP=$(cat "${dir}ip");else unset lastIP;fi
 			if [ ! -z "$lastIP" ] ; then
-				#if [ "$hostIP"!="$lastIP" ] && [ ! -z "$hostIP" ] ; then
-				if [ ! -z "$hostIP" ] && ( echo ${hostIP} | grep -w -q ${lastIP} );then
+				#if [ "$wanIP"!="$lastIP" ] && [ ! -z "$wanIP" ] ; then
+				if [ ! -z "$wanIP" ] && ( echo ${wanIP} | grep -w -q ${lastIP} );then
 					if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then  echo "`date "+%H:%M:%S"`  IP 无变化，当前 ip 为 $lastIP" >> ${logfile};fi
 				else
-					echo "`date "+%H:%M:%S"`  当前 IP: ${hostIP}" >> ${logfile}
+					echo "`date "+%H:%M:%S"`  当前 IP: ${wanIP}" >> ${logfile}
 					echo "`date "+%H:%M:%S"`  上次 IP: ${lastIP}" >> ${logfile}
-					echo "`date "+%H:%M:%S"`  【微信推送】当前IP：${hostIP}" >> ${logfile}
-					echo -n $hostIP > ${dir}ip
+					echo "`date "+%H:%M:%S"`  【微信推送】当前IP：${wanIP}" >> ${logfile}
+					echo -n $wanIP > ${dir}ip
 					
 					if [ -f "${dir}title" ] ; then title=`cat ${dir}title` ;fi
 					if [ -f "${dir}content" ] ; then content=`cat ${dir}content` ;fi
@@ -574,7 +579,7 @@ get_config
 						title="设备状态变化"
 					fi
 					
-					content="%0D%0A%0D%0A---%0D%0A%0D%0A""####外网IP地址变化%0D%0A%0D%0A>当前IP：${hostIP}"
+					content="%0D%0A%0D%0A---%0D%0A%0D%0A""####外网IP地址变化%0D%0A%0D%0A>当前IP：${wanIP}"
 					echo $title >${dir}title
 					echo -n $content >>${dir}content					
 				fi
@@ -582,9 +587,9 @@ get_config
 			else
 				echo "" >/dev/null
 				#echo "路由器已经重启!"
-				echo "`date "+%H:%M:%S"`  【微信推送】路由器已经重启!当前IP：${hostIP}" >> ${logfile}
-				echo "`date "+%H:%M:%S"`  当前IP: ${hostIP}" >> ${logfile}
-				echo -n $hostIP > ${dir}ip
+				echo "`date "+%H:%M:%S"`  【微信推送】路由器已经重启!当前IP：${wanIP}" >> ${logfile}
+				echo "`date "+%H:%M:%S"`  当前IP: ${wanIP}" >> ${logfile}
+				echo -n $wanIP > ${dir}ip
 				
 				if [ -f "${dir}title" ] ; then title=`cat ${dir}title` ;fi
 				if [ -f "${dir}content" ] ; then content=`cat ${dir}content` ;fi
@@ -594,7 +599,7 @@ get_config
 					title="设备状态变化"
 				fi
 
-				content="%0D%0A%0D%0A---%0D%0A%0D%0A""####路由器重新启动%0D%0A%0D%0A>当前IP：${hostIP}"
+				content="%0D%0A%0D%0A---%0D%0A%0D%0A""####路由器重新启动%0D%0A%0D%0A>当前IP：${wanIP}"
 				echo $title >${dir}title
 				echo -n $content >>${dir}content
 			fi
@@ -820,7 +825,7 @@ get_config
 	
 	enable_detection
 
-function serverchan_for(){
+function serverchan_send(){
 	if [ -f "${dir}title" ] ; then title=`cat ${dir}title` ;fi
 	if [ -f "${dir}content" ] ; then content=`cat ${dir}content` ;fi
 	if [ ! -z "$title" ] && [ ! -z "$content" ] ; then
@@ -833,16 +838,17 @@ function serverchan_for(){
 	fi
 	if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【等待】我累了，$sleeptime 秒后再回来" >> ${logfile};fi
 	enable_detection 60
+	serverchan_disturb
 }
 	
 	if [ ! -z "$serverchan_sheep" ] && [ "$serverchan_sheep" -eq "1" ] && [ ! -z "$starttime" ] && [ ! -z "$endtime" ] ;then
 		if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ] ; then
-			serverchan_for
+			serverchan_send
 		else
 			serverchan_disturb
 		fi
 	else
-		serverchan_for
+		serverchan_send
 	fi
 	
 continue
