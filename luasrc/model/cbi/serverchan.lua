@@ -103,6 +103,7 @@ title:depends("send_mode","1")
 title:depends("send_mode","2")
 title.placeholder = "OpenWrt By tty228 路由状态："
 title.optional = true
+title.description = translate("<br/>使用特殊符号可能会造成发送失败")
 
 router_status=s:taboption("tab_basic3", Flag,"router_status",translate("系统运行情况"))
 router_status:depends("send_mode","1")
