@@ -391,7 +391,11 @@ function send(){
 			send_content=${send_content}"%0D%0A%0D%0A""---%0D%0A%0D%0A#### WAN 口信息%0D%0A%0D%0A     WAN ip：$send_wanIP"
 			send_content=${send_content}"%0D%0A%0D%0A""     外网 ip：$send_hostIP"
 			if [ ! -z "$send_content" ] && [ ! -z "$router_wan" ] ; then
+<<<<<<< HEAD
 				if ( ! echo ${send_wanIP} | grep -q ${send_hostIP} );then send_content=${send_content}"%0D%0A%0D%0A""     外网 ip 与接口 ip 不一致，你的 ip 不是公网 ip";fi
+=======
+				if ( echo ${send_wanIP} | grep -q ${send_hostIP} );then echo "" >/dev/null;else send_content=${send_content}"%0D%0A%0D%0A""     外网 ip 与接口 ip 不一致，你的 ip 不是公网 ip";fi
+>>>>>>> 924430d2812e4470d394c4d27c9924422cc39d95
 			else
 				send_content=${send_content}"%0D%0A%0D%0A""     ip 获取失败"
 			fi
@@ -566,6 +570,11 @@ function rand_geturl(){
 				fi
 				
 			else
+<<<<<<< HEAD
+=======
+				echo "" >/dev/null
+				#echo "路由器已经重启!"
+>>>>>>> 924430d2812e4470d394c4d27c9924422cc39d95
 				echo "`date "+%H:%M:%S"`  【微信推送】路由器已经重启!当前IP：${wanIP}" >> ${logfile}
 				echo "`date "+%H:%M:%S"`  当前IP: ${wanIP}" >> ${logfile}
 				echo -n $wanIP > ${dir}ip
