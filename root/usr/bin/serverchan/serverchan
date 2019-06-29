@@ -199,25 +199,26 @@ if [ "$1" ] ;then
 	grep -w -q $1 ${dir}ipAddress
 	if [ $? -ne 0 ] ; then
 		# 如果 ipAddress 文件中存在此ip，则跳过，待断线检测
-		ip_mac=$(cat /var/dhcp.leases | grep -w $1 |awk '{print $2}')
+		ip_mac=$( cat /var/dhcp.leases | grep -w $1 |awk '{print $2}' | grep -v "^$" | sort -u )
+		if [ -z "$ip_mac" ] ; then ip_mac=$( cat /proc/net/arp | grep "0x2" | grep -w $1 | awk  '{print $4}' | grep -v "^$" | sort -u );fi
 
 		if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i $ip_mac ); then
-			ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}')
+			ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u )
 		else
-			ip_name=$(cat /var/dhcp.leases | grep -w $1 |awk '{print $4}')
+			ip_name=$( cat /var/dhcp.leases | grep -w $1 |awk '{print $4}' | grep -v "^$" | sort -u )
 		fi
 		
 		if [ -z "$ip_mac" ] ; then ip_mac="未知设备";fi
 		if [ -z "$ip_name" ] ; then ip_name="未知设备";fi
 		
-		local ip_ms=`echo $(arping -I $(cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 10 -f -w 3 $1)`
+		local ip_ms=`echo $( arping -I $( cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 10 -f -w 3 $1)`
 		
 		if ( ! echo ${ip_ms} | grep -q ms );then
 			local ip_ms=`ping -c 1 -w 2  $1`
 			
 			if ( ! echo ${ip_ms} | grep -q ms );then
 				sleep 2
-				local ip_ms=`echo $(arping -I $(cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 10 -f -w 5 $1)`
+				local ip_ms=`echo $( arping -I $( cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 10 -f -w 5 $1)`
 			fi
 		fi	
 
@@ -230,21 +231,26 @@ if [ "$1" ] ;then
 		if ( echo "$ip_mac" | grep -q "未知设备" ) || ( echo "$ip_name" | grep -q "未知设备" ) ; then
 			for i in `seq 1 5` 
 			do
-				echo "`date "+%H:%M:%S"` 获取 $1 设备信息失败，重试中" >> ${logfile}
+				echo "`date "+%H:%M:%S"` 获取 $1 $ip_mac 设备信息失败，重试中" >> ${logfile}
 				sleep 1
-				ip_mac=$(cat /var/dhcp.leases | grep -w $1 |awk '{print $2}')
+				ip_mac=$( cat /var/dhcp.leases | grep -w $1 |awk '{print $2}' | grep -v "^$" | sort -u )
+				if [ -z "$ip_mac" ] ; then ip_mac=$( cat /proc/net/arp | grep "0x2" | grep -w $1 | awk  '{print $4}' | grep -v "^$" | sort -u );fi
 				if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i $ip_mac ); then
-					ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}')
+					ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u )
 				else
-					ip_name=$(cat /var/dhcp.leases | grep -w $1 |awk '{print $4}')
+					ip_name=$( cat /var/dhcp.leases | grep -w $1 |awk '{print $4}' | grep -v "^$" | sort -u )
 				fi
 				if [ ! -z "$ip_mac" ] && [ ! -z "$ip_name" ] ; then break;fi
 			done
 		fi
-		if [ -z "$ip_mac" ] ; then ip_mac="未知设备";fi
-		if [ -z "$ip_mac" ] ; then echo "`date "+%H:%M:%S"` 获取 $1 mac 超时，暂停跳过" >> ${logfile};fi
-		if [ -z "$ip_name" ] ; then ip_name="未知设备";fi
-		if [ -z "$ip_name" ] ; then echo "`date "+%H:%M:%S"` 获取 $1 设备名超时，暂停跳过" >> ${logfile};fi
+		if [ -z "$ip_mac" ] ; then
+			ip_mac="未知设备"
+			echo "`date "+%H:%M:%S"` 获取 $1 mac 超时，暂停跳过" >> ${logfile}
+		fi
+		if [ -z "$ip_name" ] ; then
+			ip_name="未知设备"
+			echo "`date "+%H:%M:%S"` 获取 $1 设备名超时，暂停跳过" >> ${logfile}
+		fi
 		
 			if [ ! -z "$send_enable" ] && [ "$send_enable" -ne 3 ] ; then
 			# 如果定时任务没有运行
@@ -260,7 +266,7 @@ if [ "$1" ] ;then
 					title="设备状态变化"
 					content="%0D%0A%0D%0A---%0D%0A%0D%0A####新设备连接%0D%0A%0D%0A"">$ip_name"
 				fi
-				#echo "$1 $(cat /var/dhcp.leases | grep -w $1 |awk '{print $2" "$4}' )" >> ${dir}ipAddress
+				#echo "$1 $( cat /var/dhcp.leases | grep -w $1 |awk '{print $2" "$4}' )" >> ${dir}ipAddress
 				echo "$1 $ip_mac $ip_name" >> ${dir}ipAddress
 				echo "`date "+%H:%M:%S"`  【微信推送】新设备 $ip_name $1 连接了">> ${logfile}
 				
@@ -297,29 +303,31 @@ if [ ! -f "${dir}ipAddress" ] ; then return;fi
 if [ "$1" ] ;then
 	send_enable=`uci get serverchan.serverchan.send_enable`>/dev/null 2>&1
 	local temp_send_enable="$send_enable"
-	ip_mac=$(cat ${dir}ipAddress | grep -w $1 |awk '{print $2}')
-	ip_name=$(cat ${dir}ipAddress | grep -w $1 |awk '{print $3}')
+	ip_mac=$( cat ${dir}ipAddress | grep -w $1 |awk '{print $2}' | grep -v "^$" | sort -u )
+	if [ -z "$ip_mac" ] ; then ip_mac=$( cat /proc/net/arp | grep "0x2" | grep -w $1 | awk  '{print $4}' | grep -v "^$" | sort -u );fi
+	ip_name=$( cat ${dir}ipAddress | grep -w $1 |awk '{print $3}' | grep -v "^$" | sort -u )
 	if ( echo "$ip_mac" | grep -q "未知设备" ) || ( echo "$ip_name" | grep -q "未知设备" ) ; then
-		echo "`date "+%H:%M:%S"` $1 无设备名，尝试重新读取" >> ${logfile}
+		echo "`date "+%H:%M:%S"` $1 $ip_mac 无设备名，尝试重新读取" >> ${logfile}
 		sed -i "/$1/d" ${dir}ipAddress
-		ip_mac=$(cat /var/dhcp.leases | grep -w $1 |awk '{print $2}')
+		ip_mac=$( cat /var/dhcp.leases | grep -w $1 |awk '{print $2}' | grep -v "^$" | sort -u )
+		if [ -z "$ip_mac" ] ; then ip_mac=$( cat /proc/net/arp | grep "0x2" | grep -w $1 | awk  '{print $4}' | grep -v "^$" | sort -u );fi
 		if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i $ip_mac ); then
-			ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}')
+			ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u )
 		else
-			ip_name=$(cat /var/dhcp.leases | grep -w $1 |awk '{print $4}')
+			ip_name=$( cat /var/dhcp.leases | grep -w $1 |awk '{print $4}' | grep -v "^$" | sort -u )
 		fi
 		if [ -z "$ip_mac" ] ; then ip_mac="未知设备";fi
 		if [ -z "$ip_name" ] ; then ip_name="未知设备";fi
 		echo "$1 $ip_mac $ip_name" >> ${dir}ipAddress
 	fi
 
-	local ip_ms=`echo $(arping -I $(cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 10 -f -w 3 $1)`
+	local ip_ms=`echo $( arping -I $( cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 10 -f -w 3 $1)`
 	if ( ! echo ${ip_ms} | grep -q ms );then
 		local ip_ms=`ping -c 1 -w 2  $1`
 
 		if ( ! echo ${ip_ms} | grep -q ms );then
 			sleep 3
-			local ip_ms=`echo $(arping -I $(cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 10 -f -w 10 $1)`
+			local ip_ms=`echo $( arping -I $( cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 10 -f -w 10 $1)`
 		fi
 	fi	
 	
@@ -403,7 +411,7 @@ function send(){
 			
 			if [ ! -f "${dir}ipAddress" ] ; then > ${dir}ipAddress;fi
 			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【连接】开始进行设备下线检测" >> ${logfile};fi
-			IPLIST=$(cat ${dir}ipAddress| awk  '{print $1}' )
+			IPLIST=$( cat ${dir}ipAddress| awk  '{print $1}' )
 			for ip in $IPLIST; do
 			if [ ! -z "$ip" ] ; then
 				down $ip &
@@ -413,7 +421,7 @@ function send(){
 			
 			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【连接】开始进行设备接入检测" >> ${logfile};fi
 			IPLISTrow=$(grep -c "" ${dir}ipAddress)
-			IPLIST=$(cat /proc/net/arp | grep "0x2" | awk  '{print $1}' | grep -v "^$" | sort -u)
+			IPLIST=$( cat /proc/net/arp | grep "0x2" | awk  '{print $1}' | grep -v "^$" | sort -u )
 			for  ip in $IPLIST; do
 			if [ ! -z "$ip" ] ; then
 				up $ip &
@@ -424,7 +432,7 @@ function send(){
 			if [ "$IPLISTrow" -eq $(grep -c "" ${dir}ipAddress) ] ; then echo "`date "+%H:%M:%S"` 没有新设备连接" >> ${logfile};fi			
 			send_content=${send_content}"%0D%0A%0D%0A---%0D%0A%0D%0A#### 在线设备%0D%0A%0D%0A";
 			
-			IPLIST=$(cat ${dir}ipAddress| awk '{print $1" "$3}' )
+			IPLIST=$( cat ${dir}ipAddress| awk '{print $1" "$3}' )
 			n=0
 			for  ip in $IPLIST; do
 				n=$(($n+1))
@@ -461,7 +469,7 @@ if [ ! -z "$serverchan_enable" ] && [ "$serverchan_enable" -eq "1" ] ; then
 	echo "`date "+%H:%M:%S"` 【初始化】初始化在线设备列表" >> ${logfile}
 	uci set serverchan.serverchan.send_enable=3
 	uci commit serverchan
-	IPLIST=$(cat /proc/net/arp | grep "0x2" | awk  '{print $1}' | grep -v "^$" | sort -u)
+	IPLIST=$( cat /proc/net/arp | grep "0x2" | awk  '{print $1}' | grep -v "^$" | sort -u )
 	> ${dir}ipAddress
 	for  ip in $IPLIST; do
 	#忽略列表不检测
@@ -470,14 +478,18 @@ if [ ! -z "$serverchan_enable" ] && [ "$serverchan_enable" -eq "1" ] ; then
 	# 如果 “ip 列表不为空” 	
 	if [ ! -z "$ip" ] ; then
 	
-		ip_mac=$(cat /var/dhcp.leases | grep -w $ip |awk '{print $2}')
+		ip_mac=$( cat /var/dhcp.leases | grep -w $ip |awk '{print $2}' | grep -v "^$" | sort -u )
+		if [ -z "$ip_mac" ] ; then ip_mac=$( cat /proc/net/arp | grep "0x2" | grep -w $ip | awk  '{print $4}' | grep -v "^$" | sort -u );fi
 
 		if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i $ip_mac ); then
-			ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}')
+			ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u )
 		else
-			ip_name=$(cat /var/dhcp.leases | grep -w $ip |awk '{print $4}')
+			ip_name=$( cat /var/dhcp.leases | grep -w $ip |awk '{print $4}' | grep -v "^$" | sort -u )
 		fi
 		
+		if [ -z "$ip_name" ] ; then
+			temp_ms=`ping -c 1 -w 2 $ip` &
+		fi
 		if [ -z "$ip_mac" ] ; then ip_mac="未知设备";fi
 		if [ -z "$ip_name" ] ; then ip_name="未知设备";fi
 		
@@ -490,7 +502,7 @@ if [ ! -z "$serverchan_enable" ] && [ "$serverchan_enable" -eq "1" ] ; then
 			if ( ! echo $serverchan_whitelist | grep -q -i $ip_mac ); then
 				up $ip &
 			else
-				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] && ( ! echo ${ip_mac} | grep -q "未知设备" ) ; then  echo "`date "+%H:%M:%S"`  忽略列表已启用，跳过$ip_name" >> ${logfile};fi
+				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] && ( ! echo ${ip_mac} | grep -q "未知设备" ) ; then  echo "`date "+%H:%M:%S"`  忽略列表已启用，跳过$ip_name $ip" >> ${logfile};fi
 			fi
 
 		# 如果 “关注列表不为空” 
@@ -498,14 +510,14 @@ if [ ! -z "$serverchan_enable" ] && [ "$serverchan_enable" -eq "1" ] ; then
 			if ( echo $serverchan_blacklist | grep -q -i $ip_mac ); then
 				up $ip &
 			else
-				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] && ( ! echo ${ip_mac} | grep -q "未知设备" ) ; then  echo "`date "+%H:%M:%S"`  关注列表已启用，跳过$ip_name" >> ${logfile};fi
+				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] && ( ! echo ${ip_mac} | grep -q "未知设备" ) ; then  echo "`date "+%H:%M:%S"`  关注列表已启用，跳过$ip_name $ip" >> ${logfile};fi
 			fi	
 		# 如果 “仅关注接口选项打开” 
 		elif [ ! -z "$serverchan_interface" ] ; then
-			if ( echo $serverchan_interface | grep -q -i $(cat /proc/net/arp | grep $ip |awk '{print $6}')); then
+			if ( echo $serverchan_interface | grep -q -i $( cat /proc/net/arp | grep $ip |awk '{print $6}' | grep -v "^$" | sort -u )); then
 				up $ip &
 			else
-				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] && ( ! echo ${ip_mac} | grep -q "未知设备" ) ; then  echo "`date "+%H:%M:%S"`  仅关注接口已启用，跳过$ip_name" >> ${logfile};fi
+				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] && ( ! echo ${ip_mac} | grep -q "未知设备" ) ; then  echo "`date "+%H:%M:%S"`  仅关注接口已启用，跳过$ip_name $ip" >> ${logfile};fi
 			fi	
 		fi
 	fi
@@ -541,7 +553,7 @@ function rand_geturl(){
 			#hostIP=$(curl -k -s  "http://members.3322.org/dyndns/getip")
 			wanIP=$(ubus call network.interface.wan status | grep '\"address\"' | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
 			#查询ip历史记录
-			if [ -f ${dir}ip ] ; then lastIP=$(cat "${dir}ip");else unset lastIP;fi
+			if [ -f ${dir}ip ] ; then lastIP=$( cat "${dir}ip");else unset lastIP;fi
 			if [ ! -z "$lastIP" ] ; then
 				#if [ "$wanIP"!="$lastIP" ] && [ ! -z "$wanIP" ] ; then
 				if [ ! -z "$wanIP" ] && ( echo ${wanIP} | grep -w -q ${lastIP} );then
@@ -590,18 +602,19 @@ function rand_geturl(){
 			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【离线】开始进行设备下线检测" >> ${logfile};fi
 		fi
 		get_config
-		IPLIST=$(cat ${dir}ipAddress | awk  '{print $1}' )
+		IPLIST=$( cat ${dir}ipAddress | awk  '{print $1}' )
 			#从 ipAddress 文件中读取上次检测到的在线列表
 			for ip in $IPLIST; do
 			# 如果 ip 列表不为空
 			send_enable=`uci get serverchan.serverchan.send_enable`>/dev/null 2>&1
 			if [ ! -z "$ip" ] && [ "$send_enable" -ne 3 ] ; then
-				ip_mac=$(cat /var/dhcp.leases | grep -w $ip |awk '{print $2}')
+				ip_mac=$( cat /var/dhcp.leases | grep -w $ip |awk '{print $2}' | grep -v "^$" | sort -u )
+				if [ -z "$ip_mac" ] ; then ip_mac=$( cat /proc/net/arp | grep "0x2" | grep -w $ip | awk  '{print $4}' | grep -v "^$" | sort -u );fi
 
 				if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i $ip_mac ); then
-					ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}')
+					ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u )
 				else
-					ip_name=$(cat /var/dhcp.leases | grep -w $ip |awk '{print $4}')
+					ip_name=$( cat /var/dhcp.leases | grep -w $ip |awk '{print $4}' | grep -v "^$" | sort -u )
 				fi
 		
 				if [ -z "$ip_mac" ] ; then ip_mac="未知设备";fi
@@ -628,7 +641,7 @@ function rand_geturl(){
 					fi	
 				# 如果 “仅关注接口选项打开” 
 				elif [ ! -z "$serverchan_interface" ] ; then
-					if ( echo $serverchan_interface | grep -q -i $(cat /proc/net/arp | grep $ip |awk '{print $6}')); then
+					if ( echo $serverchan_interface | grep -q -i $( cat /proc/net/arp | grep $ip |awk '{print $6}' | grep -v "^$" | sort -u )); then
 						down $ip &
 					else
 						sed -i "/$ip/d" ${dir}ipAddress
@@ -648,20 +661,24 @@ function rand_geturl(){
 		get_config
 		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【连接】开始进行设备接入检测" >> ${logfile};fi
 			#从 arp 缓存中读取 0x2 在线列表
-			IPLIST=$(cat /proc/net/arp | grep "0x2" | awk  '{print $1}' | grep -v "^$" | sort -u)
+			IPLIST=$( cat /proc/net/arp | grep "0x2" | awk  '{print $1}' | grep -v "^$" | sort -u )
 			for  ip in $IPLIST; do
 			# 如果 “ip 列表不为空” 
 			send_enable=`uci get serverchan.serverchan.send_enable`>/dev/null 2>&1
 			if [ ! -z "$ip" ] && [ "$send_enable" -ne 3 ] ; then
 			
-				ip_mac=$(cat /var/dhcp.leases | grep -w $ip |awk '{print $2}')
+				ip_mac=$( cat /var/dhcp.leases | grep -w $ip |awk '{print $2}' | grep -v "^$" | sort -u )
+				if [ -z "$ip_mac" ] ; then ip_mac=$( cat /proc/net/arp | grep "0x2" | grep -w $ip | awk  '{print $4}' | grep -v "^$" | sort -u );fi
 
 				if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i $ip_mac ); then
-					ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}')
+					ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u )
 				else
-					ip_name=$(cat /var/dhcp.leases | grep -w $ip |awk '{print $4}')
+					ip_name=$( cat /var/dhcp.leases | grep -w $ip |awk '{print $4}' | grep -v "^$" | sort -u )
 				fi
-		
+				
+				if [ -z "$ip_name" ] ; then
+					temp_ms=`ping -c 1 -w 2 $ip` &
+				fi
 				if [ -z "$ip_mac" ] ; then ip_mac="未知设备";fi
 				if [ -z "$ip_name" ] ; then ip_name="未知设备";fi
 				
@@ -674,7 +691,7 @@ function rand_geturl(){
 					if ( ! echo $serverchan_whitelist | grep -q -i $ip_mac ); then
 						up $ip &
 					else
-						if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] && ( ! echo ${ip_mac} | grep -q "未知设备" ) ; then  echo "`date "+%H:%M:%S"`  忽略列表已启用，跳过$ip_name" >> ${logfile};fi
+						if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] && ( ! echo ${ip_mac} | grep -q "未知设备" ) ; then  echo "`date "+%H:%M:%S"`  忽略列表已启用，跳过$ip_name $ip" >> ${logfile};fi
 					fi
 
 				# 如果 “关注列表不为空” 
@@ -682,15 +699,15 @@ function rand_geturl(){
 					if ( echo $serverchan_blacklist | grep -q -i $ip_mac ); then
 						up $ip &
 					else
-						if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] && ( ! echo ${ip_mac} | grep -q "未知设备" ) ; then  echo "`date "+%H:%M:%S"`  关注列表已启用，跳过$ip_name" >> ${logfile};fi
+						if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] && ( ! echo ${ip_mac} | grep -q "未知设备" ) ; then  echo "`date "+%H:%M:%S"`  关注列表已启用，跳过$ip_name $ip" >> ${logfile};fi
 					fi
 					
 				# 如果 “仅关注接口选项打开” 
 				elif [ ! -z "$serverchan_interface" ] ; then
-					if ( echo $serverchan_interface | grep -q -i $(cat /proc/net/arp | grep $ip |awk '{print $6}')); then
+					if ( echo $serverchan_interface | grep -q -i $( cat /proc/net/arp | grep $ip |awk '{print $6}' | grep -v "^$" | sort -u )); then
 						up $ip &
 					else
-						if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] && ( ! echo ${ip_mac} | grep -q "未知设备" ) ; then  echo "`date "+%H:%M:%S"`  仅关注接口已启用，跳过$ip_name" >> ${logfile};fi
+						if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] && ( ! echo ${ip_mac} | grep -q "未知设备" ) ; then  echo "`date "+%H:%M:%S"`  仅关注接口已启用，跳过$ip_name $ip" >> ${logfile};fi
 					fi	
 				fi
 
