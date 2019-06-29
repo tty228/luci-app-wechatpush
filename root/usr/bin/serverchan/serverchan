@@ -135,38 +135,30 @@ serverchan_cron
 
 #免打扰检测
 function serverchan_disturb(){
-if [ ! -z "$serverchan_sheep" ] && [ "$serverchan_sheep" -eq "0" ] ; then
-	echo "" >/dev/null
-else
-	echo "" >/dev/null
-	if [ ! -z "$starttime" ] && [ ! -z "$endtime" ] ;then
+if [ ! -z "$serverchan_sheep" ] && [ "$serverchan_sheep" -eq "1" ] && [ ! -z "$starttime" ] && [ ! -z "$endtime" ] ;then
 	if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ] ; then enable=1;else enable=0;fi
 
-		if [ "$enable" -eq "1" ] ;then
-			if [ "$serverchan_sheep" -eq "2" ] ; then serverchan_sckey=`uci get serverchan.serverchan.serverchan_sckey` >/dev/null 2>&1;fi
-		else
-			if [ "$serverchan_sheep" -eq "1" ] ; then
-				sheep_str=0
-				while [ $enable -eq "0" ] ;
-				do
-				if [ "$sheep_str" -eq "0" ] ; then
-					echo "`date "+%H:%M:%S"` 【免打扰】夜深了，该休息了" >> ${logfile}
-					sheep_str=1
-				fi
-				get_config
-				if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ] ; then enable=1;else enable=0;fi
-				enable_detection 60
-				continue
-				done
-				unset title
-				unset content
-				rm -f ${dir}title >/dev/null 2>&1
-				rm -f ${dir}content >/dev/null 2>&1
-			else
-			#模式二：脚本继续运行但不发送消息，暂时移除
-			serverchan_sckey=""
-			fi
+	if [ "$enable" -eq "0" ] ;then
+		sheep_str=0
+		while [ $enable -eq "0" ] ;
+		do
+		if [ "$sheep_str" -eq "0" ] ; then
+			echo "`date "+%H:%M:%S"` 【免打扰】夜深了，该休息了" >> ${logfile}
+			sheep_str=1
 		fi
+		get_config
+		if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ] ; then
+			enable=1
+		else
+			enable=0
+			enable_detection 1
+		fi
+		continue
+		done
+		unset title
+		unset content
+		rm -f ${dir}title >/dev/null 2>&1
+		rm -f ${dir}content >/dev/null 2>&1
 	fi
 fi
 }
@@ -549,7 +541,7 @@ if [ -f ${logfile} ] ; then clean_log;fi
 get_config
 
 #if [ ! -z "$enable" ] && [ "$enable" -eq "1" ] ; then
-	check=`curl -k -s -w "%{http_code}" "http://www.163.com" -o /dev/null`
+	check=`curl -k -s -w "%{http_code}" "http://www.163.com"  -A "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.47 Safari/536.11Mozilla/5.0 (Windows NT 6.1) AppleWebKit/536.11 (KHTML, like Gecko) Chrome/20.0.1132.47 Safari/536.11" -o /dev/null`
 	if [ ! -z "$check" ] && [ "$check" -eq "200" ] ; then
 		if [ ! -z "$network_enable" ] && [ "$network_enable" -eq "404" ] ; then echo "`date "+%H:%M:%S"` 【网络状态】网络恢复正常.." >> ${logfile};else echo "" >/dev/null;fi
 		network_enable="200"
@@ -826,13 +818,11 @@ get_config
 		done
 	fi
 	
-	serverchan_disturb
 	enable_detection
-	
+
+function serverchan_for(){
 	if [ -f "${dir}title" ] ; then title=`cat ${dir}title` ;fi
 	if [ -f "${dir}content" ] ; then content=`cat ${dir}content` ;fi
-	#echo $title
-	#echo $content
 	if [ ! -z "$title" ] && [ ! -z "$content" ] ; then
 		nowtime=`date "+%Y-%m-%d %H:%M:%S"`
 		curl -s "http://sc.ftqq.com/$serverchan_sckey.send?text=${title}" -d "&desp=${nowtime}%0D%0A%0D%0A${content}" >/dev/null
@@ -841,10 +831,20 @@ get_config
 		rm -f ${dir}title >/dev/null 2>&1
 		rm -f ${dir}content >/dev/null 2>&1
 	fi
-
-if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【等待】我累了，$sleeptime 秒后再回来" >> ${logfile};fi
-#sleep ${sleeptime}
-enable_detection 60
+	if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【等待】我累了，$sleeptime 秒后再回来" >> ${logfile};fi
+	enable_detection 60
+}
+	
+	if [ ! -z "$serverchan_sheep" ] && [ "$serverchan_sheep" -eq "1" ] && [ ! -z "$starttime" ] && [ ! -z "$endtime" ] ;then
+		if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ] ; then
+			serverchan_for
+		else
+			serverchan_disturb
+		fi
+	else
+		serverchan_for
+	fi
+	
 continue
 done
 echo "`date "+%H:%M:%S"` 【！！！】程序未启用，退出脚本！" >> ${logfile}
