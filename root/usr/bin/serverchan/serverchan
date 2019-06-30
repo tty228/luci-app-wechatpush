@@ -411,7 +411,7 @@ function send(){
 			
 			if [ ! -f "${dir}ipAddress" ] ; then > ${dir}ipAddress;fi
 			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【连接】开始进行设备下线检测" >> ${logfile};fi
-			IPLIST=$( cat ${dir}ipAddress| awk  '{print $1}' )
+			IPLIST=$( cat ${dir}ipAddress| awk '{print $1}' | grep -v "^$" | sort -u )
 			for ip in $IPLIST; do
 			if [ ! -z "$ip" ] ; then
 				down $ip &
@@ -602,7 +602,7 @@ function rand_geturl(){
 			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【离线】开始进行设备下线检测" >> ${logfile};fi
 		fi
 		get_config
-		IPLIST=$( cat ${dir}ipAddress | awk  '{print $1}' )
+		IPLIST=$( cat ${dir}ipAddress | awk '{print $1}' | grep -v "^$" | sort -u )
 			#从 ipAddress 文件中读取上次检测到的在线列表
 			for ip in $IPLIST; do
 			# 如果 ip 列表不为空
@@ -613,6 +613,11 @@ function rand_geturl(){
 
 				if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i $ip_mac ); then
 					ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u )
+					ipAddress_name=$( cat ${dir}ipAddress | grep -w $ip | awk '{print $3}' | grep -v "^$" | sort -u )
+					if [ ! -z ipAddress_name ] && ( ! echo $ip_name | grep -q $ipAddress_name ) ; then
+						sed -i "/$ip/d" ${dir}ipAddress
+						echo "$ip $ip_mac $ip_name" >> ${dir}ipAddress
+					fi
 				else
 					ip_name=$( cat /var/dhcp.leases | grep -w $ip |awk '{print $4}' | grep -v "^$" | sort -u )
 				fi
