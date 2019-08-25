@@ -10,5 +10,5 @@ if [ $flag -eq 0 ] ;then
 fi
 }
 stop() {
-kill -9 `pgrep -f serverchan`
+kill -9 `pgrep -f serverchan/serverchan`
 }
