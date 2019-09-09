@@ -14,4 +14,7 @@
 
 #### 已知BUG & 下一步计划
 
-
+-多拨环境下无法获取 wan ip，详情查看https://github.com/tty228/luci-app-serverchan/issues/8
+-可能因为编译环境不同或者别的原因，makefile 提升权限失败，造成无法启动，对makefile没研究过，不太了解
+如遇到此问题请查阅 @zxlhhyccc 的解决方案
+https://github.com/tty228/luci-app-serverchan/issues/1
