@@ -735,8 +735,6 @@ function rand_geturl(){
 			if [ ! -z "$cpuload" ] && [ `expr $cpu_fuzai \> $cpuload` -eq "1" ] ; then
 				cpuload_n=$(($cpuload_n+1))
 				echo "`date "+%H:%M:%S"` 【！！警报！！】当前 CPU 负载过高: ${cpu_fuzai}" >> ${logfile}
-			elif [ "$cpuload_n" -ge "5" ] ;then
-				cpuload_n=$(($cpuload_n+1))
 			else
 				cpuload_n=0
 				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then  echo "`date "+%H:%M:%S"`  CPU 负载正常：$cpu_fuzai" >> ${logfile};fi
@@ -745,11 +743,7 @@ function rand_geturl(){
 			if [ "$cpuload_n" -eq "5" ] ;then
 				if [ -f "${dir}title" ] ; then title=`cat ${dir}title` ;fi
 				if [ -f "${dir}content" ] ; then content=`cat ${dir}content` ;fi
-				if ( echo ${title} | grep -q "设备报警" ) || [ -z "$title" ] ; then
-					title="CPU 负载过高！"
-				else
-					title="设备报警！"
-				fi
+				title="CPU 负载过高！"
 				echo "`date "+%H:%M:%S"` 【微信推送】当前 CPU 负载过高: ${cpu_fuzai}" >> ${logfile}
 				content="%0D%0A%0D%0A---%0D%0A%0D%0A""####CPU 负载过高%0D%0A%0D%0A>CPU 负载已连续五分钟超过预设%0D%0A%0D%0A>接下来一小时不再提示%0D%0A%0D%0A>当前负载：${cpu_fuzai}"
 				echo $title >${dir}title
@@ -758,17 +752,15 @@ function rand_geturl(){
 				cpuload_n=0
 			fi
 		fi
-		
+
 		#温度状态报警
 		if [ ! -z "$temperature_enable" ] && [ "$temperature_enable" -eq "1" ] ; then
 			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then  echo "`date "+%H:%M:%S"` 【温度】正在检测 CPU 温度" >> ${logfile};fi
-			cpu_wendu=`cut -c1-2 /sys/class/thermal/thermal_zone1/temp`
+			cpu_wendu=`cut -c1-2 /sys/class/thermal/thermal_zone0/temp`
 			temperature=`uci get serverchan.serverchan.temperature`>/dev/null 2>&1
 			if [ ! -z "$temperature" ] && [ "$cpu_wendu" -gt "$temperature" ] ; then
 				Temperature_n=$(($Temperature_n+1))
 				echo "`date "+%H:%M:%S"` 【！！警报！！】当前 CPU 温度过高: ${cpu_wendu}" >> ${logfile}
-			elif [ "$Temperature_n" -ge "5" ] ;then
-				Temperature_n=$(($Temperature_n+1))
 			else
 				Temperature_n=0
 				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then  echo "`date "+%H:%M:%S"`  CPU 温度正常：$cpu_wendu" >> ${logfile};fi
@@ -776,10 +768,10 @@ function rand_geturl(){
 			if [ "$Temperature_n" -eq "5" ] ;then
 				if [ -f "${dir}title" ] ; then title=`cat ${dir}title` ;fi
 				if [ -f "${dir}content" ] ; then content=`cat ${dir}content` ;fi
-				if ( echo ${title} | grep -q "设备报警" ) || [ -z "$title" ] ; then
-					title="CPU 温度过高！"
-				else
+				if [ ! -z "$title" ] && ( echo ${title} | grep -q "过高" ) ; then
 					title="设备报警！"
+				else
+					title="CPU 温度过高！"
 				fi
 				echo "`date "+%H:%M:%S"`  【微信推送】当前 CPU 温度过高: ${cpu_wendu}" >> ${logfile}
 				content="%0D%0A%0D%0A---%0D%0A%0D%0A""####CPU 温度过高%0D%0A%0D%0A>CPU 温度已连续五分钟超过预设%0D%0A%0D%0A>接下来一小时不再提示%0D%0A%0D%0A>当前温度：${cpu_wendu}"
@@ -824,6 +816,8 @@ function serverchan_send(){
 	if [ -f "${dir}content" ] ; then content=`cat ${dir}content` ;fi
 	if [ ! -z "$title" ] && [ ! -z "$content" ] ; then
 		nowtime=`date "+%Y-%m-%d %H:%M:%S"`
+		title=$( echo $title | sed $'s/\ /%20/g'| sed $'s/\"/%22/g'| sed $'s/\#/%23/g'| sed $'s/\&/%26/g'| sed $'s/\,/%2C/g'| sed $'s/\//%2F/g'| sed $'s/\:/%3A/g'| sed $'s/\;/%3B/g'| sed $'s/\=/%3D/g'| sed $'s/\@/%40/g')
+	if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then  echo "`date "+%H:%M:%S"`  进行 URL 编码，标题=$title" >> ${logfile};fi
 		curl -s "http://sc.ftqq.com/$serverchan_sckey.send?text=${title}" -d "&desp=${nowtime}%0D%0A%0D%0A${content}" >/dev/null
 		unset title
 		unset content
