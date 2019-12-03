@@ -18,9 +18,15 @@
 - 可能因为编译环境不同或者别的原因，makefile 提升权限失败，造成无法启动，对makefile没研究过，不太了解
 如遇到此问题请查阅 @zxlhhyccc 的解决方案
 https://github.com/tty228/luci-app-serverchan/issues/1
-- 由于不同设备温度文件不一样，如遇到设备温度无法正常读取，请修改
+- 设备温度文件基于斐讯K3，其他设备如遇到设备温度无法正常读取，请自行修改
 “cut -c1-2 /sys/class/thermal/thermal_zone0/temp” @KFERMercer 
+- 潘多拉等系统，请将脚本开头sh改成bash
 
-#### 咳
+#### ps
 
-- 沉迷怀旧服，不考虑加新功能，除了重大bug暂停更新
+- 新功能不考虑添加
+- 好久没有折腾，飞机到期，编译环境不可用
+- 沉迷怀旧服
+- 别问了，再问就是我太懒
+
+- 提交bug时请带上日志跟设备
