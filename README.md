@@ -2,6 +2,7 @@
 - 用于 OpenWRT/LEDE 路由器上进行 Server酱 微信推送的插件
 - 基于 serverchan 提供的接口发送信息，Server酱说明：http://sc.ftqq.com/1.version
 - 已经自带 luci
+- 脚本基于斐讯 k3 制作，不同系统不同设备，请自行修改部分代码
 
 #### 主要功能
 - 路由 ip 变动推送
