@@ -29,5 +29,5 @@ https://github.com/tty228/luci-app-serverchan/issues/1
 - 好久没有折腾，飞机到期，编译环境不可用
 - 沉迷怀旧服
 - 别问了，再问就是我太懒
-
+- 欢迎各种代码提交
 - 提交bug时请带上日志跟设备
