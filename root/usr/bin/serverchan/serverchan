@@ -88,7 +88,7 @@ elif [ ! -z "$serverchan_interface" ] ; then
 fi
 
 }
-serverchan_init
+
 
 #创建计划任务
 function serverchan_cron(){
@@ -131,7 +131,7 @@ elif [ -z "$send_mode" ] ; then
 	fi
 fi
 }
-serverchan_cron
+
 
 #免打扰检测
 function serverchan_disturb(){
@@ -162,7 +162,7 @@ if [ ! -z "$serverchan_sheep" ] && [ "$serverchan_sheep" -eq "1" ] && [ ! -z "$s
 	fi
 fi
 }
-serverchan_disturb
+
 
 #清理日志
 function clean_log(){
@@ -459,9 +459,14 @@ function send(){
 }
 
 if [ "$1" ] ;then
-	if [ $1="send" ] ;then send;fi
+	if [ $1 = "send" ] ;then send;fi
+	if [ $1 = "crontab" ] ;then serverchan_cron;fi
 	exit
 fi
+
+serverchan_init
+serverchan_cron
+serverchan_disturb
 
 #初始化在线设备列表
 function serverchan_first(){
@@ -555,7 +560,7 @@ function rand_geturl(){
 			#查询ip历史记录
 			if [ -f ${dir}ip ] ; then lastIP=$( cat "${dir}ip");else unset lastIP;fi
 			if [ ! -z "$lastIP" ] ; then
-				#if [ "$wanIP"!="$lastIP" ] && [ ! -z "$wanIP" ] ; then
+				#if [ "$wanIP" != "$lastIP" ] && [ ! -z "$wanIP" ] ; then
 				if [ ! -z "$wanIP" ] && ( echo ${wanIP} | grep -w -q ${lastIP} );then
 					if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then  echo "`date "+%H:%M:%S"`  IP 无变化，当前 ip 为 $lastIP" >> ${logfile};fi
 				else
