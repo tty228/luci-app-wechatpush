@@ -7,6 +7,8 @@ start() {
 flag=$(ps | grep "serverchan/serverchan" | grep -v "grep" | wc -l)
 if [ $flag -eq 0 ] ;then
 /usr/bin/serverchan/serverchan &
+else
+/usr/bin/serverchan/serverchan crontab
 fi
 }
 stop() {
