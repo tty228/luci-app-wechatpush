@@ -15,7 +15,7 @@
 
 #### 已知BUG
 
-- 多拨环境下无法获取 wan ip，详情查看https://github.com/tty228/luci-app-serverchan/issues/8
+- 多拨环境下无法获取 wan ip，请关闭 ip 变动检测，详情查看https://github.com/tty228/luci-app-serverchan/issues/8
 - 设备温度文件基于斐讯K3，其他设备如遇到设备温度无法正常读取，请自行修改
 `cut -c1-2 /sys/class/thermal/thermal_zone0/temp` @KFERMercer 
 - 反复测试了一下，因权限问题不能启动的 bug 已经不存在了，但无法启动的 bug 依然存在
