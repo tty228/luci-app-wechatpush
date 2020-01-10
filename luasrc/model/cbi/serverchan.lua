@@ -79,7 +79,7 @@ a= s:taboption("tab_basic2", Value, "ipv4_URL", "URL 地址")
 a.rmempty = true 
 a.default = "members.3322.org/dyndns/getip"
 a:depends({serverchan_ipv4="2"})
-a.description = translate("<br/>会因服务器稳定性/获取频繁等原因导致获取失败，一般不推荐")
+a.description = translate("<br/>会因服务器稳定性/连接频繁等原因导致获取失败，一般不推荐")
 
 a=s:taboption("tab_basic2", ListValue,"serverchan_ipv6",translate("ipv6 变动通知"))
 a.default="disable"
@@ -102,9 +102,9 @@ end
 a.description = translate("<br/>一般选择 wan 接口，多拨环境请自行选择")
 a= s:taboption("tab_basic2", Value, "ipv6_URL", "URL 地址")
 a.rmempty = true 
-a.default = "ip.sb"
+a.default = "v6.ip.zxinc.org/getip"
 a:depends({serverchan_ipv6="2"})
-a.description = translate("<br/>会因服务器稳定性/获取频繁等原因导致获取失败，一般不推荐")
+a.description = translate("<br/>会因服务器稳定性/连接频繁等原因导致获取失败，一般不推荐")
 
 a=s:taboption("tab_basic2", Flag,"serverchan_up",translate("设备上线通知"))
 a.default=0
