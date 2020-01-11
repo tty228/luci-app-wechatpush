@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# 1:关闭接口时会忽略当前接口检测
-# 2:偶发性程序多开
+# 1:关闭接口的掉线忽略了检测
 
 # 读取设置文件
 function get_config(){
@@ -660,7 +659,7 @@ function rand_geturl(){
 		network_enable="200"
 		
 		#外网IP变化
-		if [ ! -z "$serverchan_ipv4" ] && [ "$serverchan_ipv4" -ne "0" ] || [ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -ne "0" ] ; then
+		if [ ! -z "$serverchan_ipv4" ] && [ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv4" -ne "0" ] || [ "$serverchan_ipv6" -ne "0" ] ; then
 			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then  echo "`date "+%H:%M:%S"`  【外网IP】正在检测外网IP变化" >> ${logfile};fi
 			nowtime=`date "+%Y-%m-%d %H:%M:%S"`
 			#查询当前 ipv4
@@ -682,8 +681,8 @@ function rand_geturl(){
 						echo "`date "+%H:%M:%S"`  当前 IP: ${IPv4}" >> ${logfile}
 						echo "`date "+%H:%M:%S"`  上次 IP: ${last_IPv4}" >> ${logfile}
 						echo "`date "+%H:%M:%S"`  【微信推送】当前IP：${IPv4}" >> ${logfile}
-						echo "IPv4" $IPv4 > ${dir}ip
-						echo -e "IPv6" $last_IPv6 >> ${dir}ip
+						echo IPv4 $IPv4 > ${dir}ip
+						echo -e IPv6 $last_IPv6 >> ${dir}ip
 					
 						if [ -f "${dir}title" ] ; then title=`cat ${dir}title` ;fi
 						if [ -f "${dir}content" ] ; then content=`cat ${dir}content` ;fi
@@ -701,15 +700,15 @@ function rand_geturl(){
 					fi
 				fi
 				
-				if [ "$serverchan_ipv4" -eq "1" ] ;then
+				if [ "$serverchan_ipv6" -eq "1" ] ;then
 					if [ ! -z "$IPv6" ] && ( echo ${IPv6} | grep -w -q ${last_IPv6} );then
 						if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then  echo "`date "+%H:%M:%S"`  IPv6 无变化，当前 ipv6 为 $last_IPv6" >> ${logfile};fi
 					elif [ ! -z "$IPv6" ] ; then 
 						echo "`date "+%H:%M:%S"`  当前 IPv6: ${IPv6}" >> ${logfile}
 						echo "`date "+%H:%M:%S"`  上次 IPv6: ${last_IPv6}" >> ${logfile}
 						echo "`date "+%H:%M:%S"`  【微信推送】当前IPv6：${IPv6}" >> ${logfile}
-						echo "IPv4" $IPv4 > ${dir}ip
-						echo -e "IPv6" $IPv6 >> ${dir}ip
+						echo IPv4 $IPv4 > ${dir}ip
+						echo -e IPv6 $IPv6 >> ${dir}ip
 					
 						if [ -f "${dir}title" ] ; then title=`cat ${dir}title` ;fi
 						if [ -f "${dir}content" ] ; then content=`cat ${dir}content` ;fi
@@ -734,8 +733,8 @@ function rand_geturl(){
 				echo "`date "+%H:%M:%S"`  当前IP: ${IPv4}" >> ${logfile}
 				echo "`date "+%H:%M:%S"`  【微信推送】路由器已经重启!当前IP：${IPv6}" >> ${logfile}
 				echo "`date "+%H:%M:%S"`  当前IP: ${IPv6}" >> ${logfile}
-				echo "IPv4" $IPv4 > ${dir}ip
-				echo -e "IPv6" $IPv6 >> ${dir}ip
+				echo IPv4 $IPv4 > ${dir}ip
+				echo -e IPv6 $IPv6 >> ${dir}ip
 				
 				if [ -f "${dir}title" ] ; then title=`cat ${dir}title` ;fi
 				if [ -f "${dir}content" ] ; then content=`cat ${dir}content` ;fi
