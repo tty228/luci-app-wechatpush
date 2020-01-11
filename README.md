@@ -3,7 +3,7 @@
 - 基于 serverchan 提供的接口发送信息，Server酱说明：http://sc.ftqq.com/1.version
 - 已经自带 luci
 - 脚本基于斐讯 k3 制作，不同系统不同设备，请自行修改部分代码
-- 脚本依赖 iputils-arping（8712） +curl ，安装前请使用 `opkg update`，小内存路由谨慎安装
+- 脚本依赖 iputils-arping +curl ，安装前请使用 `opkg update`，小内存路由谨慎安装
 
 #### 主要功能
 - 路由 ip/ipv6 变动推送
@@ -33,3 +33,7 @@
 - 欢迎各种代码提交
 - 提交bug时请带上设备信息，和详细的日志与描述
 - 三言两句恕我无能为力
+
+![image](https://github.com/tty228/Python-100-Days/blob/master/res/WeChat%E6%88%AA%E5%9C%96_20200111190113.png)
+![image](https://github.com/tty228/Python-100-Days/blob/master/res/WeChat%E6%88%AA%E5%9C%96_20200111190912.png)
+
