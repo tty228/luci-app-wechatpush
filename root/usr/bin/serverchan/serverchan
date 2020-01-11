@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# 1:关闭接口的掉线忽略了检测
+
 # 读取设置文件
 function get_config(){
 	if [ "$1" ] ;then
@@ -149,43 +151,45 @@ fi
 
 #免打扰检测
 function serverchan_disturb(){
-if [ ! -z "$serverchan_sheep" ] && [ "$serverchan_sheep" -eq "1" ] && [ ! -z "$starttime" ] && [ ! -z "$endtime" ] ;then
-	if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ] ; then enable=1;else enable=0;fi
+	if [ ! -z "$serverchan_sheep" ] && [ "$serverchan_sheep" -eq "1" ] && [ ! -z "$starttime" ] && [ ! -z "$endtime" ] ;then
+		if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ] ; then enable=1;else enable=0;fi
 
-	if [ "$enable" -eq "0" ] ;then
-		sheep_str=0
-		while [ $enable -eq "0" ] ;
-		do
-		if [ "$sheep_str" -eq "0" ] ; then
-			echo "`date "+%H:%M:%S"` 【免打扰】夜深了，该休息了" >> ${logfile}
-			sheep_str=1
+		if [ "$enable" -eq "0" ] ;then
+			sheep_str=0
+			while [ $enable -eq "0" ] ;
+			do
+				if [ "$sheep_str" -eq "0" ] ; then
+					echo "`date "+%H:%M:%S"` 【免打扰】夜深了，该休息了" >> ${logfile}
+					sheep_str=1
+				fi
+				read_config
+				if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ] ; then
+					enable=1
+				else
+					enable=0
+					enable_detection 1
+				fi
+			continue
+			done
+			unset title
+			unset content
+			rm -f ${dir}title >/dev/null 2>&1
+			rm -f ${dir}content >/dev/null 2>&1
 		fi
-		read_config
-		if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ] ; then
-			enable=1
-		else
-			enable=0
-			enable_detection 1
-		fi
-		continue
-		done
-		unset title
-		unset content
-		rm -f ${dir}title >/dev/null 2>&1
-		rm -f ${dir}content >/dev/null 2>&1
+	elif [ ! -z "$serverchan_sheep" ] && [ "$serverchan_sheep" -eq "2" ] && [ ! -z "$starttime" ] && [ ! -z "$endtime" ] ;then
+		if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ] ; then serverchan_sckey=`get_config sckey`;else unset serverchan_sckey;fi
 	fi
-fi
 }
 
 
 #清理日志
 function clean_log(){
-logrow=$(grep -c "" ${logfile})
-if [ $logrow -gt 500 ] ;then
-    #cat /dev/null > ${logfile}
-	sed -i '1,100d' ${logfile}
-    echo "`date "+%H:%M:%S"`  【清理】日志超出上限，删除前 100 条" >> ${logfile}
-fi
+	logrow=$(grep -c "" ${logfile})
+	if [ $logrow -gt 500 ] ;then
+		#cat /dev/null > ${logfile}
+		sed -i '1,100d' ${logfile}
+		echo "`date "+%H:%M:%S"`  【清理】日志超出上限，删除前 100 条" >> ${logfile}
+	fi
 }
 if [ -f ${logfile} ] ; then clean_log;fi
 
@@ -202,6 +206,82 @@ else
 	done
 	LockFile
 fi
+}
+
+# 流量数据
+function usage(){
+	if [ -f "/usr/bin/serverchan/wrtbwmon/wrtbwmon" ] && [ -f "/usr/bin/serverchan/wrtbwmon/readDB.awk" ] ; then
+		/usr/bin/serverchan/wrtbwmon/wrtbwmon update ${dir}usage.db
+	else
+		echo "`date "+%H:%M:%S"` 【！！！】流量数据文件缺失" >> ${logfile}
+	fi
+}
+
+function usage_ip(){
+	if [ "$1" ] ;then
+		ip=`cat /tmp/serverchan/usage.db | grep -w $1`
+		if [ ! -z "$ip" ] ; then ip=`echo $ip | sed 's/,/ /g'`;fi
+		if [ ! -z "$ip" ] ; then ip_total=`echo $ip | awk  '{print $6}'`;fi
+		if [ ! -z "$ip_total" ] ; then echo `bytes_for_humans $ip_total`;fi
+	fi
+}
+# 流量数据剔除ip
+function usage_down(){
+	if [ ! -f "${dir}usage.db" ] ; then return;fi
+	if [ "$1" ] ;then
+		sed -i "/$1/d" ${dir}usage.db
+		logrow_usage=$(grep -c "" ${dir}usage.db)
+		if [ $logrow_usage -le "1" ] ;then
+			rm -f ${dir}usage.db
+		fi
+	fi
+}
+
+# 流量数据单位换算
+# bytes_for_humans 1024
+function bytes_for_humans {
+	if [ "$1" ] ;then
+		if [[ $1 -lt 1024 ]]; then
+			echo $1 bytes 
+		elif [[ $1 -lt 1048576  ]]; then
+			echo `awk 'BEGIN{printf "%.2f\n",'$1'/'1024'}'` KB
+		elif [[ $1 -lt 1073741824  ]]; then
+			echo `awk 'BEGIN{printf "%.2f\n",'$1'/'1048576'}'` MB
+		else
+			echo `awk 'BEGIN{printf "%.2f\n",'$1'/'1073741824'}'` GB
+		fi
+	else
+		echo 0bytes 
+    fi
+}
+
+# 时间单位换算
+# time_for_humans 1024
+function time_for_humans {
+	if [ "$1" ] ;then
+		if [[ $1 -lt 60 ]]; then
+			echo $1 秒 
+		elif [[ $1 -lt 3600 ]]; then
+			usetime_min=`expr $1 / 60`
+			usetime_sec=`expr $usetime_min \* 60`
+			usetime_sec=`expr $1 - ${usetime_sec}`
+			echo $usetime_min 分钟 $usetime_sec 秒
+		elif [[ $1 -lt 216000  ]]; then
+			usetime_hour=`expr $1 / 3600`
+			usetime_min=`expr $usetime_hour \* 3600`
+			usetime_min=`expr $1 - ${usetime_min}`
+			usetime_min=`expr ${usetime_min} / 60`
+			echo $usetime_hour 小时 $usetime_min 分
+		else
+			usetime_day=`expr $1 / 86400`
+			usetime_hour=`expr $usetime_day \* 86400`
+			usetime_hour=`expr $1 - ${usetime_hour}`
+			usetime_hour=`expr ${usetime_hour} / 3600`
+			echo $usetime_day 天 $usetime_hour 小时
+		fi
+	else
+		echo 0 秒
+    fi
 }
 
 #检测设备上线
@@ -241,7 +321,7 @@ if [ "$1" ] ;then
 		
 		if ( echo ${ip_ms} | grep -q ms ); then
 		# 如果连接成功
-		LockFile	
+		LockFile
 		if ( echo "$ip_mac" | grep -q "unknown" ) || ( echo "$ip_name" | grep -q "unknown" ) ; then
 			for i in `seq 1 5` 
 			do
@@ -281,7 +361,7 @@ if [ "$1" ] ;then
 					content="%0D%0A%0D%0A---%0D%0A%0D%0A####新设备连接%0D%0A%0D%0A"">$ip_name"
 				fi
 				#echo "$1 $( cat /var/dhcp.leases | grep -w $1 |awk '{print $2" "$4}' )" >> ${dir}ipAddress
-				echo "$1 $ip_mac $ip_name" >> ${dir}ipAddress
+				echo "$1 $ip_mac $ip_name `date +%s`" >> ${dir}ipAddress
 				echo "`date "+%H:%M:%S"`  【微信推送】新设备 $ip_name $1 连接了">> ${logfile}
 				
 				if [ ! -z "$serverchan_blacklist" ] ; then
@@ -295,7 +375,7 @@ if [ "$1" ] ;then
 			else
 				# 如果定时任务运行
 				echo "`date "+%H:%M:%S"`  新设备 $ip_name $1 连接了" >> ${logfile}
-				echo "$1 $ip_mac $ip_name" >> ${dir}ipAddress
+				echo "$1 $ip_mac $ip_name `date +%s`" >> ${dir}ipAddress
 				unset title
 				unset content
 			fi
@@ -306,7 +386,6 @@ if [ "$1" ] ;then
 	else
 		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -eq "5" ] ; then  echo "`date "+%H:%M:%S"` $ip_name $1 已存在，跳过" >> ${logfile};fi
 	fi
-	
 	unset ip_ms
 fi
 }
@@ -332,7 +411,7 @@ if [ "$1" ] ;then
 		fi
 		if [ -z "$ip_mac" ] ; then ip_mac="unknown";fi
 		if [ -z "$ip_name" ] ; then ip_name="unknown";fi
-		echo "$1 $ip_mac $ip_name" >> ${dir}ipAddress
+		echo "$1 $ip_mac $ip_name `date +%s`" >> ${dir}ipAddress
 	fi
 
 	local ip_ms=`echo $( arping -I $( cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 10 -f -w 3 $1)`
@@ -360,16 +439,20 @@ if [ "$1" ] ;then
 			# 如果打开了下线提醒
 				if [ -f "${dir}title" ] ; then title=`cat ${dir}title` ;fi
 				if [ -f "${dir}content" ] ; then content=`cat ${dir}content` ;fi
-				
+				ip_total=`usage_ip $1`
+				time_down=`date +%s`
+				time_up=$( cat ${dir}ipAddress | grep -w $1 |awk '{print $4}' | grep -v "^$" | sort -u )
+				time1=$(($time_down-$time_up))
+				time1=`time_for_humans $time1`
 				if [ -z "$title" ] ; then
 					title="设备离线通知"
-					content="%0D%0A%0D%0A---%0D%0A%0D%0A####设备断开连接%0D%0A%0D%0A"">$ip_name"
+					content="%0D%0A%0D%0A---%0D%0A%0D%0A####设备断开连接%0D%0A%0D%0A"">$ip_name%0D%0A%0D%0A"">总计流量：$ip_total%0D%0A%0D%0A"">在线 $time1"
 				elif ( echo ${title} | grep -q "设备离线通知" ) ; then
 					title="设备离线通知"
-					content="%0D%0A%0D%0A"">$ip_name"
+					content="%0D%0A%0D%0A"">$ip_name%0D%0A%0D%0A"">总计流量：$ip_total%0D%0A%0D%0A"">在线 $time1"
 				else
 					title="设备状态变化"
-					content="%0D%0A%0D%0A---%0D%0A%0D%0A####设备断开连接%0D%0A%0D%0A"">$ip_name"
+					content="%0D%0A%0D%0A---%0D%0A%0D%0A####设备断开连接%0D%0A%0D%0A"">$ip_name%0D%0A%0D%0A"">总计流量：$ip_total%0D%0A%0D%0A"">在线 $time1"
 				fi
 				
 				echo "`date "+%H:%M:%S"`  【微信推送】设备 $ip_name $1 断开连接 " >> ${logfile}
@@ -378,6 +461,7 @@ if [ "$1" ] ;then
 			fi
 		echo "`date "+%H:%M:%S"`  设备 $ip_name $1 断开连接 " >> ${logfile}
 		sed -i "/$1/d" ${dir}ipAddress
+		usage_down $1
 		unset title
 		unset content
 		fi
@@ -450,14 +534,17 @@ function send(){
 			if [ "$IPLISTrow" -eq $(grep -c "" ${dir}ipAddress) ] ; then echo "`date "+%H:%M:%S"` 没有新设备连接" >> ${logfile};fi			
 			send_content=${send_content}"%0D%0A%0D%0A---%0D%0A%0D%0A#### 在线设备%0D%0A%0D%0A";
 			
-			IPLIST=$( cat ${dir}ipAddress| awk '{print $1" "$3}' )
-			n=0
+			ip=$( cat ${dir}ipAddress | awk '{print $1"}' )
 			for  ip in $IPLIST; do
-				n=$(($n+1))
-				if [ "${#ip}" -gt  "20" ] ; then ip=`echo ${ip:0:20}"*"`;fi
-				[ $((n%2)) -eq 1 ] && send_content=${send_content}"%0D%0A%0D%0A""     $ip  "
-				[ $((n%2)) -eq 0 ] && send_content=${send_content}"$ip"
+				send_content=${send_content}"%0D%0A%0D%0A""     $ip  "
+				ip_total=`usage_ip $ip`
+				time_down=`date +%s`
+				time_up=$( cat ${dir}ipAddress | grep -w $ip |awk '{print $4}' | grep -v "^$" | sort -u )
+				time1=$(($time_down-$time_up))
+				time1=`time_for_humans $time1`
+				send_content=${send_content}"`cat ${dir}ipAddress | grep "$ip" | awk  '{print $3}' | grep -v "^$" | sort -u`  总计流量：$ip_total%0D%0A%0D%0A"">在线 $time1"
 			done
+			echo "`date "+%H:%M:%S"` $send_content" >> ${logfile}
 		fi
 	send_title=$( echo $send_title | sed $'s/\ /%20/g'| sed $'s/\"/%22/g'| sed $'s/\#/%23/g'| sed $'s/\&/%26/g'| sed $'s/\,/%2C/g'| sed $'s/\//%2F/g'| sed $'s/\:/%3A/g'| sed $'s/\;/%3B/g'| sed $'s/\=/%3D/g'| sed $'s/\@/%40/g')
 	content=$( echo $content| sed $'s/unknown/%e6%9c%aa%e7%9f%a5%e8%ae%be%e5%a4%87/')
@@ -483,10 +570,11 @@ if [ "$1" ] ;then
 	exit
 fi
 
+if [ -z "$serverchan_enable" ] || [ "$serverchan_enable" -eq "0" ] ; then exit;fi
 serverchan_init
 serverchan_cron
 serverchan_disturb
-if [ -z "$serverchan_enable" ] || [ "$serverchan_enable" -eq "0" ] ; then exit;fi
+
 
 #初始化在线设备列表
 function serverchan_first(){
@@ -553,6 +641,7 @@ if [ ! -z "$serverchan_enable" ] && [ "$serverchan_enable" -eq "1" ] ; then
 fi
 }
 serverchan_first
+usage
 
 while [ "$serverchan_enable" -eq "1" ] ;
 do
@@ -682,7 +771,7 @@ function rand_geturl(){
 					ipAddress_name=$( cat ${dir}ipAddress | grep -w $ip | awk '{print $3}' | grep -v "^$" | sort -u )
 					if [ ! -z ipAddress_name ] && ( ! echo $ip_name | grep -q $ipAddress_name ) ; then
 						sed -i "/$ip/d" ${dir}ipAddress
-						echo "$ip $ip_mac $ip_name" >> ${dir}ipAddress
+						echo "$ip $ip_mac $ip_name `date +%s`" >> ${dir}ipAddress
 					fi
 				else
 					ip_name=$( cat /var/dhcp.leases | grep -w $ip |awk '{print $4}' | grep -v "^$" | sort -u )
@@ -701,6 +790,7 @@ function rand_geturl(){
 						down $ip &
 					else
 						sed -i "/$ip/d" ${dir}ipAddress
+						usage_down $ip
 					fi
 
 				# 如果 “关注列表不为空” 
@@ -709,6 +799,7 @@ function rand_geturl(){
 						down $ip &
 					else
 						sed -i "/$ip/d" ${dir}ipAddress
+						usage_down $ip
 					fi	
 				# 如果 “仅关注接口选项打开” 
 				elif [ ! -z "$serverchan_interface" ] ; then
@@ -716,6 +807,7 @@ function rand_geturl(){
 						down $ip &
 					else
 						sed -i "/$ip/d" ${dir}ipAddress
+						usage_down $ip
 					fi	
 				fi
 			fi
@@ -788,6 +880,8 @@ function rand_geturl(){
 			if [ -f "${dir}content" ] ; then content=`cat ${dir}content` ;fi
 			if [ -z "$content" ] || ( ! echo ${content} | grep -q "新设备连接" ) ; then
 				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then  echo "`date "+%H:%M:%S"`  没有新设备连接" >> ${logfile};fi
+			else
+				usage
 			fi
 		fi
 		
@@ -883,8 +977,12 @@ function serverchan_send(){
 		nowtime=`date "+%Y-%m-%d %H:%M:%S"`
 		title=$( echo $title | sed $'s/\ /%20/g'| sed $'s/\"/%22/g'| sed $'s/\#/%23/g'| sed $'s/\&/%26/g'| sed $'s/\,/%2C/g'| sed $'s/\//%2F/g'| sed $'s/\:/%3A/g'| sed $'s/\;/%3B/g'| sed $'s/\=/%3D/g'| sed $'s/\@/%40/g')
 		content=$( echo $content| sed $'s/unknown/%e6%9c%aa%e7%9f%a5%e8%ae%be%e5%a4%87/')
-	if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then  echo "`date "+%H:%M:%S"`  进行 URL 编码，标题=$title" >> ${logfile};fi
-		curl -s "http://sc.ftqq.com/$serverchan_sckey.send?text=${title}" -d "&desp=${nowtime}%0D%0A%0D%0A${content}" >/dev/null
+		if [ ! -z "$serverchan_sckey" ] ; then
+			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then  echo "`date "+%H:%M:%S"`  进行 URL 编码，标题=$title" >> ${logfile};fi
+			curl -s "http://sc.ftqq.com/$serverchan_sckey.send?text=${title}" -d "&desp=${nowtime}%0D%0A%0D%0A${content}" >/dev/null
+		else
+			echo "`date "+%H:%M:%S"`  当前为免打扰时间，消息不发送" >> ${logfile}
+		fi
 		unset title
 		unset content
 		rm -f ${dir}title >/dev/null 2>&1
@@ -892,18 +990,19 @@ function serverchan_send(){
 	fi
 	if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【等待】我累了，$sleeptime 秒后再回来" >> ${logfile};fi
 	enable_detection 60
-	serverchan_disturb
 }
+	serverchan_disturb
+	serverchan_send
 	
-	if [ ! -z "$serverchan_sheep" ] && [ "$serverchan_sheep" -eq "1" ] && [ ! -z "$starttime" ] && [ ! -z "$endtime" ] ;then
-		if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ] ; then
-			serverchan_send
-		else
-			serverchan_disturb
-		fi
-	else
-		serverchan_send
-	fi
+	#if [ ! -z "$serverchan_sheep" ] && [ "$serverchan_sheep" -eq "1" ] && [ ! -z "$starttime" ] && [ ! -z "$endtime" ] ;then
+	#	if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ] ; then
+	#		serverchan_send
+	#	else
+	#		serverchan_disturb
+	#	fi
+	#else
+	#	serverchan_send
+	#fi
 	
 continue
 done
