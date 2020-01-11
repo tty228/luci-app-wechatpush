@@ -186,8 +186,8 @@ end
 
 sheep=s:taboption("tab_basic4", ListValue,"serverchan_sheep",translate("免打扰时段设置"),translate("在指定整点时间段内，暂停推送消息<br/>免打扰时间中，定时推送也会被阻止。"))
 sheep:value("0",translate("关闭"))
-sheep:value("1",translate("模式一：脚本挂起，不检测设备"))
---[[sheep:value("2",translate("模式二：脚本继续运行但不发送消息"))--]]
+sheep:value("1",translate("模式一：脚本挂起，延迟发送"))
+sheep:value("2",translate("模式二：静默模式，不发送任何信息"))
 sheep.rmempty = true 
 sheep.optional = true
 sheep=s:taboption("tab_basic4", ListValue,"starttime",translate("免打扰开始时间"))
