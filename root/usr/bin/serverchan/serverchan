@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# 1:关闭接口的掉线忽略了检测
-
 # 读取设置文件
 function get_config(){
 	if [ "$1" ] ;then
@@ -322,6 +320,7 @@ if [ "$1" ] ;then
 		if ( echo ${ip_ms} | grep -q ms ); then
 		# 如果连接成功
 		LockFile
+		usage_down $1
 		if ( echo "$ip_mac" | grep -q "unknown" ) || ( echo "$ip_name" | grep -q "unknown" ) ; then
 			for i in `seq 1 5` 
 			do
@@ -655,6 +654,7 @@ function rand_geturl(){
 	rand_geturl
 	if [ -z "$check" ] || [ "$check" -ne "200" ] ; then sleep 1 && rand_geturl;fi
 	if [ ! -z "$check" ] && [ "$check" -eq "200" ] ; then
+		usage
 		if [ ! -z "$network_enable" ] && [ "$network_enable" -eq "404" ] ; then echo "`date "+%H:%M:%S"` 【网络状态】网络恢复正常.." >> ${logfile};fi
 		network_enable="200"
 		
@@ -731,7 +731,8 @@ function rand_geturl(){
 				unset last_IPv6
 				echo "`date "+%H:%M:%S"`  【微信推送】路由器已经重启!当前IP：${IPv4}" >> ${logfile}
 				echo "`date "+%H:%M:%S"`  当前IP: ${IPv4}" >> ${logfile}
-				echo "`date "+%H:%M:%S"`  【微信推送】路由器已经重启!当前IP：${IPv6}" >> ${logfile}
+				echo "`date "+%H:%M:%S"`  【微信推送】路由器已经重启!当前IPv6：${IPv6}" >> ${logfile}
+				
 				echo "`date "+%H:%M:%S"`  当前IP: ${IPv6}" >> ${logfile}
 				echo IPv4 $IPv4 > ${dir}ip
 				echo -e IPv6 $IPv6 >> ${dir}ip
