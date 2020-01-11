@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 1:关闭接口的掉线忽略了检测
+# 1:关闭接口时，掉线会忽略检测
 
 # 读取设置文件
 function get_config(){
@@ -542,7 +542,7 @@ function send(){
 				time_up=$( cat ${dir}ipAddress | grep -w $ip |awk '{print $4}' | grep -v "^$" | sort -u )
 				time1=$(($time_down-$time_up))
 				time1=`time_for_humans $time1`
-				send_content=${send_content}"`cat ${dir}ipAddress | grep "$ip" | awk  '{print $3}' | grep -v "^$" | sort -u`  总计流量：$ip_total%0D%0A%0D%0A"">在线 $time1"
+				send_content=${send_content}"`cat ${dir}ipAddress | grep "$ip" | awk  '{print $3}' | grep -v "^$" | sort -u`%0D%0A%0D%0A总计流量：$ip_total 在线 $time1"
 			done
 			echo "`date "+%H:%M:%S"` $send_content" >> ${logfile}
 		fi
