@@ -29,7 +29,7 @@ a=s:taboption("tab_basic", Flag,"serverchan_enable",translate("启用"))
 a.default=0
 a.rmempty=true
 
-a=s:taboption("tab_basic", Value,"sckey",translate('SCKEY'), translate("Serverchan Sckey").."<br>调用代码获取<a href='http://sc.ftqq.com' target="_blank">点击这里</a><br><br>")
+a=s:taboption("tab_basic", Value,"sckey",translate('SCKEY'), translate("Serverchan Sckey").."<br>调用代码获取<a href='http://sc.ftqq.com' target='_blank'>点击这里</a><br><br>")
 a.rmempty=true
 
 debuglevel=s:taboption("tab_basic", ListValue,"debuglevel",translate("日志调试等级"))
