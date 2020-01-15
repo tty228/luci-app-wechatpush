@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # 读取设置文件
 function get_config(){
@@ -174,8 +174,6 @@ function serverchan_disturb(){
 			rm -f ${dir}title >/dev/null 2>&1
 			rm -f ${dir}content >/dev/null 2>&1
 		fi
-	elif [ ! -z "$serverchan_sheep" ] && [ "$serverchan_sheep" -eq "2" ] && [ ! -z "$starttime" ] && [ ! -z "$endtime" ] ;then
-		if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ] ; then serverchan_sckey=`get_config sckey`;else unset serverchan_sckey;fi
 	fi
 }
 
@@ -549,8 +547,15 @@ function send(){
 		echo "`date "+%H:%M:%S"`  【！！！】定时发送选项错误，请检查你的设置" >> ${logfile}
 	fi
 	nowtime=`date "+%Y-%m-%d %H:%M:%S"`
-	curl -s "http://sc.ftqq.com/$serverchan_sckey.send?text=${send_title}" -d "&desp=${nowtime}%0D%0A%0D%0A${send_content}" >/dev/null
-
+	if [ ! -z "$serverchan_sheep" ] && [ "$serverchan_sheep" -eq "2" ] && [ ! -z "$starttime" ] && [ ! -z "$endtime" ] ;then
+		if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ] ; then
+			curl -s "http://sc.ftqq.com/$serverchan_sckey.send?text=${send_title}" -d "&desp=${nowtime}%0D%0A%0D%0A${send_content}" >/dev/null
+		else
+			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"`  当前为免打扰时间，消息不发送" >> ${logfile};fi
+		fi
+	else
+		curl -s "http://sc.ftqq.com/$serverchan_sckey.send?text=${send_title}" -d "&desp=${nowtime}%0D%0A%0D%0A${send_content}" >/dev/null
+	fi
 	uci set serverchan.serverchan.send_enable=0
 	uci commit serverchan
 	echo "`date "+%H:%M:%S"`  【微信推送】定时发送状态消息" >> ${logfile}
@@ -973,12 +978,16 @@ function serverchan_send(){
 	if [ ! -z "$title" ] && [ ! -z "$content" ] ; then
 		nowtime=`date "+%Y-%m-%d %H:%M:%S"`
 		title=$( echo $title | sed $'s/\ /%20/g'| sed $'s/\"/%22/g'| sed $'s/\#/%23/g'| sed $'s/\&/%26/g'| sed $'s/\,/%2C/g'| sed $'s/\//%2F/g'| sed $'s/\:/%3A/g'| sed $'s/\;/%3B/g'| sed $'s/\=/%3D/g'| sed $'s/\@/%40/g')
-		content=$( echo $content| sed $'s/unknown/%e6%9c%aa%e7%9f%a5%e8%ae%be%e5%a4%87/')
-		if [ ! -z "$serverchan_sckey" ] ; then
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"`  进行 URL 编码，标题=$title" >> ${logfile};fi
-			curl -s "http://sc.ftqq.com/$serverchan_sckey.send?text=${title}" -d "&desp=${nowtime}%0D%0A%0D%0A${content}" >/dev/null
+		content=$( echo $content| sed $'s/unknown/%e6%9c%aa%e7%9f%a5%e8%ae%be%e5%a4%87/')		
+		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"`  进行 URL 编码，标题=$title" >> ${logfile};fi
+		if [ ! -z "$serverchan_sheep" ] && [ "$serverchan_sheep" -eq "2" ] && [ ! -z "$starttime" ] && [ ! -z "$endtime" ] ;then
+			if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ] ; then
+				curl -s "http://sc.ftqq.com/$serverchan_sckey.send?text=${title}" -d "&desp=${nowtime}%0D%0A%0D%0A${content}" >/dev/null
+			else
+				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"`  当前为免打扰时间，消息不发送" >> ${logfile};fi
+			fi
 		else
-			echo "`date "+%H:%M:%S"`  当前为免打扰时间，消息不发送" >> ${logfile}
+			curl -s "http://sc.ftqq.com/$serverchan_sckey.send?text=${title}" -d "&desp=${nowtime}%0D%0A%0D%0A${content}" >/dev/null
 		fi
 		unset title
 		unset content
