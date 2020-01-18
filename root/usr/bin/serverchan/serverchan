@@ -979,7 +979,7 @@ function serverchan_send(){
 	if [ -f "${dir}content" ] ; then content=`cat ${dir}content` ;fi
 	if [ ! -z "$title" ] && [ ! -z "$content" ] ; then
 		nowtime=`date "+%Y-%m-%d %H:%M:%S"`
-    if [ ! -z "$device_name" ] ; then title="【$device_name】$title" ;fi
+		if [ ! -z "$device_name" ] ; then title="【$device_name】$title" ;fi
 		title=$( echo $title | sed $'s/\ /%20/g'| sed $'s/\"/%22/g'| sed $'s/\#/%23/g'| sed $'s/\&/%26/g'| sed $'s/\,/%2C/g'| sed $'s/\//%2F/g'| sed $'s/\:/%3A/g'| sed $'s/\;/%3B/g'| sed $'s/\=/%3D/g'| sed $'s/\@/%40/g')
 		content=$( echo $content| sed $'s/unknown/%e6%9c%aa%e7%9f%a5%e8%ae%be%e5%a4%87/')		
 		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"`  进行 URL 编码，标题=$title" >> ${logfile};fi
