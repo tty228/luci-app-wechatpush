@@ -347,13 +347,13 @@ if [ "$1" ] ;then
 				if [ -f "${dir}content" ] ; then content=`cat ${dir}content` ;fi
 				if [ -z "$title" ] ; then
 					title="有人连接了你的路由器"
-					content="%0D%0A%0D%0A---%0D%0A%0D%0A####新设备连接%0D%0A%0D%0A"">$ip_name"
+					content="%0D%0A%0D%0A---%0D%0A%0D%0A####新设备连接%0D%0A%0D%0A"">$ip_name  $1"
 				elif ( echo ${title} | grep -q "有人连接了你的路由器" ) ; then
 					title="有人连接了你的路由器"
-					content="%0D%0A%0D%0A"">$ip_name"
+					content="%0D%0A%0D%0A"">$ip_name  $1"
 				else
 					title="设备状态变化"
-					content="%0D%0A%0D%0A---%0D%0A%0D%0A####新设备连接%0D%0A%0D%0A"">$ip_name"
+					content="%0D%0A%0D%0A---%0D%0A%0D%0A####新设备连接%0D%0A%0D%0A"">$ip_name  $1"
 				fi
 				#echo "$1 $( cat /var/dhcp.leases | grep -w $1 |awk '{print $2" "$4}' )" >> ${dir}ipAddress
 				echo "$1 $ip_mac $ip_name `date +%s`" >> ${dir}ipAddress
@@ -439,13 +439,13 @@ if [ "$1" ] ;then
 				time1=`time_for_humans $time1`
 				if [ -z "$title" ] ; then
 					title="设备离线通知"
-					content="%0D%0A%0D%0A---%0D%0A%0D%0A####设备断开连接%0D%0A%0D%0A"">$ip_name%0D%0A%0D%0A"">总计流量：$ip_total%0D%0A%0D%0A"">在线 $time1"
+					content="%0D%0A%0D%0A---%0D%0A%0D%0A####设备断开连接%0D%0A%0D%0A"">$ip_name  $1 %0D%0A%0D%0A"">总计流量：$ip_total%0D%0A%0D%0A"">在线 $time1"
 				elif ( echo ${title} | grep -q "设备离线通知" ) ; then
 					title="设备离线通知"
-					content="%0D%0A%0D%0A"">$ip_name%0D%0A%0D%0A"">总计流量：$ip_total%0D%0A%0D%0A"">在线 $time1"
+					content="%0D%0A%0D%0A"">$ip_name  $1 %0D%0A%0D%0A"">总计流量：$ip_total%0D%0A%0D%0A"">在线 $time1"
 				else
 					title="设备状态变化"
-					content="%0D%0A%0D%0A---%0D%0A%0D%0A####设备断开连接%0D%0A%0D%0A"">$ip_name%0D%0A%0D%0A"">总计流量：$ip_total%0D%0A%0D%0A"">在线 $time1"
+					content="%0D%0A%0D%0A---%0D%0A%0D%0A####设备断开连接%0D%0A%0D%0A"">$ip_name  $1 %0D%0A%0D%0A"">总计流量：$ip_total%0D%0A%0D%0A"">在线 $time1"
 				fi
 				
 				echo "`date "+%H:%M:%S"`  【微信推送】设备 $ip_name $1 断开连接 " >> ${logfile}
