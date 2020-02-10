@@ -527,15 +527,14 @@ function send(){
 			if [ "$IPLISTrow" -eq $(grep -c "" ${dir}ipAddress) ] ; then echo "`date "+%H:%M:%S"` 没有新设备连接" >> ${logfile};fi			
 			send_content=${send_content}"%0D%0A%0D%0A---%0D%0A%0D%0A#### 在线设备%0D%0A%0D%0A";
 			
-			ip=$( cat ${dir}ipAddress | awk '{print $1"}' )
+			IPLIST=$( cat ${dir}ipAddress | awk '{print $1}' )
 			for  ip in $IPLIST; do
-				send_content=${send_content}"%0D%0A%0D%0A""     $ip  "
 				ip_total=`usage_ip $ip`
 				time_down=`date +%s`
 				time_up=$( cat ${dir}ipAddress | grep -w $ip |awk '{print $4}' | grep -v "^$" | sort -u )
 				time1=$(($time_down-$time_up))
 				time1=`time_for_humans $time1`
-				send_content=${send_content}"`cat ${dir}ipAddress | grep "$ip" | awk  '{print $3}' | grep -v "^$" | sort -u`%0D%0A%0D%0A""     总计流量：$ip_total  在线 $time1"
+				send_content=${send_content}"%0D%0A%0D%0A""     `cat ${dir}ipAddress | grep "$ip" | awk  '{print $3}' | grep -v "^$" | sort -u`  $ip%0D%0A%0D%0A""     总计流量：$ip_total  在线 $time1"
 			done
 		fi
 	if [ ! -z "$device_name" ] ; then send_title="【$device_name】$send_title" ;fi
