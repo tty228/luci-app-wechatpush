@@ -244,4 +244,9 @@ for _, iface in ipairs(ifaces) do
 	end
 end
 
+local apply = luci.http.formvalue("cbi.apply")	
+ if apply then	
+     io.popen("/etc/init.d/serverchan start")	
+end
+
 return m
