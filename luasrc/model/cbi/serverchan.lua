@@ -14,7 +14,6 @@ translate("「Server酱」，英文名「ServerChan」，是一款从服务器�
 
 
 m:section(SimpleSection).template  = "serverchan/serverchan_status"
-
 s=m:section(NamedSection,"serverchan","serverchan",translate("Server酱设置"))
 s:tab("tab_basic", translate("基本设置"))
 s:tab("tab_basic2", translate("设备状态"))
@@ -29,7 +28,7 @@ a=s:taboption("tab_basic", Flag,"serverchan_enable",translate("启用"))
 a.default=0
 a.rmempty=true
 
-a=s:taboption("tab_basic", Value,"sckey",translate('SCKEY'), translate("Serverchan Sckey").."<br>调用代码获取<a href='http://sc.ftqq.com' target='_blank'>点击这里</a><br><br>")
+a=s:taboption("tab_basic", Value,"sckey",translate('SCKEY'))
 a.rmempty=true
 
 device_name=s:taboption("tab_basic", Value,"device_name",translate('本设备名称'))
@@ -243,10 +242,9 @@ for _, iface in ipairs(ifaces) do
 		n:value(iface, ((#nets > 0) and "%s (%s)" % {iface, nets} or iface))
 	end
 end
-
-local apply = luci.http.formvalue("cbi.apply")	
- if apply then	
-     io.popen("/etc/init.d/serverchan start")	
+local apply = luci.http.formvalue("cbi.apply")
+ if apply then
+     io.popen("/etc/init.d/serverchan start")
 end
 
 return m
