@@ -29,10 +29,11 @@
 #### ps
 
 - 新功能看情况开发
-- 王者荣耀新赛季，继续不思进取中
+- 王者荣耀新赛季，不思进取中
 - 欢迎各种代码提交
 - 提交bug时请带上设备信息，和详细的日志与描述
 - 三言两句恕我无能为力
+- 武汉加油
 
 ![image](https://github.com/tty228/Python-100-Days/blob/master/res/WeChat%E6%88%AA%E5%9C%96_20200111190113.png)
 ![image](https://github.com/tty228/Python-100-Days/blob/master/res/WeChat%E6%88%AA%E5%9C%96_20200111190912.png)
