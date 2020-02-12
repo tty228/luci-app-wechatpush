@@ -111,29 +111,31 @@ function serverchan_cron(){
 	send_mode=`get_config send_mode`
 	if [ ! -z "$send_mode" ] ; then
 		regular_time=`get_config regular_time`
+		regular_time_2=`get_config regular_time_2`
+		regular_time_3=`get_config regular_time_3`
+		if [ ! -z "$regular_time_2" ] ; then regular_time_2=,${regular_time_2};fi
+		if [ ! -z "$regular_time_3" ] ; then regular_time_3=,${regular_time_3};fi
 		interval_time=`get_config interval_time`
-	
-		if [ ! -z "$regular_time" ] && [ ! -z "$interval_time" ] ; then
-			#一天只发送一次
-			if [ -z "$interval_time" ] ; then
-				if ( echo `crontab -l` | grep "serverchan" | grep -q " $regular_time " ); then
-					return
-				elif ( echo `crontab -l` | grep -q "serverchan" ); then
-					crontab -l > conf && sed -i "/serverchan/d" conf && crontab conf && rm -f conf >/dev/null 2>&1
-					crontab -l > conf && echo -e "0 $regular_time * * * /usr/bin/serverchan/serverchan send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
-				else
-					crontab -l > conf && echo -e "0 $regular_time * * * /usr/bin/serverchan/serverchan send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
-				fi
-			#间隔发送
+		
+		#定时发送
+		if [ ! -z "$regular_time" ] || [ ! -z "$regular_time_2" ] || [ ! -z "$regular_time_3" ] ; then
+			if ( echo `crontab -l` | grep "serverchan" | grep -q " $regular_time$regular_time_2$regular_time_3 " ); then
+				return
+			elif ( echo `crontab -l` | grep -q "serverchan" ); then
+				crontab -l > conf && sed -i "/serverchan/d" conf && crontab conf && rm -f conf >/dev/null 2>&1
+				crontab -l > conf && echo -e "0 $regular_time$regular_time_2$regular_time_3 * * * /usr/bin/serverchan/serverchan send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
 			else
-				if ( echo `crontab -l` | grep "serverchan" | grep -q "$regular_time-24/$interval_time " ); then
-					return
-				elif ( echo `crontab -l` | grep -q "serverchan" ); then
-					crontab -l > conf && sed -i "/serverchan/d" conf && crontab conf && rm -f conf >/dev/null 2>&1
-					crontab -l > conf && echo -e "0 $regular_time-24/$interval_time * * * /usr/bin/serverchan/serverchan send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
-				else
-					crontab -l > conf && echo -e "0 $regular_time-24/$interval_time * * * /usr/bin/serverchan/serverchan send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
-				fi
+				crontab -l > conf && echo -e "0 $regular_time * * * /usr/bin/serverchan/serverchan send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
+			fi
+		#间隔发送
+		elif [ ! -z "$interval_time" ] ; then
+			if ( echo `crontab -l` | grep "serverchan" | grep -q " */$interval_time " ); then
+				return
+			elif ( echo `crontab -l` | grep -q "serverchan" ); then
+				crontab -l > conf && sed -i "/serverchan/d" conf && crontab conf && rm -f conf >/dev/null 2>&1
+				crontab -l > conf && echo -e "0 */$interval_time * * * /usr/bin/serverchan/serverchan send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
+			else
+				crontab -l > conf && echo -e "0 */$interval_time * * * /usr/bin/serverchan/serverchan send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
 			fi
 		fi
 	elif [ -z "$send_mode" ] ; then
@@ -142,7 +144,8 @@ function serverchan_cron(){
 		fi
 	fi		
 	/etc/init.d/cron stop
-	/etc/init.d/cron start
+	/etc/init.d/cron start	
+
 }
 
 
@@ -500,12 +503,17 @@ if [ "$1" ] ;then
 fi	
 }
 
+#获取SOC温度
+function soc_temp(){
+	soc=`grep 'soc' /sys/class/thermal/thermal_zone*/type | cut -c-33 | sed 's/$/temp/' | xargs cat | sort | sed '$!d' | cut -c-2`
+	#只获取soc温度.
+	#有时soc有多个传感器(比如多核), 所以只取最具代表性的最高温度.
+	if [ -z "$soc" ] ; then soc=`cut -c1-2 /sys/class/thermal/thermal_zone0/temp`;fi
+	echo $soc
+}
+
 #发送定时数据
 function send(){
-	#0 10-24/10 * * * /usr/bin/serverchan/serverchan send & 这样的计划任务在 openwrt 有 bug ，未到时间也会开始执行
-	regular_time=`get_config regular_time`
-	if [ `date +%H` -lt $regular_time ] ; then return;fi
-	
 	if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"`  【定时数据】创建定时任务" >> ${logfile};fi
 	uci set serverchan.serverchan.send_enable=3
 	uci commit serverchan
@@ -515,7 +523,7 @@ function send(){
 	serverchan_cron
 	serverchan_disturb
 	send_title=`get_config send_title`
-	if [ -z "$send_title" ] ; then send_title="OpenWrt By tty228 路由状态：";fi
+	if [ -z "$send_title" ] ; then send_title="路由状态：";fi
 	router_status=`get_config router_status`
 		if [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A---%0D%0A%0D%0A#### 系统运行状态%0D%0A%0D%0A";fi
 		#if [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A""     CPU占用：`top -n 1 |grep -i Cpu:| awk '{print $3":"$2" "$5":"$4}'`";fi
@@ -523,7 +531,7 @@ function send(){
 		if [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A""     内存占用：`free -m | sed -n '2p' | awk '{print""($3/$2)*100"%"}'`";fi
 		if [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A""`cat /proc/uptime| awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("     运行时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}'`";fi
 	router_temp=`get_config router_temp`
-		if [ ! -z "$router_temp" ] && [ "$router_temp" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A""---%0D%0A%0D%0A#### 设备温度%0D%0A%0D%0A     CPU：`cut -c1-2 /sys/class/thermal/thermal_zone*/temp`%e2%84%83";fi
+		if [ ! -z "$router_temp" ] && [ "$router_temp" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A""---%0D%0A%0D%0A#### 设备温度%0D%0A%0D%0A     CPU：`soc_temp`%e2%84%83";fi
 	router_wan=`get_config router_wan`
 		send_wanIP=$(ubus call network.interface.wan status | grep '\"address\"' | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
 		send_wanIPv6=$(ip addr show|grep -v deprecated|grep -A1 'inet6 [^f:]'|sed -nr ':a;N;s#^ +inet6 ([a-f0-9:]+)/.+? scope global .*? valid_lft ([0-9]+sec) .*#\2 \1#p;ta'|sort -nr|head -n1|cut -d' ' -f2)
@@ -766,8 +774,7 @@ function rand_geturl(){
 		fi
 		read_config
 		#从 ipAddress 文件中读取上次检测到的在线列表
-		IPLIST=$( cat ${dir}ipAddress | awk '{print $1}' | grep -v "^$" | sort -u )
-		IPLISTrow=$(grep -c "" ${dir}ipAddress)
+		if [ -f ${dir}ipAddress ] ; then IPLIST=$( cat ${dir}ipAddress | awk '{print $1}' | grep -v "^$" | sort -u ) && IPLISTrow=$(grep -c "" ${dir}ipAddress);fi
 			for ip in $IPLIST; do
 			# 如果 ip 列表不为空
 			send_enable=`get_config send_enable`
@@ -807,8 +814,7 @@ function rand_geturl(){
 		fi
 		read_config
 		#从 arp 缓存中读取 0x2 在线列表
-		IPLIST=$( cat /proc/net/arp | grep "0x2" | awk  '{print $1}' | grep -v "^$" | sort -u )
-		IPLISTrow=$(grep -c "" ${dir}ipAddress)
+		if [ -f ${dir}ipAddress ] ; then IPLIST=$( cat /proc/net/arp | grep "0x2" | awk  '{print $1}' | grep -v "^$" | sort -u ) && IPLISTrow=$(grep -c "" ${dir}ipAddress);fi	
 		for  ip in $IPLIST; do
 			# 如果 “ip 列表不为空” 
 			send_enable=`get_config send_enable`
@@ -848,7 +854,7 @@ function rand_geturl(){
 			cpu_fuzai=`cat /proc/loadavg | awk '{print $1}'`
 			cpuload=`get_config cpuload`
 			if [ ! -z "$cpuload" ] && [ `expr $cpu_fuzai \> $cpuload` -eq "1" ] ; then
-				if [ $(grep -c "" ${logfile}) -ge "2" ] ; then
+				if [ -f ${logfile} ] && [ $(grep -c "" ${logfile}) -ge "2" ] ; then
 					log_end=`awk '{print}' ${logfile} | tail -n 2 | awk 'NR==1'`
 					log_end_2=`awk 'END {print}' ${logfile}`
 					if ( echo ${log_end} | grep -q "负载" ) && ( echo ${log_end_2} | grep -q "负载" ) ; then
@@ -885,10 +891,10 @@ function rand_geturl(){
 		if [ ! -z "$temperature_enable" ] && [ "$temperature_enable" -eq "1" ] ; then
 			if [ -z "$temperature_time" ] ; then temperature_time=`date +%s`;fi
 			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"` 【温度】正在检测 CPU 温度" >> ${logfile};fi
-			cpu_wendu=`cut -c1-2 /sys/class/thermal/thermal_zone*/temp`
+			cpu_wendu=`soc_temp`
 			temperature=`get_config temperature`
 			if [ ! -z "$temperature" ] && [ "$cpu_wendu" -gt "$temperature" ] ; then
-				if [ $(grep -c "" ${logfile}) -ge "2" ] ; then
+				if [ -f ${logfile} ] && [ $(grep -c "" ${logfile}) -ge "2" ] ; then
 					log_end=`awk '{print}' ${logfile} | tail -n 2 | awk 'NR==1'`
 					log_end_2=`awk 'END {print}' ${logfile}`
 					if ( echo ${log_end} | grep -q "温度" ) && ( echo ${log_end_2} | grep -q "温度" ) ; then
