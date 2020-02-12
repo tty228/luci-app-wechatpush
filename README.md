@@ -19,21 +19,22 @@
 
 #### 已知问题
 
-- 设备温度命令基于斐讯K3，其他设备如遇到设备温度无法正常读取，请自行修改
-`cut -c1-2 /sys/class/thermal/thermal_zone*/temp`
+- 设备温度命令基于斐讯K3，其他设备如遇到设备温度无法正常读取，请自行修改`cut -c1-2 /sys/class/thermal/thermal_zone*/temp`
 - 潘多拉系统请将脚本开头`#!/bin/sh` 改为 `#!/bin/bash`
 - ipaddress 输出的文本有时会有乱码，导致出错，尚不能判定是设备编码环境导致，还是脚本编码导致，先暂时替换部分中文字符
 - 直接关闭接口时，该接口的离线设备会忽略检测
-- 部分设备无法读取到设备名，脚本依赖 `cat /var/dhcp.leases` 命令读取设备名，如果 dhcp 中不存在设备名，则无法读取设备名
+- 部分设备无法读取到设备名，脚本依赖 `cat /var/dhcp.leases` 命令读取设备名，如果 dhcp 中不存在设备名，则无法读取设备名（已知二级路由设备和静态ip设备无法获取设备名）
+- luci 点击保存时，调用`/etc/init.d/`中的脚本无法正确获取运行状态，导致重复加载（但不会造成重复进程）
 
 #### ps
 
 - 新功能看情况开发
-- 王者荣耀新赛季，继续不思进取中
+- 王者荣耀新赛季，不思进取中
 - 欢迎各种代码提交
 - 提交bug时请带上设备信息，和详细的日志与描述
 - 三言两句恕我无能为力
+- 武汉加油
 
 ![image](https://github.com/tty228/Python-100-Days/blob/master/res/WeChat%E6%88%AA%E5%9C%96_20200111190113.png)
 ![image](https://github.com/tty228/Python-100-Days/blob/master/res/WeChat%E6%88%AA%E5%9C%96_20200111190912.png)
-
+![image](https://github.com/tty228/Python-100-Days/blob/master/res/%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20200212003643.png)
