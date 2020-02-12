@@ -148,32 +148,24 @@ a.description = translate("<br/>设备报警只会在连续五次超过阈值的
 e=s:taboption("tab_basic3", ListValue,"send_mode",translate("定时任务设定"))
 e.default="disable"
 e:value("",translate("关闭"))
-e:value("1",translate("定时发送"))
-e:value("2",translate("间隔发送"))
+e:value("1",translate("打开"))
 
-e=s:taboption("tab_basic3", ListValue,"regular_time",translate("发送时间"))
-for t=0,23 do
-e:value(t,translate("每天"..t.."点"))
-end
-e.default=12
-e.datatype=uinteger
-e:depends("send_mode","1")
-
-e=s:taboption("tab_basic3", ListValue,"regular_time_2",translate("第一次发送时间"))
+e=s:taboption("tab_basic3", ListValue,"regular_time",translate("第一次发送时间"))
 for t=0,23 do
 e:value(t,translate("每天"..t.."点"))
 end
 e.default=8
 e.datatype=uinteger
-e:depends("send_mode","2")
+e:depends("send_mode","1")
 
 e=s:taboption("tab_basic3", ListValue,"interval_time",translate("发送间隔"))
+e:value("关闭")
 for t=1,23 do
 e:value(t,translate(t.."小时"))
 end
-e.default=6
+e.default="关闭"
 e.datatype=uinteger
-e:depends("send_mode","2")
+e:depends("send_mode","1")
 
 title= s:taboption("tab_basic3", Value, "send_title", translate("微信推送标题"))
 title:depends("send_mode","1")
