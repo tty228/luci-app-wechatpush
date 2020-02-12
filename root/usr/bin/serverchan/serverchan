@@ -505,11 +505,8 @@ fi
 
 #获取SOC温度
 function soc_temp(){
-	soc=`grep 'soc' /sys/class/thermal/thermal_zone*/type | cut -c-33 | sed 's/$/temp/' | xargs cat | sort | sed '$!d' | cut -c-2`
-	#只获取soc温度.
-	#有时soc有多个传感器(比如多核), 所以只取最具代表性的最高温度.
-	if [ -z "$soc" ] ; then soc=`cut -c1-2 /sys/class/thermal/thermal_zone0/temp`;fi
-	echo $soc
+	cat /sys/class/thermal/thermal_zone*/temp | sort | sed '$!d' | cut -c-2
+	# 取所有传感器数值中的最大值
 }
 
 #发送定时数据
