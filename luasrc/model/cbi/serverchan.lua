@@ -9,9 +9,12 @@ m=Map("serverchan",translate("ServerChan"),
 translate("「Server酱」，英文名「ServerChan」，是一款从服务器推送报警信息和日志到微信的工具。<br /><br />如果你在使用中遇到问题，请到")
 .. [[<a href="https://github.com/tty228/luci-app-serverchan" target="_blank">]]
 .. translate("github 项目地址1")
-.. [[</a>]]或[[<a href="https://github.com/elfive/luci-app-serverchan" target="_blank">]]
-.. translate("github 项目地址1")
-.. [[</a>]]提交。
+.. [[</a>]]
+.. "或"
+.. [[<a href="https://github.com/elfive/luci-app-serverchan" target="_blank">]]
+.. translate("github 项目地址2")
+.. [[</a>]]
+.. "提交。"
 )
 
 m:section(SimpleSection).template  = "serverchan/serverchan_status"
