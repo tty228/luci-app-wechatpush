@@ -286,18 +286,16 @@ function blackwhitelist(){
 		# 如果 “忽略列表 为空” 并且  “关注列表为空” 
 		if [ -z "$serverchan_whitelist" ] && [ -z "$serverchan_blacklist" ] && [ -z "$serverchan_interface" ]; then
 			echo 1
-					
 		# 如果 “忽略列表不为空” 
 		elif [ ! -z "$serverchan_whitelist" ] ; then
-			if ( ! echo $serverchan_whitelist | grep -q -i $1 ); then
+			if ( ! echo $serverchan_whitelist | grep -q -i $( cat /proc/net/arp | grep -w $1 |awk '{print $4}' | grep -v "^$" | sort -u )); then
 				echo 1
 			else
 				echo 0
 			fi
-
 		# 如果 “关注列表不为空” 
 		elif [ ! -z "$serverchan_blacklist" ] ; then
-			if ( echo $serverchan_blacklist | grep -q -i $1 ); then
+			if ( echo $serverchan_blacklist | grep -q -i $( cat /proc/net/arp | grep -w $1 |awk '{print $4}' | grep -v "^$" | sort -u )); then
 				echo 1
 			else
 				echo 0
