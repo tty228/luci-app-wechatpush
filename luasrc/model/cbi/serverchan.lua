@@ -81,7 +81,7 @@ a:value("0",translate("关闭"))
 a:value("1",translate("通过接口获取"))
 a:value("2",translate("通过URL获取"))
 a = s:taboption("tab_basic2", ListValue, "ipv4_interface", translate("接口名称"))
-a:depends({serverchan_ipv4="1"})
+-- a:depends({serverchan_ipv4="1"})
 for _, iface in ipairs(ifaces) do
 	if not (iface == "lo" or iface:match("^ifb.*")) then
 		local nets = net:get_interface(iface)
@@ -97,7 +97,7 @@ a.description = translate("<br/>一般选择 wan 接口，多拨环境请自行�
 a= s:taboption("tab_basic2", Value, "ipv4_URL", "URL 地址")
 a.rmempty = true 
 a.default = "v4.ipv6-test.com/api/myip.php"
-a:depends({serverchan_ipv4="2"})
+-- a:depends({serverchan_ipv4="2"})
 a.description = translate("<br/>会因服务器稳定性/连接频繁等原因导致获取失败，一般不推荐")
 
 a=s:taboption("tab_basic2", ListValue,"serverchan_ipv6",translate("ipv6 变动通知"))
@@ -106,7 +106,7 @@ a:value("0",translate("关闭"))
 a:value("1",translate("通过接口获取"))
 a:value("2",translate("通过URL获取"))
 a = s:taboption("tab_basic2", ListValue, "ipv6_interface", translate("接口名称"))
-a:depends({serverchan_ipv6="1"})
+-- a:depends({serverchan_ipv6="1"})
 for _, iface in ipairs(ifaces) do
 	if not (iface == "lo" or iface:match("^ifb.*")) then
 		local nets = net:get_interface(iface)
@@ -122,7 +122,7 @@ a.description = translate("<br/>一般选择 wan 接口，多拨环境请自行�
 a= s:taboption("tab_basic2", Value, "ipv6_URL", "URL 地址")
 a.rmempty = true 
 a.default = "v6.ipv6-test.com/api/myip.php"
-a:depends({serverchan_ipv6="2"})
+-- a:depends({serverchan_ipv6="2"})
 a.description = translate("<br/>会因服务器稳定性/连接频繁等原因导致获取失败，一般不推荐")
 
 a=s:taboption("tab_basic2", Flag,"serverchan_up",translate("设备上线通知"))
