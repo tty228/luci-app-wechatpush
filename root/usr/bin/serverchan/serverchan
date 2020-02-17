@@ -584,18 +584,34 @@ function send(){
 		fi
 		done
 		wait
-			
-		send_content=${send_content}"%0D%0A%0D%0A---%0D%0A%0D%0A#### 在线设备%0D%0A%0D%0A";
 		
+		send_content=${send_content}"%0D%0A%0D%0A---%0D%0A%0D%0A#### 在线设备%0D%0A%0D%0A";
 		IPLIST=$( cat ${dir}ipAddress | awk '{print $1}' )
-		for  ip in $IPLIST; do
-			ip_total=`usage_ip $ip` && if [ ! -z "$ip_total" ] ; then ip_total="总计流量：$ip_total  ";fi
-			time_down=`date +%s`
-			time_up=$( cat ${dir}ipAddress | grep -w $ip |awk '{print $4}' | grep -v "^$" | sort -u )
-			time1=$(($time_down-$time_up))
-			time1=`time_for_humans $time1`
-			send_content=${send_content}"%0D%0A%0D%0A""     `cat ${dir}ipAddress | grep -w $ip | awk  '{print $3}' | grep -v "^$" | sort -u`  $ip%0D%0A%0D%0A""     $ip_total在线 $time1"
-		done
+		
+		block_unknown=`get_config block_unknown`
+		if [ ! -z "$block_unknown" ] && [ "$block_unknown" -eq "1" ] ; then
+			for  ip in $IPLIST; do
+				name=$( cat ${dir}ipAddress | grep -w $ip | awk '{print $3}' | grep -v "^$" | sort -u )
+				if [ ! -z "$name" ] && [ "$name" != "unknown" ] ; then
+					ip_total=`usage_ip $ip` && if [ ! -z "$ip_total" ] ; then ip_total="总计流量：$ip_total  ";fi
+					time_down=`date +%s`
+					time_up=$( cat ${dir}ipAddress | grep -w $ip |awk '{print $4}' | grep -v "^$" | sort -u )
+					time1=$(($time_down-$time_up))
+					time1=`time_for_humans $time1`
+					send_content=${send_content}"%0D%0A%0D%0A""     $name  $ip%0D%0A%0D%0A""     $ip_total在线 $time1"
+				fi
+			done
+		else
+			for  ip in $IPLIST; do
+				name=$( cat ${dir}ipAddress | grep -w $ip | awk '{print $3}' | grep -v "^$" | sort -u )
+				ip_total=`usage_ip $ip` && if [ ! -z "$ip_total" ] ; then ip_total="总计流量：$ip_total  ";fi
+				time_down=`date +%s`
+				time_up=$( cat ${dir}ipAddress | grep -w $ip | awk '{print $4}' | grep -v "^$" | sort -u )
+				time1=$(($time_down-$time_up))
+				time1=`time_for_humans $time1`
+				send_content=${send_content}"%0D%0A%0D%0A""     $name  $ip%0D%0A%0D%0A""     $ip_total在线 $time1"
+			done
+		fi
 	fi
 	if [ ! -z "$device_name" ] ; then send_title="【$device_name】$send_title" ;fi
 	send_title=$( echo $send_title | sed $'s/\ /%20/g'| sed $'s/\"/%22/g'| sed $'s/\#/%23/g'| sed $'s/\&/%26/g'| sed $'s/\,/%2C/g'| sed $'s/\//%2F/g'| sed $'s/\:/%3A/g'| sed $'s/\;/%3B/g'| sed $'s/\=/%3D/g'| sed $'s/\@/%40/g')

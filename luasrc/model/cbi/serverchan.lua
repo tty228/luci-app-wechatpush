@@ -212,7 +212,10 @@ router_wan:depends("send_mode","2")
 
 client_list=s:taboption("tab_basic3", Flag,"client_list",translate("客户端列表"))
 client_list:depends("send_mode","1")
-client_list:depends("send_mode","2") 
+client_list:depends("send_mode","2")
+
+block_unknown=s:taboption("tab_basic3", Flag,"block_unknown",translate("屏蔽unknown设备"))
+block_unknown:depends("client_list","1")
 
 e=s:taboption("tab_basic3", Button,"_add",translate("手动发送"))
 e.inputtitle=translate("发送")
