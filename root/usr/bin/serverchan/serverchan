@@ -538,10 +538,10 @@ function send(){
 		if [ -z "$ipv6_interface" ] ; then send_wanIPv6=$(ip addr show|grep -v deprecated|grep -A1 'inet6 [^f:]'|sed -nr ':a;N;s#^ +inet6 ([a-f0-9:]+)/.+? scope global .*? valid_lft ([0-9]+sec) .*#\2 \1#p;ta'|sort -nr|head -n1|cut -d' ' -f2);fi
 		send_content=${send_content}"%0D%0A%0D%0A""---%0D%0A%0D%0A#### WAN 口信息"
 		if [ "$serverchan_ipv4" -eq "1" ] ; then
-			if [ -z "$ipv4_URL" ] ; then ipv4_URL="members.3322.org/dyndns/getip";fi
+			if [ -z "$ipv4_URL" ] ; then ipv4_URL="v4.ipv6-test.com/api/myip.php";fi
 			send_hostIP=$(curl -k -s -4 --interface $send_wanIP $ipv4_URL)
 		elif [ "$serverchan_ipv4" -eq "2" ] ; then
-			if [ -z "$ipv6_URL" ] ; then ipv6_URL="v6.ip.zxinc.org/getip";fi
+			if [ -z "$ipv6_URL" ] ; then ipv6_URL="v6.ipv6-test.com/api/myip.php";fi
 			send_hostIP=$(curl -k -s -4 $ipv4_URL)
 		fi
 		if [ "$serverchan_ipv6" -eq "1" ] ; then

@@ -94,7 +94,7 @@ end
 a.description = translate("<br/>一般选择 wan 接口，多拨环境请自行选择")
 a= s:taboption("tab_basic2", Value, "ipv4_URL", "URL 地址")
 a.rmempty = true 
-a.default = "members.3322.org/dyndns/getip"
+a.default = "v4.ipv6-test.com/api/myip.php"
 a:depends({serverchan_ipv4="2"})
 a.description = translate("<br/>会因服务器稳定性/连接频繁等原因导致获取失败，一般不推荐")
 
@@ -119,7 +119,7 @@ end
 a.description = translate("<br/>一般选择 wan 接口，多拨环境请自行选择")
 a= s:taboption("tab_basic2", Value, "ipv6_URL", "URL 地址")
 a.rmempty = true 
-a.default = "v6.ip.zxinc.org/getip"
+a.default = "v6.ipv6-test.com/api/myip.php"
 a:depends({serverchan_ipv6="2"})
 a.description = translate("<br/>会因服务器稳定性/连接频繁等原因导致获取失败，一般不推荐")
 
