@@ -422,8 +422,7 @@ if [ "$1" ] ;then
 				unset title
 				unset content
 			fi
-			wlan_interface=`iw dev $serverchan_interface station dump | grep Station | grep -q -i -w $ip_mac | sed -nr 's#^.*on (.*))#\1#gp'`
-			echo "$1 $ip_mac $ip_name `date +%s` $wlan_interface" >> ${dir}ipAddress
+			echo "$1 $ip_mac $ip_name `date +%s` `iw dev $serverchan_interface station dump | grep Station | grep -q -i -w $ip_mac | sed -nr 's#^.*on (.*))#\1#gp'`" >> ${dir}ipAddress
 
 		else
 			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"`  设备 $ip_name $1 连接失败" >> ${logfile};fi
