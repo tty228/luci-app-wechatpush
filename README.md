@@ -18,7 +18,7 @@
 
 #### 说明
 - 潘多拉系统请将脚本开头 `#!/bin/sh` 改为 `#!/bin/bash`
-- 设备温度命令基于斐讯K3，其他设备如遇到设备温度无法正常读取，请自行修改 /usr/bin/serverchan/serverchan 文件 507 行 `cat /sys/class/thermal/thermal_zone*/temp | sort | sed '$!d' | cut -c-2 2>/dev/null` 命令
+- 设备温度命令基于斐讯K3，其他设备如遇到设备温度无法正常读取，请自行修改 /usr/bin/serverchan/serverchan 文件 521 行 `cat /sys/class/thermal/thermal_zone*/temp | sort | sed '$!d' | cut -c-2 2>/dev/null` 命令
 - 部分设备无法读取到设备名，脚本依赖 `cat /var/dhcp.leases` 命令读取设备名，如果 dhcp 中不存在设备名，则无法读取设备名（已知二级路由设备和静态ip设备无法获取设备名）
 
 #### 已知问题
@@ -38,6 +38,6 @@
 - 三言两句恕我无能为力
 - 武汉加油
 
-![image](https://github.com/tty228/Python-100-Days/blob/master/res/WeChat%E6%88%AA%E5%9C%96_20200111190113.png)
-![image](https://github.com/tty228/Python-100-Days/blob/master/res/WeChat%E6%88%AA%E5%9C%96_20200111190912.png)
+![image](https://github.com/tty228/Python-100-Days/blob/master/res/111.png)
+![image](https://github.com/tty228/Python-100-Days/blob/master/res/222.png)
 ![image](https://github.com/tty228/Python-100-Days/blob/master/res/%E5%BE%AE%E4%BF%A1%E6%88%AA%E5%9B%BE_20200212003643.png)
