@@ -4,7 +4,7 @@
 function get_config(){
 	if [ "$1" ] ;then
 		serverchan_config=`uci show serverchan`
-		if ( echo $serverchan_config | grep -q -i -w $1 ); then echo `uci get serverchan.serverchan.$1`;else echo "" >/dev/null;fi
+		if ( echo $serverchan_config | grep -q -i $1 ); then echo `uci get serverchan.serverchan.$1`;else echo "" >/dev/null;fi
 	fi
 }
 
@@ -316,7 +316,7 @@ function blackwhitelist(){
 			if ( echo $serverchan_interface | grep -q -i -w $ip_mac) ; then
 				echo 1
 			else
-				wlan_interface=`iw dev $serverchan_interface station dump | grep -q -i -w $ip_mac | grep Station`
+				wlan_interface=`iw dev $serverchan_interface station dump | grep -i -w $ip_mac | grep Station`
 				ipAddress_interface=$( cat ${dir}ipAddress | grep -w $1 |awk '{print $5}' | grep -v "^$" | sort -u )
 				if [ ! -z "$wlan_interface" ] || [ ! -z "$ipAddress_interface" ] ; then
 					echo 1
@@ -341,8 +341,8 @@ if [ "$1" ] ;then
 		ip_mac=$( cat /var/dhcp.leases | grep -w $1 |awk '{print $2}' | grep -v "^$" | sort -u )
 		if [ -z "$ip_mac" ] ; then ip_mac=$( cat /proc/net/arp | grep "0x2" | grep -w $1 | awk  '{print $4}' | grep -v "^$" | sort -u );fi
 		
-		if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i -w $ip_mac ); then
-			ip_name=$( echo "$device_aliases" | grep -q -i -w $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u )
+		if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i $ip_mac ); then
+			ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u )
 		else
 			ip_name=$( cat /var/dhcp.leases | grep -w $1 |awk '{print $4}' | grep -v "^$" | sort -u )
 		fi
@@ -375,7 +375,7 @@ if [ "$1" ] ;then
 					sleep 1
 					if [ -z "$ip_mac" ] ; then ip_mac=$( cat /var/dhcp.leases | grep -w $1 |awk '{print $2}' | grep -v "^$" | sort -u );fi
 					if [ -z "$ip_mac" ] ; then ip_mac=$( cat /proc/net/arp | grep "0x2" | grep -w $1 | awk  '{print $4}' | grep -v "^$" | sort -u );fi			
-					if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i -w $ip_mac ); then ip_name=$( echo "$device_aliases" | grep -q -i -w $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u );fi
+					if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i $ip_mac ); then ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u );fi
 					if [ -z "$ip_name" ] ; then ip_name=$( cat /var/dhcp.leases | grep -w $1 |awk '{print $4}' | grep -v "^$" | sort -u );fi
 					if [ ! -z "$ip_mac" ] && [ ! -z "$ip_name" ] ; then break;fi
 				done
@@ -422,8 +422,7 @@ if [ "$1" ] ;then
 				unset title
 				unset content
 			fi
-			echo "$1 $ip_mac $ip_name `date +%s` `iw dev $serverchan_interface station dump | grep Station | grep -q -i -w $ip_mac | sed -nr 's#^.*on (.*))#\1#gp'`" >> ${dir}ipAddress
-
+			echo "$1 $ip_mac $ip_name `date +%s` `iw dev $serverchan_interface station dump | grep Station | grep -i -w $ip_mac | sed -nr 's#^.*on (.*))#\1#gp'`" >> ${dir}ipAddress
 		else
 			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"`  设备 $ip_name $1 连接失败" >> ${logfile};fi
 		fi
@@ -449,7 +448,7 @@ if [ "$1" ] ;then
 		sed -i "/$1/d" ${dir}ipAddress
 		if [ -z "$ip_mac" ] ; then ip_mac=$( cat /var/dhcp.leases | grep -w $1 |awk '{print $2}' | grep -v "^$" | sort -u );fi
 		if [ -z "$ip_mac" ] ; then ip_mac=$( cat /proc/net/arp | grep "0x2" | grep -w $1 | awk  '{print $4}' | grep -v "^$" | sort -u );fi
-		if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i -w $ip_mac ); then ip_name=$( echo "$device_aliases" | grep -q -i -w $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u );fi
+		if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i $ip_mac ); then ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u );fi
 		if [ -z "$ip_name" ] ; then ip_name=$( cat /var/dhcp.leases | grep -w $1 |awk '{print $4}' | grep -v "^$" | sort -u );fi
 		if [ -z "$ip_mac" ] ; then ip_mac="unknown";fi
 		if [ -z "$ip_name" ] ; then ip_name="unknown";fi
@@ -654,8 +653,8 @@ if [ ! -z "$serverchan_enable" ] && [ "$serverchan_enable" -eq "1" ] ; then
 		ip_mac=$( cat /var/dhcp.leases | grep -w $ip |awk '{print $2}' | grep -v "^$" | sort -u )
 		if [ -z "$ip_mac" ] ; then ip_mac=$( cat /proc/net/arp | grep "0x2" | grep -w $ip | awk  '{print $4}' | grep -v "^$" | sort -u );fi
 
-		if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i -w $ip_mac ); then
-			ip_name=$( echo "$device_aliases" | grep -q -i -w $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u )
+		if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i $ip_mac ); then
+			ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u )
 		else
 			ip_name=$( cat /var/dhcp.leases | grep -w $ip |awk '{print $4}' | grep -v "^$" | sort -u )
 		fi
@@ -709,8 +708,8 @@ function rand_geturl(){
 			
 			# 查询ip历史记录
 			if [ -f ${dir}ip ] ; then
-				last_IPv4=$(cat "${dir}ip" | grep -w -q IPv4 | awk '{print $2}' | grep -v "^$" | sort -u)
-				last_IPv6=$(cat "${dir}ip" | grep -w -q IPv6 | awk '{print $2}' | grep -v "^$" | sort -u)
+				last_IPv4=$(cat "${dir}ip" | grep IPv4 | awk '{print $2}' | grep -v "^$" | sort -u)
+				last_IPv6=$(cat "${dir}ip" | grep IPv6 | awk '{print $2}' | grep -v "^$" | sort -u)
 				if [ ! -z "$serverchan_ipv4" ] && [ "$serverchan_ipv4" -ne "0" ] ;then
 					if [ ! -z "$IPv4" ] && ( echo ${IPv4} | grep -w -q ${last_IPv4} );then
 						if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"`  IP 无变化，当前 ip 为 $last_IPv4" >> ${logfile};fi
@@ -800,8 +799,8 @@ function rand_geturl(){
 				if [ -z "$ip_mac" ] ; then ip_mac=$( cat /proc/net/arp | grep "0x2" | grep -w $ip | awk  '{print $4}' | grep -v "^$" | sort -u );fi
 				
 				# 设备名为空时尝试重读
-				if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i -w $ip_mac ); then
-					ip_name=$( echo "$device_aliases" | grep -q -i -w $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u )
+				if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i $ip_mac ); then
+					ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u )
 					ipAddress_name=$( cat ${dir}ipAddress | grep -w $ip | awk '{print $3}' | grep -v "^$" | sort -u )
 					if [ ! -z ipAddress_name ] && ( ! echo $ip_name | grep -q $ipAddress_name ) ; then
 						time_up=$( cat ${dir}ipAddress | grep -w $ip |awk '{print $4}' | grep -v "^$" | sort -u )
@@ -839,8 +838,8 @@ function rand_geturl(){
 				ip_mac=$( cat /var/dhcp.leases | grep -w $ip |awk '{print $2}' | grep -v "^$" | sort -u )
 				if [ -z "$ip_mac" ] ; then ip_mac=$( cat /proc/net/arp | grep "0x2" | grep -w $ip | awk  '{print $4}' | grep -v "^$" | sort -u );fi
 
-				if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i -w $ip_mac ); then
-					ip_name=$( echo "$device_aliases" | grep -q -i -w $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u )
+				if [ ! -z "$device_aliases" ] && [ ! -z "$ip_mac" ] && ( echo "$device_aliases" | grep -q -i $ip_mac ); then
+					ip_name=$( echo "$device_aliases" | grep -i $ip_mac |awk '{print $2}' | grep -v "^$" | sort -u )
 				else
 					ip_name=$( cat /var/dhcp.leases | grep -w $ip |awk '{print $4}' | grep -v "^$" | sort -u )
 				fi
@@ -870,7 +869,7 @@ function rand_geturl(){
 			IPLIST=$( cat ${dir}ipAddress | awk '{print $1}' )
 			for  ip in $IPLIST; do
 				ip_total=`usage_ip $ip`
-				time_down=`date +%s`
+				#time_down=`date +%s`
 				#time_up=$( cat ${dir}ipAddress | grep -w $ip |awk '{print $4}' | grep -v "^$" | sort -u )
 				#time1=$(($time_down-$time_up))
 				#time1=`time_for_humans $time1`
