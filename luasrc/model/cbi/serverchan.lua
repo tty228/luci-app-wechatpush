@@ -6,10 +6,15 @@ local sys = require "luci.sys"
 local ifaces = sys.net:devices()
 
 m=Map("serverchan",translate("ServerChan"),
-translate("「Server酱」，英文名「ServerChan」，是一款从服务器推送报警信息和日志到微信的工具。<br /><br />如果你在使用中遇到问题，请到这里提交：")
+translate("「Server酱」，英文名「ServerChan」，是一款从服务器推送报警信息和日志到微信的工具。<br /><br />如果你在使用中遇到问题，请到")
 .. [[<a href="https://github.com/tty228/luci-app-serverchan" target="_blank">]]
-.. translate("github 项目地址")
+.. translate("github 项目地址1")
 .. [[</a>]]
+.. "或"
+.. [[<a href="https://github.com/elfive/luci-app-serverchan" target="_blank">]]
+.. translate("github 项目地址2")
+.. [[</a>]]
+.. "提交。"
 )
 
 m:section(SimpleSection).template  = "serverchan/serverchan_status"
@@ -79,7 +84,7 @@ a:value("0",translate("关闭"))
 a:value("1",translate("通过接口获取"))
 a:value("2",translate("通过URL获取"))
 a = s:taboption("tab_basic2", ListValue, "ipv4_interface", translate("接口名称"))
-a:depends({serverchan_ipv4="1"})
+-- a:depends({serverchan_ipv4="1"})
 for _, iface in ipairs(ifaces) do
 	if not (iface == "lo" or iface:match("^ifb.*")) then
 		local nets = net:get_interface(iface)
@@ -94,8 +99,8 @@ end
 a.description = translate("<br/>一般选择 wan 接口，多拨环境请自行选择")
 a= s:taboption("tab_basic2", Value, "ipv4_URL", "URL 地址")
 a.rmempty = true 
-a.default = "members.3322.org/dyndns/getip"
-a:depends({serverchan_ipv4="2"})
+a.default = "v4.ipv6-test.com/api/myip.php"
+-- a:depends({serverchan_ipv4="2"})
 a.description = translate("<br/>会因服务器稳定性/连接频繁等原因导致获取失败，一般不推荐")
 
 a=s:taboption("tab_basic2", ListValue,"serverchan_ipv6",translate("ipv6 变动通知"))
@@ -104,7 +109,7 @@ a:value("0",translate("关闭"))
 a:value("1",translate("通过接口获取"))
 a:value("2",translate("通过URL获取"))
 a = s:taboption("tab_basic2", ListValue, "ipv6_interface", translate("接口名称"))
-a:depends({serverchan_ipv6="1"})
+-- a:depends({serverchan_ipv6="1"})
 for _, iface in ipairs(ifaces) do
 	if not (iface == "lo" or iface:match("^ifb.*")) then
 		local nets = net:get_interface(iface)
@@ -119,8 +124,8 @@ end
 a.description = translate("<br/>一般选择 wan 接口，多拨环境请自行选择")
 a= s:taboption("tab_basic2", Value, "ipv6_URL", "URL 地址")
 a.rmempty = true 
-a.default = "v6.ip.zxinc.org/getip"
-a:depends({serverchan_ipv6="2"})
+a.default = "v6.ipv6-test.com/api/myip.php"
+-- a:depends({serverchan_ipv6="2"})
 a.description = translate("<br/>会因服务器稳定性/连接频繁等原因导致获取失败，一般不推荐")
 
 a=s:taboption("tab_basic2", Flag,"serverchan_up",translate("设备上线通知"))
@@ -207,7 +212,10 @@ router_wan:depends("send_mode","2")
 
 client_list=s:taboption("tab_basic3", Flag,"client_list",translate("客户端列表"))
 client_list:depends("send_mode","1")
-client_list:depends("send_mode","2") 
+client_list:depends("send_mode","2")
+
+block_unknown=s:taboption("tab_basic3", Flag,"block_unknown",translate("屏蔽unknown设备"))
+block_unknown:depends("client_list","1")
 
 e=s:taboption("tab_basic3", Button,"_add",translate("手动发送"))
 e.inputtitle=translate("发送")

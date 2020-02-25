@@ -533,75 +533,98 @@ function send(){
 	send_title=`get_config send_title`
 	if [ -z "$send_title" ] ; then send_title="路由状态：";fi
 	router_status=`get_config router_status`
-		if [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A---%0D%0A%0D%0A#### 系统运行状态%0D%0A%0D%0A";fi
-		if [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A""     平均负载：`cat /proc/loadavg | awk '{print $1" "$2" "$3}'`";fi
-		if [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A""     CPU占用：`getcpu`";fi
-		if [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A""     内存占用：`free -m | sed -n '2p' | awk '{print""($3/$2)*100"%"}'`";fi
-		if [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A""`cat /proc/uptime| awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("     运行时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}'`";fi
+	if [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A---%0D%0A%0D%0A#### 系统运行状态%0D%0A%0D%0A";fi
+	if [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A""     平均负载：`cat /proc/loadavg | awk '{print $1" "$2" "$3}'`";fi
+	if [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A""     CPU占用：`getcpu`";fi
+	if [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A""     内存占用：`free -m | sed -n '2p' | awk '{print""($3/$2)*100"%"}'`";fi
+	if [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A""`cat /proc/uptime| awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("     运行时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}'`";fi
 	router_temp=`get_config router_temp`
-		if [ ! -z "$router_temp" ] && [ "$router_temp" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A""---%0D%0A%0D%0A#### 设备温度%0D%0A%0D%0A     CPU：`soc_temp`%e2%84%83";fi
+	if [ ! -z "$router_temp" ] && [ "$router_temp" -eq "1" ] ; then send_content=${send_content}"%0D%0A%0D%0A""---%0D%0A%0D%0A#### 设备温度%0D%0A%0D%0A     CPU：`cpuinfo | cut -d'+' -f 2  | sed 's/.\{5\}$//'`%e2%84%83";fi
 	router_wan=`get_config router_wan`
-	ipv4_interface=$(get_config ipv4_interface)
-	ipv6_interface=$(get_config ipv6_interface)
-	ipv4_URL=`get_config ipv4_URL`
-	if [ -z "$ipv4_URL" ] ; then ipv4_URL="members.3322.org/dyndns/getip";fi
-	ipv6_URL=`get_config ipv6_URL`
-	if [ -z "$ipv6_URL" ] ; then ipv6_URL="v6.ip.zxinc.org/getip";fi
+	if [ ! -z "$router_wan" ] && [ "$router_wan" -eq "1" ] ; then
+		ipv4_interface=$(get_config ipv4_interface)
+		ipv6_interface=$(get_config ipv6_interface)
+		ipv4_URL=`get_config ipv4_URL`
+		ipv6_URL=`get_config ipv6_URL`
+		serverchan_ipv4=`get_config serverchan_ipv4`
+		serverchan_ipv6=`get_config serverchan_ipv6`
 		if [ ! -z "$ipv4_interface" ] ; then send_wanIP=$(/sbin/ifconfig $ipv4_interface | awk '/inet addr/ {print $2}' | awk -F: '{print $2}'| grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}');fi
 		if [ -z "$ipv4_interface" ] ; then send_wanIP=$(ubus call network.interface.wan status | grep '\"address\"' | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}');fi
 		if [ ! -z "$ipv6_interface" ] ; then send_wanIPv6=$(ip addr show $ipv6_interface |grep -v deprecated|grep -A1 'inet6 [^f:]'|sed -nr ':a;N;s#^ +inet6 ([a-f0-9:]+)/.+? scope global .*? valid_lft ([0-9]+sec) .*#\2 \1#p;ta'|sort -nr|head -n1|cut -d' ' -f2);fi
 		if [ -z "$ipv6_interface" ] ; then send_wanIPv6=$(ip addr show|grep -v deprecated|grep -A1 'inet6 [^f:]'|sed -nr ':a;N;s#^ +inet6 ([a-f0-9:]+)/.+? scope global .*? valid_lft ([0-9]+sec) .*#\2 \1#p;ta'|sort -nr|head -n1|cut -d' ' -f2);fi
-		if [ ! -z "$ipv4_interface" ] ; then send_hostIP=$(curl -k -s -4 --interface $ipv4_interface $ipv4_URL);fi
-		if [ -z "$ipv4_interface" ] ; then send_hostIP=$(curl -k -s -4 $ipv4_URL);fi
-		if [ ! -z "$ipv6_interface" ] ; then send_hostIPv6=$(curl -k -s -6 --interface $send_wanIPv6 $ipv6_URL);fi
-		if [ -z "$ipv6_interface" ] ; then send_hostIPv6=$(curl -k -s -6 $ipv6_URL);fi
-		if [ ! -z "$router_wan" ] && [ "$router_wan" -eq "1" ] ; then
-			send_content=${send_content}"%0D%0A%0D%0A""---%0D%0A%0D%0A#### WAN 口信息%0D%0A%0D%0A     接口ip:$send_wanIP"
-			send_content=${send_content}"%0D%0A%0D%0A""     外网ip:$send_hostIP"
-			send_content=${send_content}"%0D%0A%0D%0A""     ipv6 :$send_wanIPv6"
-			send_content=${send_content}"%0D%0A%0D%0A""     外网v6:$send_hostIPv6"
-			if [ ! -z "$send_content" ] && [ ! -z "$router_wan" ] ; then
-				if ( ! echo ${send_wanIP} | grep -q -w ${send_hostIP} );then send_content=${send_content}"%0D%0A%0D%0A""     外网 ip 与接口 ip 不一致，你的 ip 不是公网 ip";fi
-			else
-				send_content=${send_content}"%0D%0A%0D%0A""     ip 获取失败"
-			fi
-			send_content=${send_content}"%0D%0A%0D%0A""`ubus call network.interface.wan status | grep \"uptime\" | sed $'s/\"uptime": //g'| sed $'s/\,//g'| awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("     在线时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}'`"
+		send_content=${send_content}"%0D%0A%0D%0A""---%0D%0A%0D%0A#### WAN 口信息"
+		if [ "$serverchan_ipv4" -eq "1" ] ; then
+			if [ -z "$ipv4_URL" ] ; then ipv4_URL="v4.ipv6-test.com/api/myip.php";fi
+			send_hostIP=$(curl -k -s -4 --interface $send_wanIP $ipv4_URL)
+		elif [ "$serverchan_ipv4" -eq "2" ] ; then
+			send_hostIP=$(curl -k -s -4 $ipv4_URL)
 		fi
+		if [ "$serverchan_ipv6" -eq "1" ] ; then
+			if [ -z "$ipv6_URL" ] ; then ipv6_URL="v6.ipv6-test.com/api/myip.php";fi
+			send_hostIPv6=$(curl -k -s -6 --interface $send_wanIPv6 $ipv6_URL)
+		elif [ "$serverchan_ipv6" -eq "2" ] ; then
+			send_hostIPv6=$(curl -k -s -6 $ipv6_URL)
+		fi
+		send_content=${send_content}"%0D%0A%0D%0A""     接口 IPv4：$send_wanIP"
+		send_content=${send_content}"%0D%0A%0D%0A""     外网 IPv4：$send_hostIP"
+		send_content=${send_content}"%0D%0A%0D%0A""     接口 IPv6：$send_wanIPv6"
+		send_content=${send_content}"%0D%0A%0D%0A""     外网 IPv6：$send_hostIPv6"
+		if [ ! -z "$send_content" ] && [ ! -z "$router_wan" ] ; then
+			if ( ! echo ${send_wanIP} | grep -q -w ${send_hostIP} );then send_content=${send_content}"%0D%0A%0D%0A""     外网 ip 与接口 ip 不一致，你的 ip 不是公网 ip";fi
+		else
+			send_content=${send_content}"%0D%0A%0D%0A""     IP 获取失败"
+		fi
+		send_content=${send_content}"%0D%0A%0D%0A""`ubus call network.interface.wan status | grep \"uptime\" | sed $'s/\"uptime": //g'| sed $'s/\,//g'| awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("     在线时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}'`"
+	fi
 	client_list=`get_config client_list`
-		if [ ! -z "$client_list" ] && [ "$client_list" -eq "1" ] ; then		
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"` 【定时数据】检测客户端列表" >> ${logfile};fi
-			
-			if [ ! -f "${dir}ipAddress" ] ; then > ${dir}ipAddress;fi
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"` 【定时数据】开始进行设备下线检测" >> ${logfile};fi
-			IPLIST=$( cat ${dir}ipAddress| awk '{print $1}' | grep -v "^$" | sort -u )
-			for ip in $IPLIST; do
+	if [ ! -z "$client_list" ] && [ "$client_list" -eq "1" ] ; then		
+		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"` 【定时数据】检测客户端列表" >> ${logfile};fi
+		if [ ! -f "${dir}ipAddress" ] ; then > ${dir}ipAddress;fi
+		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"` 【定时数据】开始进行设备下线检测" >> ${logfile};fi
+		IPLIST=$( cat ${dir}ipAddress| awk '{print $1}' | grep -v "^$" | sort -u )
+		for ip in $IPLIST; do
 			if [ ! -z "$ip" ] ; then
 				down $ip &
 			fi
-			done
-			wait
-			
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"` 【定时数据】开始进行设备接入检测" >> ${logfile};fi
-			IPLIST=$( cat /proc/net/arp | grep "0x2" | awk  '{print $1}' | grep -v "^$" | sort -u )
-			for  ip in $IPLIST; do
+		done
+		wait
+		
+		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"` 【定时数据】开始进行设备接入检测" >> ${logfile};fi
+		IPLIST=$( cat /proc/net/arp | grep "0x2" | awk  '{print $1}' | grep -v "^$" | sort -u )
+		for  ip in $IPLIST; do
 			if [ ! -z "$ip" ] ; then
 				up $ip &
 			fi
-			done
-			wait
-			send_content=${send_content}"%0D%0A%0D%0A---%0D%0A%0D%0A#### 在线设备%0D%0A%0D%0A";
-			IPLIST=$( cat ${dir}ipAddress | awk '{print $1}' )
+		done
+		wait
+		send_content=${send_content}"%0D%0A%0D%0A---%0D%0A%0D%0A#### 在线设备%0D%0A%0D%0A";
+		IPLIST=$( cat ${dir}ipAddress | awk '{print $1}' )
+		
+		block_unknown=`get_config block_unknown`
+		if [ ! -z "$block_unknown" ] && [ "$block_unknown" -eq "1" ] ; then
 			for  ip in $IPLIST; do
+				name=$( cat ${dir}ipAddress | grep -w $ip | awk '{print $3}' | grep -v "^$" | sort -u )
+				if [ ! -z "$name" ] && [ "$name" != "unknown" ] ; then
 				ip_total=`usage_ip $ip` && if [ ! -z "$ip_total" ] ; then ip_total="总计流量：$ip_total  ";fi
 				time_down=`date +%s`
 				time_up=$( cat ${dir}ipAddress | grep -w $ip |awk '{print $4}' | grep -v "^$" | sort -u )
 				time1=$(($time_down-$time_up))
 				time1=`time_for_humans $time1`
-				ip_name=$( cat ${dir}ipAddress | grep -w $ip | awk  '{print $3}' | grep -v "^$" | sort -u )
-				if [ "${#ip_name}" -gt  "20" ] ; then ip_name=`echo ${ip_name:0:20}"*"`;fi
-				send_content=${send_content}"%0D%0A%0D%0A     $ip_name  $ip%0D%0A%0D%0A     $ip_total在线 $time1%0D%0A%0D%0A    ----"
+					send_content=${send_content}"%0D%0A%0D%0A""     $name  $ip%0D%0A%0D%0A""     $ip_total在线 $time1"
+				fi
+			done
+		else
+			for  ip in $IPLIST; do
+				name=$( cat ${dir}ipAddress | grep -w $ip | awk '{print $3}' | grep -v "^$" | sort -u )
+				ip_total=`usage_ip $ip` && if [ ! -z "$ip_total" ] ; then ip_total="总计流量：$ip_total  ";fi
+				time_down=`date +%s`
+				time_up=$( cat ${dir}ipAddress | grep -w $ip | awk '{print $4}' | grep -v "^$" | sort -u )
+				time1=$(($time_down-$time_up))
+				time1=`time_for_humans $time1`
+				send_content=${send_content}"%0D%0A%0D%0A""     $name  $ip%0D%0A%0D%0A""     $ip_total在线 $time1"
 			done
 		fi
+	fi
 	if [ ! -z "$device_name" ] ; then send_title="【$device_name】$send_title" ;fi
 	send_title=$( echo $send_title | sed $'s/\ /%20/g'| sed $'s/\"/%22/g'| sed $'s/\#/%23/g'| sed $'s/\&/%26/g'| sed $'s/\,/%2C/g'| sed $'s/\//%2F/g'| sed $'s/\:/%3A/g'| sed $'s/\;/%3B/g'| sed $'s/\=/%3D/g'| sed $'s/\@/%40/g')
 	content=$( echo $content| sed $'s/unknown/%e6%9c%aa%e7%9f%a5%e8%ae%be%e5%a4%87/')
@@ -939,8 +962,9 @@ function rand_geturl(){
 		# 温度状态报警
 		if [ ! -z "$temperature_enable" ] && [ "$temperature_enable" -eq "1" ] ; then
 			if [ -z "$temperature_time" ] ; then temperature_time=`date +%s`;fi
+			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%H:%M:%S"` 【温度】正在检测 CPU 温度" >> ${logfile};fi
 			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"` 【温度】正在检测 CPU 温度" >> ${logfile};fi
-			cpu_wendu=`soc_temp`
+			cpu_wendu=`cpuinfo | cut -d'+' -f 2  | sed 's/.\{5\}$//'`
 			temperature=`get_config temperature`
 			if [ ! -z "$cpu_wendu" ] && [ ! -z "$temperature" ] && [ "$cpu_wendu" -gt "$temperature" ] ; then
 				#if [ -f ${logfile} ] && [ $(grep -c "" ${logfile}) -ge "2" ] ; then
