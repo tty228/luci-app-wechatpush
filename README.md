@@ -23,7 +23,6 @@
 
 #### 已知问题
 - 直接关闭接口时，该接口的离线设备会忽略检测
-- X86可能无法运行
 
 #### 常见问题
 - 脚本使用 `#!/bin/sh` 解析，部分系统，如潘多拉只有 bash 没有 sh ，表现为无法启动，执行`/usr/bin/serverchan/serverchan`后提示 /etc/rc.common: line 152: /usr/bin/serverchan/serverchan: not found ，请将脚本开头 `#!/bin/sh` 改为 `#!/bin/bash`
