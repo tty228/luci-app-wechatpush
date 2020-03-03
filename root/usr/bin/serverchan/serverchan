@@ -834,7 +834,7 @@ basePath=$(cd `dirname $0`; pwd)
 fullPathProc=$basePath/${0##*/}
 pCount=$(ps -ef | grep $fullPathProc | grep -v 'grep' | grep -v ' -c sh' | grep -v $$ | grep -c 'sh')
 if [ $pCount -gt 1 ]; then
-	echo "serverchan is running ..." 
+	echo "serverchan is running ..."
 	exit 0
 fi
 
@@ -848,6 +848,7 @@ serverchan_first
 while [ "$serverchan_enable" -eq "1" ] ;
 do
 	deltemp
+	read_config
 	rand_geturl
 	usage
 	# 外网IP变化检测
