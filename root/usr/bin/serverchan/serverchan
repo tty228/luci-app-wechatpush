@@ -437,7 +437,7 @@ function rand_geturl(){
 			
 			if [ -z "$network_err_time" ] ; then local network_err_time=`date +%s`;fi
 			# 网络断开超过十分钟,检测是否执行网络重置
-			if [ ! -z "$network_err_event" ] && [ "$((`date +%s`-$network_err_time))" -ge "60" ] ; then
+			if [ ! -z "$network_err_event" ] && [ "$((`date +%s`-$network_err_time))" -ge "600" ] ; then
 				# 查找列表 MAC 是否在线
 				serverchan_first
 				if [ ! -z "$err_device_aliases" ] && [ -f ${dir}ipAddress ] ; then
