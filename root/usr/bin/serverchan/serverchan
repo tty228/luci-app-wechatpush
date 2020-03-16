@@ -373,7 +373,7 @@ if [ `get_config send_enable` -eq 3 ] ; then return;fi
 if [ ! -z "$err_device_aliases" ] && [ -f ${dir}ipAddress ] ; then
 	MACLIST=$( cat ${dir}ipAddress | awk '{print $2}' | grep -v "^$" | sort -u )
 	for mac in $MACLIST; do
-		if [ -z "$ip_mac" ] && [ ! -z "$mac" ] ; then
+		if [ -z "$ipmac" ] && [ ! -z "$mac" ] ; then
 			local ipmac=$( echo "$err_device_aliases" | grep -i -w $mac | grep -v "^$" | sort -u )
 		fi
 	done
