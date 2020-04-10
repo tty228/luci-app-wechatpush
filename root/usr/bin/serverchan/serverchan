@@ -104,12 +104,58 @@ if [ "$1" ] ; then
 	# 读取数据
 	elif [ $1 = "get" ] ;then
 		if [ "$2" ] ; then local ip_total=`cat ${dir}usage.db | grep -w $2 | sed 's/,/ /g' | awk '{print $6}'`;fi
-		if [ ! -z "$ip_total" ] ; then echo `bytes_for_humans $ip_total`;fi
+		if [ -z "$ip_total" ] ; then local ip_total="0";fi
+		echo `bytes_for_humans $ip_total`
 	# 剔除ip
 	elif [ $1 = "down" ] ;then
 		if [ "$2" ] ; then sed -i "/$2/d" ${dir}usage.db;fi
 	fi
 fi
+}
+
+# 流量数据单位换算
+function bytes_for_humans {
+	if [ "$1" ] ;then
+		if [[ "$1" -lt 1024 ]]; then
+			echo "$1" bytes
+		elif [[ "$1" -lt 1048576  ]]; then
+			echo `awk 'BEGIN{printf "%.2f\n",'$1'/'1024'}'` KB
+		elif [[ "$1" -lt 1073741824  ]]; then
+			echo `awk 'BEGIN{printf "%.2f\n",'$1'/'1048576'}'` MB
+		elif [[ "$1" -gt 1073741824  ]]; then
+			echo `awk 'BEGIN{printf "%.2f\n",'$1'/'1073741824'}'` GB
+		fi
+	else
+		echo 0 bytes
+    fi
+}
+
+# 时间单位换算
+function time_for_humans {
+	if [ "$1" ] ;then
+		if [[ $1 -lt 60 ]]; then
+			echo $1 秒
+		elif [[ $1 -lt 3600 ]]; then
+			local usetime_min=`expr $1 / 60`
+			local usetime_sec=`expr $usetime_min \* 60`
+			local usetime_sec=`expr $1 - ${usetime_sec}`
+			echo $usetime_min 分 $usetime_sec 秒
+		elif [[ $1 -lt 216000  ]]; then
+			local usetime_hour=`expr $1 / 3600`
+			local usetime_min=`expr $usetime_hour \* 3600`
+			local usetime_min=`expr $1 - ${usetime_min}`
+			local usetime_min=`expr ${usetime_min} / 60`
+			echo $usetime_hour 小时 $usetime_min 分
+		else
+			local usetime_day=`expr $1 / 86400`
+			local usetime_hour=`expr $usetime_day \* 86400`
+			local usetime_hour=`expr $1 - ${usetime_hour}`
+			local usetime_hour=`expr ${usetime_hour} / 3600`
+			echo $usetime_day 天 $usetime_hour 小时
+		fi
+	else
+		echo 0 秒
+    fi
 }
 
 # 初始化设置信息
@@ -363,51 +409,6 @@ function deltemp(){
 			echo "`date "+%Y-%m-%d %H:%M:%S"`  【清理】日志超出上限，删除前 100 条" >> ${logfile}
 		fi
 	fi
-}
-
-# 流量数据单位换算
-function bytes_for_humans {
-	if [ "$1" ] ;then
-		if [[ $1 -lt 1024 ]]; then
-			echo $1 bytes
-		elif [[ $1 -lt 1048576  ]]; then
-			echo `awk 'BEGIN{printf "%.2f\n",'$1'/'1024'}'` KB
-		elif [[ $1 -lt 1073741824  ]]; then
-			echo `awk 'BEGIN{printf "%.2f\n",'$1'/'1048576'}'` MB
-		else
-			echo `awk 'BEGIN{printf "%.2f\n",'$1'/'1073741824'}'` GB
-		fi
-	else
-		echo 0 bytes
-    fi
-}
-
-# 时间单位换算
-function time_for_humans {
-	if [ "$1" ] ;then
-		if [[ $1 -lt 60 ]]; then
-			echo $1 秒
-		elif [[ $1 -lt 3600 ]]; then
-			local usetime_min=`expr $1 / 60`
-			local usetime_sec=`expr $usetime_min \* 60`
-			local usetime_sec=`expr $1 - ${usetime_sec}`
-			echo $usetime_min 分 $usetime_sec 秒
-		elif [[ $1 -lt 216000  ]]; then
-			local usetime_hour=`expr $1 / 3600`
-			local usetime_min=`expr $usetime_hour \* 3600`
-			local usetime_min=`expr $1 - ${usetime_min}`
-			local usetime_min=`expr ${usetime_min} / 60`
-			echo $usetime_hour 小时 $usetime_min 分
-		else
-			local usetime_day=`expr $1 / 86400`
-			local usetime_hour=`expr $usetime_day \* 86400`
-			local usetime_hour=`expr $1 - ${usetime_hour}`
-			local usetime_hour=`expr ${usetime_hour} / 3600`
-			echo $usetime_day 天 $usetime_hour 小时
-		fi
-	else
-		echo 0 秒
-    fi
 }
 
 # 检测黑白名单
@@ -794,7 +795,7 @@ if [ "$1" ] ;then
 							if [ -f "${dir}content" ] ; then local content=`cat ${dir}content` ;fi
 							if [ -z "$title" ] ; then
 								local title="$ip_name 连接了你的路由器"
-								local content="%0D%0A%0D%0A---%0D%0A%0D%0A####新设备连接%0D%0A%0D%0A客户端名：%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$ip_name%0D%0A%0D%0A客户端 IP：%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$1%0D%0A%0D%0A客户端 MAC：%26ensp%3b%26ensp%3b$ip_mac"
+								local content="%0D%0A%0D%0A---%0D%0A%0D%0A####新设备连接%0D%0A%0D%0A客户端名：%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$ip_name%0D%0A%0D%0A客户端 IP： %26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$1%0D%0A%0D%0A客户端 MAC：%26ensp%3b%26ensp%3b$ip_mac"
 							elif ( echo ${title} | grep -q "连接了你的路由器" ) ; then
 								local title="$ip_name 连接了你的路由器"
 								local content="%0D%0A%0D%0A---%0D%0A%0D%0A客户端名：%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$ip_name%0D%0A%0D%0A客户端 IP：%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$1%0D%0A%0D%0A客户端 MAC：%26ensp%3b%26ensp%3b$ip_mac"
@@ -882,13 +883,13 @@ for ip in $IPLIST; do
 				local time1=`time_for_humans $time1`
 				if [ -z "$title" ] ; then
 					local title="$ip_name 断开连接"
-					local content="%0D%0A%0D%0A---%0D%0A%0D%0A####设备断开连接%0D%0A%0D%0A客户端名：%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$ip_name%0D%0A%0D%0A客户端 IP： %26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$ip%0D%0A%0D%0A客户端MAC： %26ensp%3b%26ensp%3b$ip_mac$ip_total%0D%0A%0D%0A在线时间： %26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$time1"
+					local content="%0D%0A%0D%0A---%0D%0A%0D%0A####设备断开连接%0D%0A%0D%0A客户端名：%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$ip_name%0D%0A%0D%0A客户端 IP： %26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$ip%0D%0A%0D%0A客户端 MAC：%26ensp%3b%26ensp%3b$ip_mac$ip_total%0D%0A%0D%在线时间： %26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$time1"
 				elif ( echo ${title} | grep -q "断开连接" ) ; then
 					local title="$ip_name 断开连接"
-					local content="%0D%0A%0D%0A---%0D%0A%0D%0A客户端名：%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$ip_name%0D%0A%0D%0A客户端 IP：%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$ip%0D%0A%0D%0A客户端MAC：$ip_mac$ip_total%0D%0A%0D%0A在线时间：%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$time1"
+					local content="%0D%0A%0D%0A---%0D%0A%0D%0A客户端名：%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$ip_name%0D%0A%0D%0A客户端 IP： %26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$ip%0D%0A%0D%0A客户端 MAC：%26ensp%3b%26ensp%3b$ip_mac$ip_total%0D%0A%0D%0A在线时间： %26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$time1"
 				else
 					local title="设备状态变化"
-					local content="%0D%0A%0D%0A---%0D%0A%0D%0A####设备断开连接%0D%0A%0D%0A客户端名：%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$ip_name%0D%0A%0D%0A客户端 IP：%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$ip%0D%0A%0D%0A客户端MAC：$ip_mac$ip_total%0D%0A%0D%0A在线时间：%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$time1"
+					local content="%0D%0A%0D%0A---%0D%0A%0D%0A####设备断开连接%0D%0A%0D%0A客户端名：%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$ip_name%0D%0A%0D%0A客户端 IP： %26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$ip%0D%0A%0D%0A客户端 MAC：%26ensp%3b%26ensp%3b$ip_mac$ip_total%0D%0A%0D%0A在线时间： %26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b%26ensp%3b$time1"
 				fi
 				
 				echo "`date "+%Y-%m-%d %H:%M:%S"`  【微信推送】设备 $ip_name $ip 断开连接 " >> ${logfile}
