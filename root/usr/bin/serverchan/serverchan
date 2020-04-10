@@ -84,7 +84,7 @@ function soc_temp(){
 
 # 流量数据
 function usage(){
-if [ ! -f "${dir}usage.db" ] ; then return;fi
+if [ ! -f "/usr/sbin/wrtbwmon" ] ; then return;fi
 if [ "$1" ] ; then
 	# 更新数据
 	if [ $1 = "update" ] ;then
