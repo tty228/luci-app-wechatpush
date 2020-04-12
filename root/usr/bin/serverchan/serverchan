@@ -661,70 +661,94 @@ function rand_geturl(){
 
 # 检测 ip 状况
 function ip_changes(){
-if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"`  【外网IP】正在检测外网IP变化" >> ${logfile};fi
-if [ ! -z "$serverchan_ipv4" ] && [ "$serverchan_ipv4" -eq "1" ] ; then local IPv4=`getip wanipv4`;fi
-if [ ! -z "$serverchan_ipv4" ] && [ "$serverchan_ipv4" -eq "2" ] ; then local IPv4=`getip hostipv4`;fi	
-if [ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -eq "1" ] ; then local IPv6=`getip wanipv6`;fi
-if [ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -eq "2" ] ; then local IPv6=`getip hostipv6`;fi
+	if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"`  【外网IP】正在检测外网IP变化" >> ${logfile};fi
+	local send_wanIP=`getip wanipv4`
+	local send_hostIP=`getip hostipv4`
+	local send_wanIPv6=`getip wanipv6`
+	local send_hostIPv6=`getip hostipv6`
 
-if [ -f ${dir}ip ] ; then
-	local last_IPv4=$(cat "${dir}ip" | grep IPv4 | awk '{print $2}' | grep -v "^$" | sort -u)
-	local last_IPv6=$(cat "${dir}ip" | grep IPv6 | awk '{print $2}' | grep -v "^$" | sort -u)
-	# 获取 IPv4 地址
-	if [ ! -z "$serverchan_ipv4" ] && [ "$serverchan_ipv4" -ne "0" ] ;then
-		if [ ! -z "$IPv4" ] && ( echo ${IPv4} | grep -w -q ${last_IPv4} );then
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"`  IP 无变化，当前 ip 为 ${last_IPv4}" >> ${logfile};fi
-		elif [ ! -z "$IPv4" ] ; then 
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"`  当前 IP: ${IPv4}" >> ${logfile};fi
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"`  上次 IP: ${last_IPv4}" >> ${logfile};fi
-			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}当前IP：${IPv4}" >> ${logfile}
-			echo IPv4 $IPv4 > ${dir}ip
-			echo -e IPv6 $last_IPv6 >> ${dir}ip
-			title="IP 地址变化"
-			content="${content}${markdown_linefeed}---${markdown_linefeed}####IP 地址变化${markdown_linefeed}${markdown_tab}当前 IP：${IPv4}"
-		else
-			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】获取 IPv4 地址失败" >> ${logfile}
-		fi
-	fi
-	# 获取 IPv6 地址
-	if [ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -ne "0" ] ;then
-		if [ ! -z "$IPv6" ] && ( echo ${IPv6} | grep -w -q ${last_IPv6} );then
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"`  IPv6 无变化，当前 ipv6 为 $last_IPv6" >> ${logfile};fi
-		elif [ ! -z "$IPv6" ] ; then 
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"`  当前 IPv6: ${IPv6}" >> ${logfile};fi
-			if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"`  上次 IPv6: ${last_IPv6}" >> ${logfile};fi
-			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}当前IPv6：${IPv6}" >> ${logfile}
-			echo IPv4 $IPv4 > ${dir}ip
-			echo -e IPv6 $IPv6 >> ${dir}ip
-			if [ -z "$title" ] ; then
-				local title="IPv6 地址变化"
+	if [ -f ${dir}ip ] ; then
+		local last_IPv4=$(cat "${dir}ip" | grep IPv4 | awk '{print $2}' | grep -v "^$" | sort -u)
+		local last_IPv6=$(cat "${dir}ip" | grep IPv6 | awk '{print $2}' | grep -v "^$" | sort -u)
+
+		if [ ! -z "$serverchan_ipv4" ] && [ "$serverchan_ipv4" -ne "0" ] ;then
+			if [ ! -z "$IPv4" ] && ( echo ${IPv4} | grep -w -q ${last_IPv4} );then
+				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"`  IP 无变化，当前 ip 为 $last_IPv4" >> ${logfile};fi
+			elif [ ! -z "$IPv4" ] ; then 
+				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"`  当前 IP: ${IPv4}" >> ${logfile};fi
+				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"`  上次 IP: ${last_IPv4}" >> ${logfile};fi
+				echo "`date "+%Y-%m-%d %H:%M:%S"`  【微信推送】当前IP：${IPv4}" >> ${logfile}
+				echo IPv4 $IPv4 > ${dir}ip
+				echo -e IPv6 $last_IPv6 >> ${dir}ip
+					
+				if [ -f "${dir}title" ] ; then local title=`cat ${dir}title` ;fi
+				if [ -f "${dir}content" ] ; then local content=`cat ${dir}content` ;fi
+				if ( echo ${title} | grep -q "IP 地址变化" ) || [ -z "$title" ] ; then
+					local title="IP 地址变化"
+				else
+					local title="设备状态变化"
+				fi
+					
+		                        local content=${content}"%0D%0A%0D%0A""---%0D%0A%0D%0A#### WAN 口信息:%0D%0A%0D%0A     接口IP地址:$send_wanIP"
+		                        local content=${content}"%0D%0A%0D%0A""     外网IP地址:$send_hostIP"
+                                                        local content=${content}"%0D%0A%0D%0A""`ubus call network.interface.wan status | grep \"uptime\" | sed $'s/\"uptime": //g'| sed $'s/\,//g'| awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("     在线时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}'`"
+				echo $title >${dir}title
+				echo -n $content >>${dir}content
 			else
-				local title="IP 地址变化"
+				echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】获取 IPv4 地址失败" >> ${logfile}
 			fi
-			content="${content}${markdown_linefeed}---${markdown_linefeed}####IPv6 地址变化${markdown_linefeed}${markdown_tab}当前 IPv6：${IPv6}"				
-		else
-			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】获取 IPv6 地址失败" >> ${logfile}
 		fi
+				
+		if [ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -ne "0" ] ;then
+			if [ ! -z "$IPv6" ] && ( echo ${IPv6} | grep -w -q ${last_IPv6} );then
+				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"`  IPv6 无变化，当前 ipv6 为 $last_IPv6" >> ${logfile};fi
+			elif [ ! -z "$IPv6" ] ; then 
+				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"`  当前 IPv6: ${IPv6}" >> ${logfile};fi
+				if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"`  上次 IPv6: ${last_IPv6}" >> ${logfile};fi
+				echo "`date "+%Y-%m-%d %H:%M:%S"`  【微信推送】当前IPv6：${IPv6}" >> ${logfile}
+				echo IPv4 $IPv4 > ${dir}ip
+				echo -e IPv6 $IPv6 >> ${dir}ip
+		
+				if [ -f "${dir}title" ] ; then local title=`cat ${dir}title` ;fi
+				if [ -f "${dir}content" ] ; then local content=`cat ${dir}content` ;fi
+				if ( echo ${title} | grep -q "IPv6 地址变化" ) || [ -z "$title" ] ; then
+					local title="IPv6 地址变化"
+				else
+					local title="设备状态变化"
+				fi
+
+			                local content=${content}"%0D%0A%0D%0A""    IPv6 :$send_wanIPv6"
+			                local content=${content}"%0D%0A%0D%0A""     外网v6:$send_hostIPv6"
+                                                                local content=${content}"%0D%0A%0D%0A""`ubus call network.interface.wan status | grep \"uptime\" | sed $'s/\"uptime": //g'| sed $'s/\,//g'| awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("     在线时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}'`"
+				echo $title >${dir}title
+				echo -n $content >>${dir}content					
+			else
+				echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】获取 IPv6 地址失败" >> ${logfile}
+			fi
+		fi	
+	else
+		echo "`date "+%Y-%m-%d %H:%M:%S"`  【微信推送】路由器已经重启!" >> ${logfile}
+		if [ ! -z "$serverchan_ipv4" ] && [ "$serverchan_ipv4" -ne "0" ] ;then echo "`date "+%Y-%m-%d %H:%M:%S"`  当前IP: ${IPv4}" >> ${logfile};fi
+		if [ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -ne "0" ] ;then echo "`date "+%Y-%m-%d %H:%M:%S"`  当前IPv6: ${IPv6}" >> ${logfile};fi
+		echo IPv4 $IPv4 > ${dir}ip
+		echo -e IPv6 $IPv6 >> ${dir}ip	
+		if [ -f "${dir}title" ] ; then local title=`cat ${dir}title` ;fi
+		if [ -f "${dir}content" ] ; then local content=`cat ${dir}content` ;fi
+		local title="路由器重新启动"
+		if [ ! -z "$serverchan_ipv4" ] && [ "$serverchan_ipv4" -ne "0" ] ;then 
+                                      local content=${content}"%0D%0A%0D%0A""---%0D%0A%0D%0A#### WAN 口信息:%0D%0A%0D%0A     接口IP地址:$send_wanIP"
+                                      local content=${content}"%0D%0A%0D%0A""     外网IP地址:$send_hostIP"
+                                      local content=${content}"%0D%0A%0D%0A""`cat /proc/uptime| awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("     运行时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}'`";
+                                fi
+		if [ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -ne "0" ] ;then 			                
+                                     local content=${content}"%0D%0A%0D%0A""    IPv6 :$send_wanIPv6"
+		     local content=${content}"%0D%0A%0D%0A""     外网v6:$send_hostIPv6"
+                                     local content=${content}"%0D%0A%0D%0A""`cat /proc/uptime| awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("     运行时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}'`";
+                                fi
+		echo $title >${dir}title
+		echo -n $content >>${dir}content
 	fi
-# 路由器已经重启
-else
-	echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}路由器已经重启!" >> ${logfile}
-	if [ ! -z "$serverchan_ipv4" ] && [ "$serverchan_ipv4" -ne "0" ] ;then echo "`date "+%Y-%m-%d %H:%M:%S"`  当前IP: ${IPv4}" >> ${logfile};fi
-	if [ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -ne "0" ] ;then echo "`date "+%Y-%m-%d %H:%M:%S"`  当前IPv6: ${IPv6}" >> ${logfile};fi
-	echo IPv4 $IPv4 > ${dir}ip
-	echo -e IPv6 $IPv6 >> ${dir}ip	
-	title="路由器重新启动"
-	content="${content}${markdown_linefeed}---${markdown_linefeed}####路由器重新启动"
-	if [ ! -z "$serverchan_ipv4" ] && [ "$serverchan_ipv4" -ne "0" ] ;then content="${content}${markdown_linefeed}${markdown_tab}当前IP：${IPv4}";fi
-	if [ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -ne "0" ] ;then content="${content}${markdown_linefeed}${markdown_tab}当前IPv6：${IPv6}";fi
-fi
-# 如果启用了ddns，启动它
-if [ ! -z "$content" ] ;then
-	ddns_enabled=$(uci show ddns | grep "enabled" | grep "1")
-	if [ -z "$ddns_enabled" ] ; then ddns_logrow=0 ; else ddns_logrow=$(echo "$ddns_enabled" | wc -l);fi
-	if [ $ddns_logrow -ge 1 ] ;then /etc/init.d/ddns start >/dev/null 2>&1;fi
-fi
-}			
+}		
 
 # 检测设备上线
 function up(){
