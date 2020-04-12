@@ -973,6 +973,7 @@ function cpu_load(){
 function send(){
 	echo "`date "+%Y-%m-%d %H:%M:%S"` 【定时数据】创建定时任务" >> ${logfile}
 	serverchan_disturb
+	disturb=$?
 	local send_title=`get_config send_title`
 	local router_status=`get_config router_status`
 	local client_list=`get_config client_list`
@@ -1044,8 +1045,7 @@ function send(){
 		local send_content="${markdown_linefeed}---${markdown_linefeed}#### 我遇到了一个难题${markdown_linefeed}${markdown_tab}定时发送选项错误，你没有选择需要发送的项目，该怎么办呢${markdown_linefeed}---${markdown_linefeed}";
 	fi
 	local nowtime=`date "+%Y-%m-%d %H:%M:%S"`
-	serverchan_disturb
-	if [ $? -eq "1" ] ;then
+	if [ "$disturb" -eq "1" ] ;then
 		curl -s "http://sc.ftqq.com/$serverchan_sckey.send?text=${send_title}" -d "&desp=${nowtime}${markdown_linefeed}${send_content}" >/dev/null
 		echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}定时推送任务完成" >> ${logfile}
 	fi
@@ -1085,6 +1085,8 @@ while [ "$serverchan_enable" -eq "1" ] ;
 do
 	deltemp
 	usage update
+	serverchan_disturb
+	disturb=$?
 
 	# 外网IP变化检测
 	if [ ! -z "$serverchan_ipv4" ] && [ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv4" -ne "0" ] || [ "$serverchan_ipv6" -ne "0" ] ; then
@@ -1120,9 +1122,7 @@ do
 	if [ ! -f "${dir}send_enable.lock" ] ; then
 		cpu_load
 	fi
-	
-	serverchan_disturb
-	disturb=$?
+
 	if [ ! -f "${dir}send_enable.lock" ] && [ ! -z "$title" ] && [ ! -z "$content" ] ; then
 		nowtime=`date "+%Y-%m-%d %H:%M:%S"`
 		if [ ! -z "$device_name" ] ; then title="【$device_name】$title" ;fi
