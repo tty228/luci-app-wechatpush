@@ -840,7 +840,7 @@ if [ "$1" ] ;then
 	local wlan_online=`iw dev $ip_interface station dump | grep -i -w $ip_mac | grep Station 2>/dev/null`
 	local ip_ms=`echo $( arping -I $( cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 20 -f -w 2 $1)`
 	if [ -z "$wlan_online" ] && ( ! echo ${ip_ms} | grep -q ms );then
-		local ip_ms=`ping -c 5 -w 3 $1`
+		local ip_ms=`ping -c 5 -w 3 $1 | grep -v '100% packet loss'`
 		if ( ! echo ${ip_ms} | grep -q ms );then
 			enable_detection 1
 			local ip_ms=`echo $( arping -I $( cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 20 -f -w $down_timeout $1)`
