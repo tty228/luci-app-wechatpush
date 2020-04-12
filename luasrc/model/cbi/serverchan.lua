@@ -75,56 +75,12 @@ luci.sys.call("cbi.clean_log")
 	fs.writefile(logfile, "")
 end
 
-a=s:taboption("tab_basic2", ListValue,"serverchan_ipv4",translate("ipv4 变动通知"))
-a.default="disable"
-a:value("0",translate("关闭"))
-a:value("1",translate("通过接口获取"))
-a:value("2",translate("通过URL获取"))
-a = s:taboption("tab_basic2", ListValue, "ipv4_interface", translate("接口名称"))
-a:depends({serverchan_ipv4="1"})
-for _, iface in ipairs(ifaces) do
-	if not (iface == "lo" or iface:match("^ifb.*")) then
-		local nets = net:get_interface(iface)
-		nets = nets and nets:get_networks() or {}
-		for k, v in pairs(nets) do
-			nets[k] = nets[k].sid
-		end
-		nets = table.concat(nets, ",")
-		a:value(iface, ((#nets > 0) and "%s (%s)" % {iface, nets} or iface))
-	end
-end
-a.description = translate("<br/>一般选择 wan 接口，多拨环境请自行选择")
-a= s:taboption("tab_basic2", Value, "ipv4_URL", "URL 地址")
-a.rmempty = true 
-a.default = "members.3322.org/dyndns/getip"
-a:depends({serverchan_ipv4="2"})
-a.description = translate("<br/>会因服务器稳定性/连接频繁等原因导致获取失败，一般不推荐")
-
-a=s:taboption("tab_basic2", ListValue,"serverchan_ipv6",translate("ipv6 变动通知"))
-a.default="disable"
-a:value("0",translate("关闭"))
-a:value("1",translate("通过接口获取"))
-a:value("2",translate("通过URL获取"))
-a = s:taboption("tab_basic2", ListValue, "ipv6_interface", translate("接口名称"))
-a:depends({serverchan_ipv6="1"})
-for _, iface in ipairs(ifaces) do
-	if not (iface == "lo" or iface:match("^ifb.*")) then
-		local nets = net:get_interface(iface)
-		nets = nets and nets:get_networks() or {}
-		for k, v in pairs(nets) do
-			nets[k] = nets[k].sid
-		end
-		nets = table.concat(nets, ",")
-		a:value(iface, ((#nets > 0) and "%s (%s)" % {iface, nets} or iface))
-	end
-end
-a.description = translate("<br/>一般选择 wan 接口，多拨环境请自行选择")
-a= s:taboption("tab_basic2", Value, "ipv6_URL", "URL 地址")
-a.rmempty = true 
-a.default = "v6.ip.zxinc.org/getip"
-a:depends({serverchan_ipv6="2"})
-a.description = translate("<br/>会因服务器稳定性/连接频繁等原因导致获取失败，一般不推荐")
-
+a=s:taboption("tab_basic2", Flag,"serverchan_ipv4",translate("IPv4 变动通知"))
+a.default=0
+a.rmempty=true
+a=s:taboption("tab_basic2", Flag,"serverchan_ipv6",translate("IPv6 变动通知"))
+a.default=0
+a.rmempty=true
 a=s:taboption("tab_basic2", Flag,"serverchan_up",translate("设备上线通知"))
 a.default=0
 a.rmempty=true
