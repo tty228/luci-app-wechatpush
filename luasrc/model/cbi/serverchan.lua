@@ -280,7 +280,7 @@ up_timeout.default = "2"
 up_timeout.datatype="uinteger"
 
 down_timeout=s:taboption("tab_basic4", Value,"down_timeout",translate('设备离线检测超时'))
-down_timeout.default = "10"
+down_timeout.default = "5"
 down_timeout.datatype="uinteger"
 down_timeout.description = translate("如果遇到设备 wifi 休眠，频繁推送离线，可以把超时时间设置长一些")
 
