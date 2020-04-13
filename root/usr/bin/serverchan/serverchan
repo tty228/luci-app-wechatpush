@@ -26,7 +26,7 @@ function read_config(){
 	serverchan_whitelist=`get_config serverchan_whitelist`
 	serverchan_blacklist=`get_config serverchan_blacklist`
 	serverchan_interface=`get_config serverchan_interface`
-	device_aliases=`get_config device_aliases | sed 's/ /\n/g' | sed 's/-/ /g' 2>/dev/null`
+	device_aliases=`get_config device_aliases | sed 's/ /\n/g' | sed 's/-/ /g'` 2>/dev/null
 	starttime=`get_config starttime`
 	endtime=`get_config endtime`
 	sleeptime=`get_config sleeptime` && if [ -z "$sleeptime" ] ; then sleeptime="60";fi
@@ -41,12 +41,12 @@ function read_config(){
 	down_timeout=`get_config down_timeout` && if [ -z "$down_timeout" ] ; then down_timeout="10";fi
 	err_enable=`get_config err_enable`
 	network_err_event=`get_config network_err_event`
-	err_device_aliases=`get_config err_device_aliases | sed 's/ /\n/g' 2>/dev/null`
+	err_device_aliases=`get_config err_device_aliases | sed 's/ /\n/g'` 2>/dev/null
 	err_sheep_enable=`get_config err_sheep_enable`
 	system_time_event=`get_config system_time_event`
 	autoreboot_time=`get_config autoreboot_time`
 	network_restart_time=`get_config network_restart_time`
-	wlan_interface=`iw dev | grep Interface | awk '{print $2}'`
+	wlan_interface=`iw dev | grep Interface | awk '{print $2}'` 2>/dev/null
 	public_ip_event=`get_config public_ip_event`
 	public_ip_retry_count=`get_config public_ip_retry_count`
 	wrtbwmon_version=`opkg list-installed |grep -w ^wrtbwmon|awk  '{print $3}'`
@@ -130,7 +130,7 @@ fi
 
 # 查询 mac 地址
 function getmac(){
-	if [ -z "$ip_mac" ] ; then local ip_mac=`cat /var/dhcp.leases | grep -w $1 |awk '{print $2}' | grep -v "^$" | sort -u`;fi
+	if [ -z "$ip_mac" ] ; then local ip_mac=`cat /var/dhcp.leases | grep -w $1 |awk '{print $2}' | grep -v "^$" | sort -u` 2>/dev/null;fi
 	if [ -f "${dir}ipAddress" ] ; then local ip_mac=`cat ${dir}ipAddress | grep -w $1 |awk '{print $2}' | grep -v "^$" | sort -u`;fi
 	if [ -f "${dir}tmp_downlist" ] && [ -z "$ip_mac" ] ; then local ip_mac=`cat ${dir}tmp_downlist | grep -w $1 |awk '{print $2}' | grep -v "^$" | sort -u`;fi
 	if ( echo "$ip_mac" | grep -q "unknown" ) || [ -z "$ip_mac" ] ; then local ip_mac=`cat /proc/net/arp | grep "0x2\|0x6" | grep -w $1 | awk '{print $4}' | grep -v "^$" | sort -u`;fi
@@ -141,10 +141,10 @@ function getmac(){
 # 查询主机名
 function getname(){
 	local ip_name=`echo "$device_aliases" | grep -i $2 |awk '{print $2}' | grep -v "^$" | sort -u`
-	if [ -z "$ip_name" ] ; then local ip_name=`cat /var/dhcp.leases | grep -w $1 |awk '{print $4}' | grep -v "^$" | sort -u`;fi
+	if [ -z "$ip_name" ] ; then local ip_name=`cat /var/dhcp.leases | grep -w $1 |awk '{print $4}' | grep -v "^$" | sort -u` 2>/dev/null;fi
 	if [ -z "$ip_name" ] && [ -f "${dir}ipAddress" ] ; then local ip_name=`cat ${dir}ipAddress | grep -w $1 |awk '{print $3}' | grep -v "^$" | sort -u`;fi
 	if [ -z "$ip_name" ] && [ -f "${dir}tmp_downlist" ] ; then local ip_name=`cat ${dir}tmp_downlist | grep -w $1 |awk '{print $3}' | grep -v "^$" | sort -u`;fi
-	if ( echo "$ip_name" | grep -q "unknown" ) || [ -z "$ip_name" ] ; then local ip_name=$(uci get dhcp.`uci show dhcp | grep -i ^dhcp.@host.*mac=.$2 | sed -nr 's#^dhcp.(.*).mac.*#\1#gp'`.name 2>/dev/null);fi
+	if ( echo "$ip_name" | grep -q "unknown" ) || [ -z "$ip_name" ] ; then local ip_name=$(uci get dhcp.`uci show dhcp | grep -i ^dhcp.@host.*mac=.$2 | sed -nr 's#^dhcp.(.*).mac.*#\1#gp'`.name) 2>/dev/null;fi
 	if [ -z "$ip_name" ] ; then local ip_name="unknown";fi
 	echo "$ip_name"
 }
@@ -155,7 +155,7 @@ function getinterface(){
 	if [ -f "${dir}tmp_downlist" ] && [ -z "$ip_interface" ] ; then local ip_interface=`cat ${dir}tmp_downlist | grep -w $1 |awk '{print $5}' | grep -v "^$" | sort -u`;fi
 	if [ ! -z "$wlan_interface" ] ; then
 		for interface in $wlan_interface; do
-			if [ -z "$ip_interface" ] ; then local ip_interface=`iw dev $interface station dump | grep Station | grep -i -w $1 | sed -nr 's#^.*on (.*))#\1#gp' 2>/dev/null`;fi
+			if [ -z "$ip_interface" ] ; then local ip_interface=`iw dev $interface station dump | grep Station | grep -i -w $1 | sed -nr 's#^.*on (.*))#\1#gp'` 2>/dev/null;fi
 		done
 	fi
 	if [ -z "$ip_interface" ] ; then local ip_interface=`cat /proc/net/arp | grep "0x2" | grep -i -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u`;fi
@@ -172,7 +172,8 @@ function getcpu(){
 
 # 获取SOC温度 （取所有传感器温度最大值）
 function soc_temp(){
-	cat /sys/class/thermal/thermal_zone*/temp | sort | sed '$!d' | cut -c-2 2>/dev/null
+	local soc_temp=`cat /sys/class/thermal/thermal_zone*/temp | sort | sed '$!d' | cut -c-2` 2>/dev/null
+	echo "$soc_temp"
 }
 
 # 流量数据
@@ -194,7 +195,7 @@ if [ "$1" ] ; then
 		fi
 	# 读取数据
 	elif [ $1 = "get" ] ;then
-		if [ "$2" ] ; then local ip_total=`cat ${dir}usage.db | grep -w $2 | sed 's/,/ /g' | awk '{print $6}' 2>/dev/null`;fi
+		if [ "$2" ] ; then local ip_total=`cat ${dir}usage.db | grep -w $2 | sed 's/,/ /g' | awk '{print $6}'` 2>/dev/null;fi
 		if [ -z "$ip_total" ] ; then local ip_total="0";fi
 		echo `bytes_for_humans $ip_total`
 	# 剔除ip
@@ -247,6 +248,15 @@ function time_for_humans {
 	else
 		echo 0 秒
     fi
+}
+
+# 计算字符真实长度
+function length_str {
+if [ "$1" ] ;then
+	local length_zh=`echo "$1" | awk '{print gensub(/[\u4e00-\u9fa5]/,"","g",$0)}' | awk -F "" '{print NF}'`
+	local length_en=`echo "$1" | awk '{print gensub(/[^\u4e00-\u9fa5]/,"","g",$0)}' | awk -F "" '{print NF}'`
+	echo `expr $length_zh / 3 \* 2 + $length_en`
+fi
 }
 
 # 在线设备列表
@@ -414,7 +424,7 @@ if [ "$1" ] ;then
 		echo 1	
 	# 如果 “仅关注接口选项打开” 
 	elif [ ! -z "$serverchan_interface" ] ; then
-		local ip=`iw dev $serverchan_interface station dump | grep -i -w $1 | grep Station | grep -v "^$" 2>/dev/null`
+		local ip=`iw dev $serverchan_interface station dump | grep -i -w $1 | grep Station | grep -v "^$"` 2>/dev/null
 		if [ -z "$ip" ];then local ip=`getinterface $1 | grep -i -w $serverchan_interface | grep -v "^$"`;fi
 		if [ ! -z "$ip" ];then
 			echo 1
@@ -451,14 +461,14 @@ if [ ! -z "$err_device_aliases" ] && [ -f ${dir}ipAddress ] ; then
 	if [ ! -z "$sheep_starttime" ] && [ "$((`date +%s`-$sheep_starttime))" -ge "3600" ] ; then
 		> ${dir}sheep_usage
 		local MACLIST=$( echo "$err_device_aliases" | grep -v "^$" | sort -u )
-		if [ -z "$total_n" ] ; then total_n=`cat ${dir}usage.db 2>/dev/null | head -n1 | grep "total" | sed 's/,/\n/g' | awk '/total/{print NR}'`;fi
+		if [ -z "$total_n" ] ; then total_n=`cat ${dir}usage.db | head -n1 | grep "total" | sed 's/,/\n/g' | awk '/total/{print NR}'` 2>/dev/null;fi
 		if [ -z "$total_n" ] ; then total_n="6";fi
 		for mac in $MACLIST; do
-			if [ ! -z "$mac" ] ; then local tmptotal=`cat ${dir}usage.db 2>/dev/null | sed 's/,/ /g' | grep -i $mac | awk "{print "'$'$total_n"}" | grep -v "^$" | sort -u`;fi
+			if [ ! -z "$mac" ] ; then local tmptotal=`cat ${dir}usage.db | sed 's/,/ /g' | grep -i $mac | awk "{print "'$'$total_n"}" | grep -v "^$" | sort -u` 2>/dev/null;fi
 			if [ ! -z "$tmptotal" ] ; then awk 'BEGIN{printf "%.0f\n",'$tmptotal'/'20480'}' 2>/dev/null >> ${dir}sheep_usage;fi
 		done
-		old_sheep_usage=`cat ${dir}old_sheep_usage 2>/dev/null`
-		sheep_usage=`cat ${dir}sheep_usage 2>/dev/null`
+		old_sheep_usage=`cat ${dir}old_sheep_usage` 2>/dev/null
+		sheep_usage=`cat ${dir}sheep_usage` 2>/dev/null
 		if [ "$old_sheep_usage" == "$sheep_usage" ] ; then
 			if [ -z "$sheep_nousage_starttime" ] ;then sheep_nousage_starttime=`date +%s`;fi
 		else
@@ -732,12 +742,12 @@ if [ "$1" ] ;then
 	# 如果 ipAddress 文件中存在此ip，则跳过，待断线检测
 	local ip=`cat ${dir}ipAddress | grep -w $1`
 	if [ -z "$ip" ] ; then
-		local ip_ms=`arping -I $( cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 10 -f -w 1 $1 2>/dev/null`
+		local ip_ms=`arping -I $( cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 10 -f -w 1 $1` 2>/dev/null
 		if ( ! echo ${ip_ms} | grep -q ms );then
-			local ip_ms=`ping -c 10 -w 1 $1 | grep -v '100% packet loss' 2>/dev/null`
+			local ip_ms=`ping -c 10 -w 1 $1 | grep -v '100% packet loss'` 2>/dev/null
 			if ( ! echo ${ip_ms} | grep -q ms );then
 				enable_detection 1
-				local ip_ms=`arping -I $( cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 10 -f -w $up_timeout $1 2>/dev/null`
+				local ip_ms=`arping -I $( cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 10 -f -w $up_timeout $1` 2>/dev/null
 			fi
 		fi
 		# 如果连接成功
@@ -794,13 +804,13 @@ if [ "$1" ] ;then
 	local ip_mac=`getmac $1`
 	local ip_name=`getname $1 ${ip_mac}`
 	local ip_interface=`getinterface ${ip_mac}`
-	local wlan_online=`iw dev ${ip_interface} station dump | grep -i -w ${ip_mac} | grep Station 2>/dev/null`
-	local ip_ms=`arping -I $( cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 20 -f -w 2 $1 2>/dev/null`
+	local wlan_online=`iw dev ${ip_interface} station dump | grep -i -w ${ip_mac} | grep Station` 2>/dev/null
+	local ip_ms=`arping -I $( cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 20 -f -w 2 $1` 2>/dev/null
 	if [ -z "$wlan_online" ] && ( ! echo ${ip_ms} | grep -q ms );then
-		local ip_ms=`ping -c 5 -w 3 $1 | grep -v '100% packet loss' 2>/dev/null`
+		local ip_ms=`ping -c 5 -w 3 $1 | grep -v '100% packet loss'` 2>/dev/null
 		if ( ! echo ${ip_ms} | grep -q ms );then
 			enable_detection 1
-			local ip_ms=`arping -I $( cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 20 -f -w $down_timeout $1 2>/dev/null`
+			local ip_ms=`arping -I $( cat /proc/net/arp | grep -w $1 | awk  '{print $6}' | grep -v "^$" | sort -u ) -c 20 -f -w $down_timeout $1` 2>/dev/null
 		fi
 	fi
 	# 如果连接成功
@@ -862,7 +872,9 @@ function current_device(){
 		local ip_total=`usage get ${ip}`
 		local ip_mac=`getmac ${ip}`
 		local ip_name=`getname ${ip} ${ip_mac}`
-		if [ "${#ip_name}" -gt "18" ] ; then local ip_name=`echo ${ip_name:0:18}"*"`;fi
+		if [ `length_str "$ip_name"` -gt "15" ] ; then
+			local ip_name=`echo ${ip_name:0:15}"*"`
+		fi
 		if [ "${#ip}" -lt "15" ] ; then 
 			n=`expr 15 - ${#ip}`
 			for i in `seq 1 $n` 
@@ -872,7 +884,7 @@ function current_device(){
 			unset i n
 		fi
 		if [ ! -z "$ip_total" ] ; then	
-			n=`expr 10 - ${#ip_total}`
+			n=`expr 11 - ${#ip_total}`
 			for i in `seq 1 $n` 
 			do
 				local ip_total="${ip_total}${markdown_space}"
@@ -890,7 +902,7 @@ function cpu_load(){
 	if [ ! -z "$cpuload_enable" ] && [ "$cpuload_enable" -eq "1" ] ; then
 		if [ -z "$cpuload_time" ] ; then cpuload_time=`date +%s`;fi
 		if [ ! -z "$debuglevel" ] && [ "$debuglevel" -ne "1" ] ; then echo "`date "+%Y-%m-%d %H:%M:%S"` 【负载】正在检测 CPU 负载" >> ${logfile};fi
-		local cpu_fuzai=`cat /proc/loadavg | awk '{print $1}' 2>/dev/null`
+		local cpu_fuzai=`cat /proc/loadavg | awk '{print $1}'` 2>/dev/null
 		local cpuload=`get_config cpuload`
 		if [ ! -z "$cpu_fuzai" ] && [ ! -z "$cpuload" ] && [ `expr $cpu_fuzai \> $cpuload` -eq "1" ] ; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！警报！！】 CPU 负载过高: ${cpu_fuzai}" >> ${logfile}
@@ -1034,7 +1046,7 @@ function send(){
 			local time1=`time_for_humans ${time1}`
 			local ip_mac=`getmac ${ip}`
 			local ip_name=`getname ${ip} ${ip_mac}`
-			if [ "${#ip_name}" -gt  "20" ] ; then local ip_name=`echo ${ip_name:0:20}"*"`;fi
+			if [ `length_str "$ip_name"` -gt  "20" ] ; then local ip_name=`echo ${ip_name:0:20}"*"`;fi
 			local send_content="${send_content}${markdown_linefeed}${markdown_tab}【${ip_name}】  ${ip}${markdown_linefeed}${markdown_tab}${ip_total}在线 ${time1}"
 		done
 	fi
