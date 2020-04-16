@@ -38,14 +38,8 @@ device_name.description = translate("在推送信息标题中会标识本设备�
 sleeptime=s:taboption("tab_basic", Value,"sleeptime",translate('检测时间间隔'))
 sleeptime.default = "60"
 sleeptime.description = translate("越短的时间时间响应越及时，但会占用更多的系统资源")
-
-debuglevel=s:taboption("tab_basic", ListValue,"debuglevel",translate("日志调试等级"))
-debuglevel:value("",translate("关闭"))
-debuglevel:value("1",translate("简单"))
-debuglevel:value("2",translate("调试"))
-debuglevel.rmempty = true 
-debuglevel.optional = true
-
+a=s:taboption("tab_basic", Flag,"debuglevel",translate("开启日志"))
+a.rmempty=true
 device_aliases= s:taboption("tab_basic", DynamicList, "device_aliases", translate("设备别名"))
 device_aliases.rmempty = true 
 device_aliases.optional = true
@@ -175,18 +169,22 @@ title.optional = true
 title.description = translate("<br/>使用特殊符号可能会造成发送失败")
 
 router_status=s:taboption("tab_basic3", Flag,"router_status",translate("系统运行情况"))
+router_status.default="1"
 router_status:depends("send_mode","1")
 router_status:depends("send_mode","2")
 
 router_temp=s:taboption("tab_basic3", Flag,"router_temp",translate("设备温度"))
+router_temp.default="1"
 router_temp:depends("send_mode","1")
 router_temp:depends("send_mode","2")
  
 router_wan=s:taboption("tab_basic3", Flag,"router_wan",translate("WAN信息"))
+router_wan.default="1"
 router_wan:depends("send_mode","1")
 router_wan:depends("send_mode","2")
 
 client_list=s:taboption("tab_basic3", Flag,"client_list",translate("客户端列表"))
+client_list.default="1"
 client_list:depends("send_mode","1")
 client_list:depends("send_mode","2") 
 
@@ -265,7 +263,9 @@ a=s:taboption("tab_basic5", Value,"down_timeout",translate('设备离线检测�
 a.default = "5"
 a.datatype="uinteger"
 a.description = translate("如果遇到设备 wifi 休眠，频繁推送离线，可以把超时时间设置长一些")
-
+a=s:taboption("tab_basic5", Value,"thread_num",translate('最大并发进程数'))
+a.default = "3"
+a.datatype="uinteger"
 a=s:taboption("tab_basic5", Value, "soc_code", "自定义温度读取命令")
 a.rmempty = true 
 a:value("",translate("默认"))
@@ -344,7 +344,6 @@ a:depends({public_ip_event="1"})
 local logfile = "/tmp/serverchan/serverchan.log" 
 e=s:taboption("log",TextValue,"log")
 e:depends({debuglevel="1"})
-e:depends({debuglevel="2"})
 e.rows=26
 e.wrap="off"
 e.readonly=true
@@ -356,7 +355,6 @@ end
 
 e=s:taboption("log", Button,translate(""))
 e:depends({debuglevel="1"})
-e:depends({debuglevel="2"})
 e.inputtitle=translate("清理日志")
 e.inputstyle = "clean_log"
 function e.write(self, section)
