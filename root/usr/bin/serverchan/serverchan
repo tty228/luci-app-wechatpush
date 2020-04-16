@@ -535,7 +535,7 @@ function up(){
 			local ip_name=`getname $1 ${ip_mac}`
 			blackwhitelist ${ip_mac};local ip_blackwhite=$?
 			echo "$1 ${ip_mac} ${ip_name} `date +%s` ${ip_interface}" >> ${dir}ipAddress
-			[ -f "${dir}send_enable.lock" ] || [ -z "$serverchan_up" ] || [ "$serverchan_up" -ne "1" ] || [ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne 0 ] && return
+			[ -f "${dir}send_enable.lock" ] || [ -z "$serverchan_up" ] || [ "$serverchan_up" -ne "1" ] || [ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne 0 ] && LockFile unlock && return
 			[ -f "${dir}title" ] && local title=`cat ${dir}title`
 			[ -f "${dir}content" ] && local content=`cat ${dir}content`	
 			if [ -z "$title" ]; then
@@ -553,8 +553,8 @@ function up(){
 			[ ! -z "$title" ] && echo "$title" >${dir}title
 			[ ! -z "$content" ] && echo -n "$content" >>${dir}content
 		fi
-		LockFile unlock
 	fi
+	LockFile unlock
 }
 
 # 检测设备离线
