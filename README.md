@@ -39,5 +39,6 @@
 
 # Donate
 如果你觉得此项目对你有帮助，请捐助我们，以使项目能持续发展，更加完善。
+
 ![image](https://github.com/tty228/Python-100-Days/blob/master/res/WX.jpg)
 
