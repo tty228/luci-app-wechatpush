@@ -86,9 +86,9 @@ function getip(){
 # 查询 mac 地址
 function getmac(){
 	#( echo "$tmp_mac"|grep -q "unknown" ) && unset tmp_mac # 为unknown时重新读取
-	[ -f "/var/dhcp.leases" ] && [ -z "$tmp_mac" ] && local tmp_mac=`cat /var/dhcp.leases|grep -w ${1}|awk '{print $2}'|grep -v "^$"|sort -u`
 	[ -f "${dir}ipAddress" ] && [ -z "$tmp_mac" ] && local tmp_mac=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $2}'|grep -v "^$"|sort -u`
 	[ -f "${dir}tmp_downlist" ] && [ -z "$tmp_mac" ] && local tmp_mac=`cat ${dir}tmp_downlist|grep -w ${1}|awk '{print $2}'|grep -v "^$"|sort -u`
+	[ -f "/var/dhcp.leases" ] && [ -z "$tmp_mac" ] && local tmp_mac=`cat /var/dhcp.leases|grep -w ${1}|awk '{print $2}'|grep -v "^$"|sort -u`
 	[ -z "$tmp_mac" ] && local tmp_mac=`cat /proc/net/arp|grep "0x2\|0x6"|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u`
 	[ -z "$tmp_mac" ] && local tmp_mac="unknown"
 	echo "$tmp_mac"
@@ -100,7 +100,8 @@ function getname(){
 	[ -f "${dir}ipAddress" ] && [ -z "$tmp_name" ] && local tmp_name=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $3}'|grep -v "^$"|sort -u`
 	[ -f "${dir}tmp_downlist" ] && [ -z "$tmp_name" ] && local tmp_name=`cat ${dir}tmp_downlist|grep -w ${1}|awk '{print $3}'|grep -v "^$"|sort -u`
 	[ -z "$tmp_name" ] && local tmp_name=`echo "$device_aliases"|grep -i $2|awk '{print $2}'|grep -v "^$"|sort -u`
-	[ -z "$tmp_name" ] && dhcp_config=`uci show dhcp|grep "ip\|mac\|name"`
+	[ ! -z "$tmp_name" ] && echo "$tmp_name" && return
+	[ -z "$dhcp_config" ] && dhcp_config=`uci show dhcp|grep "ip\|mac\|name"`
 	for dhcp_config_str in "host" "domain"; do
 		local dhcp_ip_n=`echo "$dhcp_config"|grep -w ^dhcp.@${dhcp_config_str}.*ip=.${1}|sed -nr 's#^dhcp.(.*).ip.*#\1#gp'` 2>/dev/null
 		[ ! -z "$dhcp_ip_n" ] && [ -z "$tmp_name" ] && local tmp_name=`uci get dhcp.${dhcp_ip_n}.name` 2>/dev/null
@@ -117,7 +118,7 @@ function getname(){
 function getinterface(){
 	[ -f "${dir}ipAddress" ] && local ip_interface=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $5}'|grep -v "^$"|sort -u`
 	[ -f "${dir}tmp_downlist" ] && [ -z "$ip_interface" ] && local ip_interface=`cat ${dir}tmp_downlist|grep -w ${1}|awk '{print $5}'|grep -v "^$"|sort -u`
-	if [ ! -z "$wlan_interface" ]; then
+	if [ -z "$ip_interface" ] && [ ! -z "$wlan_interface" ]; then
 		for interface in $wlan_interface; do
 			local ip_interface=`iw dev $interface station dump 2>/dev/null|grep Station|grep -i -w ${1}|sed -nr 's#^.*on (.*))#\1#gp'` >/dev/null 2>&1
 			[ ! -z "$ip_interface" ] && echo "$ip_interface" && return
@@ -578,7 +579,7 @@ function down(){
 	if [ -z "$wlan_down" ] && [ "$ping_online" -eq "1" ]; then
 		LockFile lock
 		usage down $1
-		[ ! -f "${dir}send_enable.lock" ] && echo "$1 ${ip_mac} `getname $1 ${ip_mac}` `cat ${dir}ipAddress|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u` ${ip_interface}" >> ${dir}tmp_downlist
+		[ ! -f "${dir}send_enable.lock" ] && cat ${dir}ipAddress|grep -w ${1}|grep -v "^$"|sort -u >> ${dir}tmp_downlist
 		sed -i "/$1/d" ${dir}ipAddress	
 		LockFile unlock
 	fi
