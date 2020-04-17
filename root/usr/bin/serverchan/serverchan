@@ -26,7 +26,7 @@ function read_config(){
 	[ -z "$down_timeout" ] || [ "$down_timeout" -eq "0" ] && down_timeout="20";down_timeout=`expr ${down_timeout} / 2 + 1`
 	[ -z "$timeout_retry_count" ] || [ "$timeout_retry_count" -eq "0" ] && timeout_retry_count="1"
 	markdown_linefeed="%0D%0A%0D%0A" && markdown_tab="     " && markdown_space=" "
-	[ ! -z "$send_tg" ] && [ "$send_tg" -eq "1" ] && markdown_linefeed="%0D%0A%0D%0A" && markdown_tab="" && markdown_space=" "
+	[ ! -z "$send_tg" ] && [ "$send_tg" -eq "1" ] && markdown_tab=""
 	enable_detection
 }
 
@@ -718,8 +718,8 @@ function send(){
 		local systemstatustime=`cat /proc/uptime|awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("运行时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}'`;unset run_days run_hour run_minute run_second
 		local send_content="${send_content}${markdown_linefeed}---${markdown_linefeed}#### 系统运行状态"
 		local send_content="${send_content}${markdown_linefeed}${markdown_tab}平均负载：${systemload}"
-		local send_content="${send_content}${markdown_linefeed}${markdown_tab}CPU占用：${cpuload}"
-		local send_content="${send_content}${markdown_linefeed}${markdown_tab}内存占用：${ramload}"
+		local send_content="${send_content}${markdown_linefeed}${markdown_tab}CPU占用：${cpuload}25"
+		local send_content="${send_content}${markdown_linefeed}${markdown_tab}内存占用：${ramload}25"
 		local send_content="${send_content}${markdown_linefeed}${markdown_tab}${systemstatustime}"
 	fi
 
@@ -760,7 +760,7 @@ function send(){
 	[ -z "$send_content" ] && local send_content="${markdown_linefeed}---${markdown_linefeed}#### 我遇到了一个难题${markdown_linefeed}${markdown_tab}定时发送选项错误，你没有选择需要发送的项目，该怎么办呢${markdown_linefeed}---${markdown_linefeed}"
 	local nowtime=`date "+%Y-%m-%d %H:%M:%S"`
 	[ "$send_disturb" -eq "0" ] && [ -z "$send_tg" ] && curl -s "http://sc.ftqq.com/$sckey.send?text=${send_title}" -d "&desp=${nowtime}${markdown_linefeed}${send_content}" >/dev/null
-	[ "$send_disturb" -eq "0" ] && [ ! -z "$send_tg" ] && [ "$send_tg" -eq "1" ] && curl -d "text=${send_title}${markdown_linefeed}${nowtime}${markdown_linefeed}${send_content}" -X POST "${tgtoken}" >/dev/null
+	[ "$send_disturb" -eq "0" ] && [ ! -z "$send_tg" ] && [ "$send_tg" -eq "1" ] && curl -d "text=${send_title}${markdown_linefeed}${nowtime}${send_content}" -X POST "${tgtoken}" >/dev/null
 	deltemp
 	echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}定时推送任务完成" >> ${logfile}
 }
