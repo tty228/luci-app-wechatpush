@@ -128,9 +128,9 @@ function getinterface(){
 
 # ping
 function getping(){
-	for i in `seq 1 ${timeout_retry_count}`; do
-		( ! echo "$ip_ms"|grep -q "ms" ) && local ip_ms=$( arping -I `cat /proc/net/arp|grep -w ${1}|awk '{print $6}'|grep -v "^$"|sort -u` -c 20 -f -w ${down_timeout} $1 ) 2>/dev/null
-		( ! echo "$ip_ms"|grep -q "ms" ) && local ip_ms=`ping -c 5 -w ${down_timeout} ${1}|grep -v '100% packet loss'` 2>/dev/null
+	for i in `seq 1 ${3}`; do
+		( ! echo "$ip_ms"|grep -q "ms" ) && local ip_ms=$( arping -I `cat /proc/net/arp|grep -w ${1}|awk '{print $6}'|grep -v "^$"|sort -u` -c 20 -f -w ${2} $1 ) 2>/dev/null
+		( ! echo "$ip_ms"|grep -q "ms" ) && local ip_ms=`ping -c 5 -w ${2} ${1}|grep -v '100% packet loss'` 2>/dev/null
 		( ! echo "$ip_ms"|grep -q "ms" ) && sleep 1
 	done
 	( echo "$ip_ms"|grep -q "ms" )
@@ -532,7 +532,7 @@ function up(){
 	local ip_mac=`getmac $1`
 	local ip_interface=`getinterface ${ip_mac}`
 	[ "$iw_version" ] && local wlan_online=`iw dev ${ip_interface} station dump|grep -i -w ${ip_mac}|grep Station` >/dev/null 2>&1
-	getping ${1};local ping_online=$?
+	getping ${1} ${up_timeout} "1";local ping_online=$?
 	if [ ! -z "$wlan_online" ] || [ "$ping_online" -eq "0" ]; then
 		LockFile lock
 		[ -f "${dir}tmp_downlist" ] && local tmp_downip=`cat ${dir}tmp_downlist|grep -w ${1}|awk '{print $2}'|grep -v "^$"|sort -u`
@@ -571,7 +571,7 @@ function down(){
 	local ip_mac=`getmac $1`
 	local ip_interface=`getinterface ${ip_mac}`
 	[ "$iw_version" ] && local wlan_online=`iw dev ${ip_interface} station dump|grep -i -w ${ip_mac}|grep Station` >/dev/null 2>&1
-	getping ${1};local ping_online=$?
+	getping ${1} ${down_timeout} ${timeout_retry_count};local ping_online=$?
 	if [ -z "$wlan_online" ] && [ "$ping_online" -eq "1" ]; then
 		LockFile lock
 		usage down $1
