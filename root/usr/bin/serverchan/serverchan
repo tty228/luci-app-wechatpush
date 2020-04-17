@@ -24,7 +24,7 @@ function read_config(){
 	[ "$iw_version" ] && wlan_interface=`iw dev|grep Interface|awk '{print $2}'` >/dev/null 2>&1
 	[ -z "$up_timeout" ] || [ "$up_timeout" -eq "0" ] && up_timeout="2"
 	[ -z "$down_timeout" ] || [ "$down_timeout" -eq "0" ] && down_timeout="20";down_timeout=`expr ${down_timeout} / 2 + 1`
-	[ -z "$timeout_retry_count" ] || [ "$timeout_retry_count" -eq "0" ] && timeout_retry_count="1"
+	[ -z "$timeout_retry_count" ] && timeout_retry_count="2";[ "$timeout_retry_count" -eq "0" ] && timeout_retry_count="1"
 	markdown_splitline="%0D%0A%0D%0A---%0D%0A%0D%0A";markdown_linefeed="%0D%0A%0D%0A";markdown_tab="     ";markdown_space=" "
 	[ ! -z "$send_tg" ] && [ "$send_tg" -eq "1" ] && markdown_splitline="%0D%0A%0D%0A%0D%0A%0D%0A" && markdown_tab=""
 	enable_detection
@@ -40,10 +40,11 @@ function serverchan_init(){
 	deltemp
 	rm -f ${dir}fd1 ${dir}sheep_usage ${dir}old_sheep_usage /usr/bin/serverchan/errlog >/dev/null 2>&1
 	[ ! -f "/usr/sbin/wrtbwmon" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】未安装 wrtbwmon ，流量统计不可用" >> ${logfile}
-	for read_str in "serverchan_enable" "sckey" "ip_version" "cu_version"; do
-		[ -z `eval echo '$'$read_str` ] && return 1
+	for read_str in "ip_version" "cu_version"; do
+		[ -z `eval echo '$'$read_str` ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】依赖项未安装" >> ${logfile} && return 1
 	done
-	[ "${#sckey}" -gt "50" ]
+	[ -z "$sckey" ] && [ -z "$tgtoken" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】请填写正确的 sckey " >> ${logfile} && return 1
+	return 0
 }
 
 # 清理临时文件
@@ -498,7 +499,7 @@ function ip_changes(){
 			echo IPv4 $IPv4 > ${dir}ip && echo -e IPv6 $last_IPv6 >> ${dir}ip
 			title="IP 地址变化"
 			content="${content}${markdown_splitline}####IP 地址变化${markdown_linefeed}${markdown_tab}当前 IP：${IPv4}"
-		elif [ -z "$IPv4" ]; then
+		elif [ ! -z "$serverchan_ipv4" ] && [ "$serverchan_ipv4" -ne "0" ] && [ -z "$IPv4" ]; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】获取 IPv4 地址失败" >> ${logfile}
 		fi
 		
@@ -508,7 +509,7 @@ function ip_changes(){
 			[ -z "$title" ] && title="IPv6 地址变化"
 			[ ! -z "$title" ] && title="IP 地址变化"
 			content="${content}${markdown_splitline}####IPv6 地址变化${markdown_linefeed}${markdown_tab}当前 IPv6：${IPv6}"				
-		elif [ ! -z "$IPv6" ]; then
+		elif [ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -ne "0" ] && [ -z "$IPv6" ]; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】获取 IPv6 地址失败" >> ${logfile}
 		fi
 		
