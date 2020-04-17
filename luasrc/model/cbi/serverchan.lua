@@ -281,7 +281,6 @@ a.write = function()
 	luci.sys.call("/usr/bin/serverchan/serverchan soc")
 	luci.http.redirect(luci.dispatcher.build_url("admin","services","serverchan"))
 end
-
 if nixio.fs.access("/tmp/serverchan/soc_tmp") then
 e=s:taboption("tab_basic5",TextValue,"soc_tmp")
 e.rows=2
@@ -290,6 +289,16 @@ e.cfgvalue = function()
 	return luci.sys.exec("cat /tmp/serverchan/soc_tmp && rm -f /tmp/serverchan/soc_tmp")
 end
 end
+
+a=s:taboption("tab_basic5", ListValue,"send_tg",translate("推送模式"))
+a.default=""
+a:value("",translate("微信"))
+a:value("1",translate("Telegram"))
+a=s:taboption("tab_basic5", Value, "tgtoken", translate("tg推送链接"))
+a:depends("send_tg","1")
+a.placeholder="https://tgbot.lbyczf.com/sendMessage/:Token"
+a.optional = true
+
 a=s:taboption("tab_basic5", Flag,"err_enable",translate("无人值守任务"))
 a.default=0
 a.rmempty=true
