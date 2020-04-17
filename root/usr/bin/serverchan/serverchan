@@ -13,7 +13,7 @@ function get_config(){
 
 # 初始化设置信息
 function read_config(){
-	get_config "serverchan_enable" "sckey" "serverchan_ipv4" "ipv4_interface" "ipv4_URL" "serverchan_ipv6" "ipv6_interface" "ipv6_URL" "serverchan_up" "serverchan_down" "serverchan_sheep" "serverchan_whitelist" "serverchan_blacklist" "serverchan_interface" "starttime" "endtime" "cpuload_enable" "cpuload" "temperature_enable" "temperature" "device_name" "err_enable" "network_err_event" "err_sheep_enable" "system_time_event" "autoreboot_time" "network_restart_time" "public_ip_event" "public_ip_retry_count" "soc_code" "sleeptime" "up_timeout" "down_timeout" "device_aliases" "debuglevel" "cpuload" "temperature" "send_mode" "regular_time" "regular_time_2" "regular_time_3" "interval_time" "thread_num"
+	get_config "serverchan_enable" "sckey" "serverchan_ipv4" "ipv4_interface" "ipv4_URL" "serverchan_ipv6" "ipv6_interface" "ipv6_URL" "serverchan_up" "serverchan_down" "serverchan_sheep" "serverchan_whitelist" "serverchan_blacklist" "serverchan_interface" "starttime" "endtime" "cpuload_enable" "cpuload" "temperature_enable" "temperature" "device_name" "err_enable" "network_err_event" "err_sheep_enable" "system_time_event" "autoreboot_time" "network_restart_time" "public_ip_event" "public_ip_retry_count" "soc_code" "sleeptime" "up_timeout" "down_timeout" "device_aliases" "debuglevel" "cpuload" "temperature" "send_mode" "regular_time" "regular_time_2" "regular_time_3" "interval_time" "thread_num" "timeout_retry_count"
 	for str_version in "wrtbwmon" "iputils-arping" "curl" "iw"; do
 		eval `echo ${str_version:0:2}"_version"`=`opkg list-installed|grep -w ^${str_version}|awk '{print $3}'` 2>/dev/null
 	done
@@ -22,6 +22,9 @@ function read_config(){
 	device_aliases=`echo "$device_aliases"|sed 's/ /\n/g'|sed 's/-/ /g'` 2>/dev/null
 	err_device_aliases=`echo "$err_device_aliases"|sed 's/ /\n/g'` 2>/dev/null
 	[ "$iw_version" ] && wlan_interface=`iw dev|grep Interface|awk '{print $2}'` >/dev/null 2>&1
+	[ -z "$up_timeout" ] && up_timeout="2"
+	[ -z "$down_timeout" ] && down_timeout="10";down_timeout=`expr ${down_timeout} / 2 + 1`
+	[ -z "$timeout_retry_count" ] && timeout_retry_count="1";
 	markdown_linefeed="%0D%0A%0D%0A" && markdown_tab="     " && markdown_space=" "
 	enable_detection
 }
@@ -121,6 +124,16 @@ function getinterface(){
 	fi
 	[ -z "$ip_interface" ] && local ip_interface=`cat /proc/net/arp|grep "0x2\|0x6"|grep -i -w ${1}|awk '{print $6}'|grep -v "^$"|sort -u`
 	echo "$ip_interface"
+}
+
+# ping
+function getping(){
+	for i in `seq 1 ${timeout_retry_count}`; do
+		( ! echo "$ip_ms"|grep -q "ms" ) && local ip_ms=$( arping -I `cat /proc/net/arp|grep -w ${1}|awk '{print $6}'|grep -v "^$"|sort -u` -c 20 -f -w ${down_timeout} $1 ) 2>/dev/null
+		( ! echo "$ip_ms"|grep -q "ms" ) && local ip_ms=`ping -c 5 -w ${down_timeout} ${1}|grep -v '100% packet loss'` 2>/dev/null
+		( ! echo "$ip_ms"|grep -q "ms" ) && sleep 1
+	done
+	( echo "$ip_ms"|grep -q "ms" )
 }
 
 # CPU 占用率
@@ -515,14 +528,12 @@ function ip_changes(){
 
 # 检测设备上线
 function up(){
-	local ip=`cat ${dir}ipAddress|grep -w $1`;[ "$ip" ] && return
+	( cat ${dir}ipAddress|grep -q -w $1 ) && return
 	local ip_mac=`getmac $1`
 	local ip_interface=`getinterface ${ip_mac}`
 	[ "$iw_version" ] && local wlan_online=`iw dev ${ip_interface} station dump|grep -i -w ${ip_mac}|grep Station` >/dev/null 2>&1
-	[ -z "$wlan_online" ] && local ip_ms=$( arping -I `cat /proc/net/arp|grep -w ${1}|awk '{print $6}'|grep -v "^$"|sort -u` -c 10 -f -w 1 ${1} ) 2>/dev/null || local ip_ms="ms"
-	( ! echo "$ip_ms"|grep -q "ms" ) && local ip_ms=`ping -c 10 -w 1 ${1}|grep -v '100% packet loss'` 2>/dev/null
-	( ! echo "$ip_ms"|grep -q "ms" ) && local ip_ms=$( arping -I `cat /proc/net/arp|grep -w ${1}|awk '{print $6}'|grep -v "^$"|sort -u` -c 10 -f -w ${up_timeout} ${1} ) 2>/dev/null
-	if ( echo "$ip_ms"|grep -q "ms" ); then
+	getping ${1};local ping_online=$?
+	if [ ! -z "$wlan_online" ] || [ "$ping_online" -eq "0" ]; then
 		LockFile lock
 		[ -f "${dir}tmp_downlist" ] && local tmp_downip=`cat ${dir}tmp_downlist|grep -w ${1}|awk '{print $2}'|grep -v "^$"|sort -u`
 		if [ ! -z "$tmp_downip" ]; then
@@ -560,11 +571,8 @@ function down(){
 	local ip_mac=`getmac $1`
 	local ip_interface=`getinterface ${ip_mac}`
 	[ "$iw_version" ] && local wlan_online=`iw dev ${ip_interface} station dump|grep -i -w ${ip_mac}|grep Station` >/dev/null 2>&1
-	[ ! -z "$wlan_online" ] && return
-	local ip_ms=$( arping -I `cat /proc/net/arp|grep -w ${1}|awk '{print $6}'|grep -v "^$"|sort -u` -c 20 -f -w 1 ${1} ) 2>/dev/null
-	( ! echo "$ip_ms"|grep -q "ms" ) && local ip_ms=`ping -c 5 -w 2 ${1}|grep -v '100% packet loss'` 2>/dev/null
-	( ! echo "$ip_ms"|grep -q "ms" ) && local ip_ms=$( arping -I `cat /proc/net/arp|grep -w ${1}|awk '{print $6}'|grep -v "^$"|sort -u` -c 20 -f -w ${down_timeout} $1 ) 2>/dev/null
-	if ( ! echo "$ip_ms"|grep -q "ms" ); then
+	getping ${1};local ping_online=$?
+	if [ -z "$wlan_online" ] && [ "$ping_online" -eq "1" ]; then
 		LockFile lock
 		usage down $1
 		[ ! -f "${dir}send_enable.lock" ] && [ ! -z "$ip_ms" ] && local ip_name=`getname $1 ${ip_mac}` && echo "$1 ${ip_mac} ${ip_name} `cat ${dir}ipAddress|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u` ${ip_interface}" >> ${dir}tmp_downlist
@@ -578,14 +586,13 @@ function down_send(){
 	[ ! -f "${dir}tmp_downlist" ] && return
 	local IPLIST=`cat ${dir}tmp_downlist|awk '{print $1}'`
 	for ip in $IPLIST; do
-		local ip_mac=`cat ${dir}tmp_downlist|grep -w ${ip}|awk '{print $2}'|grep -v "^$"|sort -u`
+		local ip_mac=`getmac ${ip}`
 		blackwhitelist ${ip_mac};local ip_blackwhite=$?
 		[ -z "$serverchan_down" ] || [ "$serverchan_down" -ne "1" ] || [ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne 0 ] && continue
-		local ip_name=`cat ${dir}tmp_downlist|grep -w ${ip}|awk '{print $3}'|grep -v "^$"|sort -u`
+		local ip_name=`getname ${ip} ${ip_mac}`
 		local time_up=`cat ${dir}tmp_downlist|grep -w ${ip}|awk '{print $4}'|grep -v "^$"|sort -u`
 		local ip_total=`usage get $ip` && [ ! -z "$ip_total" ] && local ip_total="${markdown_linefeed}${markdown_tab}总计流量： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_total}"
-		local time_down=`date +%s`
-		local time1=$(time_for_humans `expr ${time_down} - ${time_up}`)
+		local time1=$(time_for_humans `expr `date +%s` - ${time_up}`)
 		if [ -z "$title" ]; then
 			title="${ip_name} 断开连接"
 			content="${content}${markdown_linefeed}---${markdown_linefeed}####设备断开连接${markdown_linefeed}${markdown_tab}客户端名：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_name}${markdown_linefeed}${markdown_tab}客户端IP： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip}${markdown_linefeed}${markdown_tab}客户端MAC：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_mac}$ip_total${markdown_linefeed}${markdown_tab}在线时间： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${time1}"
@@ -698,9 +705,8 @@ function send(){
 	echo "`date "+%Y-%m-%d %H:%M:%S"` 【定时数据】创建定时任务" >> ${logfile}
 	serverchan_disturb;local send_disturb=$?
 	get_config "send_title" "router_status" "client_list" "router_temp" "router_wan"
-	local send_wanIP=`getip wanipv4`;local send_hostIP=`getip hostipv4`;local send_wanIPv6=`getip wanipv6`;local send_hostIPv6=`getip hostipv6`
+
 	[ -z "$send_title" ] && local send_title="路由状态："
-	
 	[ ! -z "$client_list" ] && [ "$client_list" -eq "1" ] && > ${dir}send_enable.lock && serverchan_first &
 
 	if [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ]; then
@@ -718,9 +724,11 @@ function send(){
 	[ ! -z "$router_temp" ] && [ "$router_temp" -eq "1" ] && local cputemp=`soc_temp` && local send_content="${send_content}${markdown_linefeed}---${markdown_linefeed}#### 设备温度${markdown_linefeed}${markdown_tab}CPU：${cputemp}%e2%84%83"	#%e2%84%83="℃"
 
 	if [ ! -z "$router_wan" ] && [ "$router_wan" -eq "1" ]; then
+		local send_wanIP=`getip wanipv4`;local send_hostIP=`getip hostipv4`
 		local send_content="${send_content}${markdown_linefeed}---${markdown_linefeed}#### WAN 口信息${markdown_linefeed}${markdown_tab}接口ip:${send_wanIP}"
 		local send_content="${send_content}${markdown_linefeed}${markdown_tab}外网ip:${send_hostIP}"
 		if [ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -ne "0" ]; then
+			local send_wanIPv6=`getip wanipv6`;local send_hostIPv6=`getip hostipv6`
 			local send_content="${send_content}${markdown_linefeed}${markdown_tab}ipv6 :${send_wanIPv6}"
 			local send_content="${send_content}${markdown_linefeed}${markdown_tab}外网v6:${send_hostIPv6}"
 		fi
@@ -730,14 +738,13 @@ function send(){
 	fi
 
 	if [ ! -z "$client_list" ] && [ "$client_list" -eq "1" ]; then
-		wait %1
+		wait
 		local send_content="${send_content}${markdown_linefeed}---${markdown_linefeed}#### 在线设备"
 		local IPLIST=`cat ${dir}ipAddress|awk '{print $1}'`
 		for ip in $IPLIST; do
 			local ip_total=`usage get ${ip}`;[ ! -z "$ip_total" ] && local ip_total="总计流量：${ip_total}  "
-			local time_down=`date +%s`
 			local time_up=`cat ${dir}ipAddress|grep -w ${ip}|awk '{print $4}'|grep -v "^$"|sort -u`
-			local time1=$(time_for_humans `expr ${time_down} - ${time_up}`)
+			local time1=$(time_for_humans `expr `date +%s` - ${time_up}`)
 			local ip_mac=`getmac ${ip}`
 			local ip_name=`getname ${ip} ${ip_mac}`
 			[ `length_str "$ip_name"` -gt "18" ] && local ip_name=`echo ${ip_name:0:18}"*"`
