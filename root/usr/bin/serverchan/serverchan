@@ -22,9 +22,9 @@ function read_config(){
 	device_aliases=`echo "$device_aliases"|sed 's/ /\n/g'|sed 's/-/ /g'` 2>/dev/null
 	err_device_aliases=`echo "$err_device_aliases"|sed 's/ /\n/g'` 2>/dev/null
 	[ "$iw_version" ] && wlan_interface=`iw dev|grep Interface|awk '{print $2}'` >/dev/null 2>&1
-	[ -z "$up_timeout" ] && up_timeout="2"
-	[ -z "$down_timeout" ] && down_timeout="10";down_timeout=`expr ${down_timeout} / 2 + 1`
-	[ -z "$timeout_retry_count" ] && timeout_retry_count="1";
+	[ -z "$up_timeout" ] || [ "$up_timeout" -eq "0" ] && up_timeout="2"
+	[ -z "$down_timeout" ] || [ "$down_timeout" -eq "0" ] && down_timeout="20";down_timeout=`expr ${down_timeout} / 2 + 1`
+	[ -z "$timeout_retry_count" ] || [ "$timeout_retry_count" -eq "0" ] && timeout_retry_count="1"
 	markdown_linefeed="%0D%0A%0D%0A" && markdown_tab="     " && markdown_space=" "
 	enable_detection
 }
