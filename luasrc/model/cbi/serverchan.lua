@@ -294,7 +294,7 @@ a=s:taboption("tab_basic5", ListValue,"send_tg",translate("推送模式"))
 a.default=""
 a:value("",translate("微信"))
 a:value("1",translate("Telegram"))
-a=s:taboption("tab_basic5", Value, "tgtoken", translate("tg推送链接"))
+a=s:taboption("tab_basic5", Value, "tgtoken", translate("tg推送链接"),translate("").."<br>获取机器人<a href='https://t.me/notificationme_bot' target='_blank'>点击这里</a><br><br>")
 a:depends("send_tg","1")
 a.placeholder="https://tgbot.lbyczf.com/sendMessage/:Token"
 a.optional = true
