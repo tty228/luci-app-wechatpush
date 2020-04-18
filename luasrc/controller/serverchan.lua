@@ -26,8 +26,7 @@ function index()
           _("运行日志"), 99).leaf = true
 
 	entry({"admin", "services", "serverchan", "get_log"}, call("get_log")).leaf = true
-    entry({"admin", "services", "serverchan", "clear_log"}, call("clear_log")).leaf =
-        true
+    entry({"admin", "services", "serverchan", "clear_log"}, call("clear_log")).leaf = true
 end
 
 function act_status()
