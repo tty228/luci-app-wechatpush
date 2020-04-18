@@ -4,7 +4,11 @@ STOP=10
 
 start() {
 	enable=`ps | grep serverchan/serverchan | grep -v "grep" | awk '{print $1}'`
-	[ -z "$enable" ] && /usr/bin/serverchan/serverchan || restart
+	if [ ! -z "$enable" ]; then
+		restart
+	else
+		/usr/bin/serverchan/serverchan &
+	fi
 	echo "serverchan is starting now ..."
 }
 
