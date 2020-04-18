@@ -9,7 +9,7 @@ function index()
 	entry({"admin", "services", "serverchan"}, alias("admin", "services", "serverchan", "setting"),_("微信推送"), 30).dependent = true
 	entry({"admin","services","serverchan","status"},call("act_status")).leaf=true
 	entry({"admin", "services", "serverchan", "setting"}, cbi("serverchan/setting"),_("配置"), 40).leaf = true
-	entry({"admin", "services", "serverchan", "advanced"}, form("serverchan/advanced"),_("高级设置"), 90).leaf = true
+	entry({"admin", "services", "serverchan", "advanced"}, cbi("serverchan/advanced"),_("高级设置"), 90).leaf = true
 	entry({"admin", "services", "serverchan", "log"}, form("serverchan/log"),_("日志"), 99).leaf = true
 
 	entry({"admin", "services", "serverchan", "get_log"}, call("get_log")).leaf = true
