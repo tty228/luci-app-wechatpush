@@ -1,10 +1,11 @@
 #!/bin/sh /etc/rc.common
+
 START=99
 STOP=10
 
 start() {
-	enable=`ps | grep serverchan/serverchan | grep -v "grep" | awk '{print $1}'`
-	if [ ! -z "$enable" ]; then
+	state=`pgrep -f "/usr/bin/serverchan/serverchan"`
+	if [ ! -z "$state" ]; then
 		restart
 	else
 		/usr/bin/serverchan/serverchan &
