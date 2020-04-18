@@ -319,7 +319,6 @@ cat>${dir}network_restart<<EOF
 EOF
 	chmod 0755 ${dir}network_restart && ${dir}network_restart
 	rm -f ${dir}network_restart >/dev/null 2>&1
-	[ "$1" ] && sleep $1
 }
 
 # 查看无人值守任务设备是否在线
@@ -360,7 +359,7 @@ function unattended(){
 		if [ ! -z "$autoreboot_time" ] && [ `cat /proc/uptime|awk -F. '{run_hour=$1/3600;printf("%d",run_hour)}'` -ge "$autoreboot_time" ] && [ "$system_time_event" -eq "1" ]; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【无人值守任务】重启路由器咯" >> ${logfile}
 			cat ${logfile} > /usr/bin/serverchan/errlog
-			reboot && exit
+			sleep 2 && reboot && exit
 		elif [ ! -z "$network_restart_time" ] && [ `ubus call network.interface.wan status|grep \"uptime\"|sed $'s/\"uptime": //g'|sed $'s/\,//g'|awk -F. '{run_hour=$1/3600;printf("%d",run_hour)}'` -ge "$network_restart_time" ] && [ "$system_time_event" -eq "2" ]; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【无人值守任务】重新拨号咯" >> ${logfile}
 			ifup wan >/dev/null 2>&1
@@ -417,24 +416,24 @@ function rand_geturl(){
 							echo "$retry_count" > /usr/bin/serverchan/autoreboot_count
 							echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】正在尝试重启路由，当前第 $retry_count 次 " >> ${logfile}
 							cat ${logfile} > /usr/bin/serverchan/errlog
-							reboot && exit
+							sleep 2 && reboot && exit
 						fi
 						[ "$retry_count" -eq "3" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】已经重启路由2次，修复失败，请主人自行修复哦" >> ${logfile}
 					elif [ "$network_err_event" -eq "2" ] ;then
-						[ "$retry_count" -lt "3" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】正在尝试重启网络，当前第 $retry_count 次 " >> ${logfile} && network_restart 60
+						[ "$retry_count" -lt "3" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】正在尝试重启网络，当前第 $retry_count 次 " >> ${logfile} && ifup wan >/dev/null 2>&1
 						[ "$retry_count" -eq "3" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】已经重启网络2次，修复失败，请主人自行修复哦 " >> ${logfile}
 					elif [ "$network_err_event" -eq "3" ] ;then				
 						if [ "$retry_count" -eq "1" ] ;then
-							echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】正在尝试修复网络，当前第 1 次，重启网络服务中 " >> ${logfile} && network_restart 60
+							echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】正在尝试修复网络，当前第 1 次，重启网络服务中 " >> ${logfile} && network_restart
 						elif [ "$retry_count" -eq "2" ] ;then
 							echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】正在尝试修复网络，当前第 2 次，关闭可能造成网络断开的软件" >> ${logfile}
-							[ `uci get koolproxy.@global[0].enabled 2>/dev/null` -eq "1" ] && [ `uci get koolproxy.@global[0].koolproxy_mode 2>/dev/null` -eq "1" ] && /etc/init.d/koolproxy stop
-							[ `uci get adbyby.@adbyby[0].enable 2>/dev/null` -eq "1" ] && [ `uci get adbyby.@adbyby[0].wan_mode 2>/dev/null` -eq "0" ] && /etc/init.d/adbyby stop
-							[ `uci get passwall.@global[0].enabled 2>/dev/null` -eq "1" ] && [ `uci get passwall.@global[0].proxy_mode 2>/dev/null|grep global` ] && /etc/init.d/koolproxy stop
+							[ `uci get koolproxy.@global[0].enabled 2>/dev/null` -eq "1" ] && [ `uci get koolproxy.@global[0].koolproxy_mode 2>/dev/null` -eq "1" ] && /etc/init.d/koolproxy stop >/dev/null 2>&1
+							[ `uci get adbyby.@adbyby[0].enable 2>/dev/null` -eq "1" ] && [ `uci get adbyby.@adbyby[0].wan_mode 2>/dev/null` -eq "0" ] && /etc/init.d/adbyby stop >/dev/null 2>&1
+							[ `uci get passwall.@global[0].enabled 2>/dev/null` -eq "1" ] && [ `uci get passwall.@global[0].proxy_mode 2>/dev/null|grep global` ] && /etc/init.d/koolproxy stop >/dev/null 2>&1
 							local shadowsocksr_enabled=`uci get shadowsocksr.@global[0].global_server 2>/dev/null|grep nil`
 							local shadowsocksr_run_mode=`uci get shadowsocksr.@global[0].run_mode 2>/dev/null|grep all`
-							[ -z "$shadowsocksr_enabled" ] && [ ! -z "$shadowsocksr_run_mode" ] && /etc/init.d/shadowsocksr stop
-							network_restart 60
+							[ -z "$shadowsocksr_enabled" ] && [ ! -z "$shadowsocksr_run_mode" ] && /etc/init.d/shadowsocksr stop >/dev/null 2>&1
+							sleep 60 && network_restart
 						elif [ "$retry_count" -eq "3" ] ;then
 							echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】正在尝试修复网络，当前第 3 次，备份设置项，并修改相关设置" >> ${logfile}
 							mkdir -p /usr/bin/serverchan/configbak
@@ -456,11 +455,11 @@ function rand_geturl(){
 							uci delete firewall.redirect
 							>/etc/firewall.user
 							uci commit firewall
-							network_restart 60
+							sleep 60 && network_restart
 						elif [ "$retry_count" -eq "4" ] ;then
 							echo "$retry_count" > /usr/bin/serverchan/autoreboot_count
 							cat ${logfile} > /usr/bin/serverchan/errlog
-							reboot && exit
+							sleep 2 && reboot && exit
 						elif [ "$retry_count" -eq "5" ] ;then
 							echo "$retry_count" > /usr/bin/serverchan/autoreboot_count
 							echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】修复失败，还原设置中，请自行检查网络设置" >> ${logfile}
@@ -469,7 +468,7 @@ function rand_geturl(){
 							cp -p -f /usr/bin/serverchan/configbak/firewall /etc/config/firewall
 							cp -p -f /usr/bin/serverchan/configbak/firewall.user /etc/firewall.user
 							cat ${logfile} > /usr/bin/serverchan/errlog
-							reboot && exit
+							sleep 2 && reboot && exit
 						fi
 					fi
 				fi
@@ -477,7 +476,7 @@ function rand_geturl(){
 				network_err_time=`expr $network_err_time - 600` && sleep 60
 			fi
 			enable_detection
-			sleep $sleeptime
+			sleep 60
 		fi
 	continue
 	done
@@ -527,7 +526,11 @@ function ip_changes(){
 	if [ ! -z "$content" ] ;then
 		[ -z "$ddns_enabled" ] && ddns_enabled=$(uci show ddns|grep "enabled"|grep "1")
 		[ -z "$ddns_enabled" ] && ddns_logrow=0 || ddns_logrow=$(echo "$ddns_enabled"|wc -l)
-		[ $ddns_logrow -ge 1 ] && /etc/init.d/ddns start >/dev/null 2>&1
+		if [ $ddns_logrow -ge 1 ]; then
+			/etc/init.d/ddns stop >/dev/null 2>&1
+			sleep 10
+			/etc/init.d/ddns start >/dev/null 2>&1
+		fi
 	fi
 }
 
@@ -645,64 +648,69 @@ function current_device(){
 
 # 检测 cpu 状态
 function cpu_load(){
-	if [ ! -z "$cpuload_enable" ] && [ "$cpuload_enable" -eq "1" ]; then
+	if [ ! -z "$cpuload_enable" ] && [ "$cpuload_enable" -eq "1" ] && [ ! -z "$cpuload" ]; then
 		[ -z "$cpuload_time" ] && cpuload_time=`date +%s`
 		local cpu_fuzai=`cat /proc/loadavg|awk '{print $1}'` 2>/dev/null
-		if [ ! -z "$cpu_fuzai" ] && [ ! -z "$cpuload" ] && [ `expr $cpu_fuzai \> $cpuload` -eq "1" ]; then
+		[ -z "$cpu_fuzai" ] && echo "`date "+%Y-%m-%d %H:%M:%S"`  【！！！】无法读取设备负载，请检查命令" >> ${logfile}
+		
+		if [ `expr $cpu_fuzai \> $cpuload` -eq "1" ]; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！警报！！】 CPU 负载过高: ${cpu_fuzai}" >> ${logfile}
-		elif [ -z "$cpu_fuzai" ]; then
-			echo "`date "+%Y-%m-%d %H:%M:%S"`  【！！！】无法读取设备负载，请检查命令" >> ${logfile}
-		elif [ -z "$cpucd_time" ]; then
+			local getlogtop=1
+		else
 			cpuload_time=`date +%s`
-		fi		
+		fi
+		
 		if [ "$((`date +%s`-$cpuload_time))" -ge "300" ] && [ -z "$cpucd_time" ]; then
+			unset getlogtop
 			title="CPU 负载过高！"
-			[ -z "$cpucd_time" ] && cpucd_time=1
+			cpucd_time=`date +%s`
 			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text} CPU 负 载过高: ${cpu_fuzai}" >> ${logfile}
 			content="${content}${markdown_splitline}####CPU 负载过高${markdown_linefeed}${markdown_tab}CPU 负载已连续五分钟超过预设${markdown_linefeed}${markdown_tab}接下来一小时不再提示${markdown_linefeed}${markdown_tab}当前负载：${cpu_fuzai}"
-		elif [ "$((`date +%s`-$cpuload_time))" -ge "3300" ] ;then
+		elif [ ! -z "$cpucd_time" ] && [ "$((`date +%s`-$cpucd_time))" -ge "3300" ] ;then
 			unset cpucd_time
 		fi
 	fi
 
-	if [ ! -z "$temperature_enable" ] && [ "$temperature_enable" -eq "1" ]; then
+	if [ ! -z "$temperature_enable" ] && [ "$temperature_enable" -eq "1" ] && [ ! -z "$temperature" ]; then
 		[ -z "$temperature_time" ] && temperature_time=`date +%s`
-		local cpu_wendu=`soc_temp`
-		if [ ! -z "$cpu_wendu" ] && [ ! -z "$temperature" ] && [ "$cpu_wendu" -gt "$temperature" ]; then
+		local cpu_wendu=`soc_temp`;
+		[ -z "$cpu_wendu" ] && echo "`date "+%Y-%m-%d %H:%M:%S"`  【！！！】无法读取设备温度，请检查命令" >> ${logfile}
+		
+		if [ "$cpu_wendu" -gt "$temperature" ]; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！警报！！】 CPU 温度过高: ${cpu_wendu}" >> ${logfile}
-		elif [ -z "$cpu_wendu" ]; then
-			echo "`date "+%Y-%m-%d %H:%M:%S"`  【！！！】无法读取设备温度，请检查命令" >> ${logfile}
-		elif [ -z "$temperaturecd_time" ]; then
+		else
 			temperature_time=`date +%s`
 		fi
+		
 		if [ "$((`date +%s`-$temperature_time))" -ge "300" ] && [ -z "$temperaturecd_time" ]; then
 			if [ ! -z "$title" ] && ( echo "$title"|grep -q "过高" ); then
 				title="设备报警！"
 			else
 				title="CPU 温度过高！"
 			fi
-			[ -z "$temperaturecd_time" ] && temperaturecd_time=1
+			temperaturecd_time=`date +%s`
 			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text} CPU 温 度过高: ${cpu_wendu}" >> ${logfile}
 			content="${content}${markdown_splitline}####CPU 温度过高${markdown_linefeed}${markdown_tab}CPU 温度已连续五分钟超过预设${markdown_linefeed}${markdown_tab}接下来一小时不再提示${markdown_linefeed}${markdown_tab}当前温度：${cpu_wendu}"
-		elif [ "$((`date +%s`-$temperature_time))" -ge "3300" ] ;then
+		elif [ ! -z "$temperaturecd_time" ] && [ "$((`date +%s`-$temperaturecd_time))" -ge "3300" ] ;then
 			unset temperaturecd_time
 		fi
 	fi
-
-	[ -z "$cpucd_time" ] && [ -z "$temperaturecd_time" ] && return
-	[ `expr ${cpucd_time} + ${temperaturecd_time}` -ge "2" ] && return
-	content="${content}${markdown_splitline}####当前 CPU 占用前三的进程"
+	
+	[ -z "$cpucd_time" ] && [ -z "$temperaturecd_time" ] && [ -z "$getlogtop" ]&& return
+	[ -z "$getlogtop" ] && content="${content}${markdown_splitline}####当前 CPU 占用前三的进程"
 	local i=1 && local top_i=5 && top -bn 1 >${dir}top
 	while [ $i -le 3 ]; do
 		if ( ! cat ${dir}top|awk 'NR=='${top_i}|grep "top -bn 1" ); then
 			local top_name=`cat ${dir}top|awk 'NR=='${top_i}|awk '{print $8}'`;[ "$top_name" == "/bin/sh" ] || [ "$top_name" == "/bin/bash" ] && local top_name=`cat ${dir}top|awk 'NR=='${top_i}|awk '{print $9}'`
 			local top_load=`cat ${dir}top|awk 'NR=='${top_i}|awk '{print $7}'`
-			local temp_top="${top_name} ${top_load}25"
-			content="${content}${markdown_linefeed}${markdown_tab}${temp_top}"
+			local temp_top="${top_name} ${top_load}"
+			[ ! -z "$getlogtop" ] && local logtop="$logtop  $temp_top"
+			[ -z "$getlogtop" ] && content="${content}${markdown_linefeed}${markdown_tab}${temp_top}25"
 			local i=`expr ${i} + 1`
 		fi
 		local top_i=`expr ${top_i} + 1`
 	done
+	[ ! -z "$getlogtop" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！警报！！】 CPU 占用前三: ${logtop}" >> ${logfile}
 	rm -f ${dir}top >/dev/null 2>&1
 }
 

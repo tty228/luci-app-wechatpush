@@ -1,20 +1,21 @@
 #!/bin/sh /etc/rc.common
-
 START=99
 STOP=10
 
 start() {
-	kill -9 `pgrep -f "/usr/bin/serverchan/serverchan"` 2>/dev/null
-	/usr/bin/serverchan/serverchan &
+	enable=`ps | grep serverchan/serverchan | grep -v "grep" | awk '{print $1}'`
+	[ -z "$enable" ] && /usr/bin/serverchan/serverchan || restart
 	echo "serverchan is starting now ..."
 }
 
 stop() {
 	kill -9 `pgrep -f "/usr/bin/serverchan/serverchan"` 2>/dev/null
-	kill -9 `pgrep -f "/etc/init.d/serverchan"` 2>/dev/null
 	echo "serverchan exit ..."
 }
 
 restart(){
+	stop
+	sleep 2
 	start
-} 
+	echo "restarted."
+}
