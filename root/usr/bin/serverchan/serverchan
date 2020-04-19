@@ -582,7 +582,6 @@ function down(){
 	getping ${1} ${down_timeout} ${timeout_retry_count};local ping_online=$?
 	if [ -z "$wlan_down" ] && [ "$ping_online" -eq "1" ]; then
 		LockFile lock
-		usage down $1
 		[ ! -f "${dir}send_enable.lock" ] && cat ${dir}ipAddress|grep -w ${1}|grep -v "^$"|sort -u >> ${dir}tmp_downlist
 		sed -i "/$1/d" ${dir}ipAddress	
 		LockFile unlock
