@@ -649,29 +649,6 @@ function current_device(){
 
 # 检测 cpu 状态
 function cpu_load(){
-	if [ ! -z "$cpuload_enable" ] && [ "$cpuload_enable" -eq "1" ] && [ ! -z "$cpuload" ]; then
-		[ -z "$cpuload_time" ] && cpuload_time=`date +%s`
-		local cpu_fuzai=`cat /proc/loadavg|awk '{print $1}'` 2>/dev/null
-		[ -z "$cpu_fuzai" ] && echo "`date "+%Y-%m-%d %H:%M:%S"`  【！！！】无法读取设备负载，请检查命令" >> ${logfile}
-		
-		if [ `expr $cpu_fuzai \> $cpuload` -eq "1" ]; then
-			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！警报！！】 CPU 负载过高: ${cpu_fuzai}" >> ${logfile}
-			local getlogtop=1
-		else
-			cpuload_time=`date +%s`
-		fi
-		
-		if [ "$((`date +%s`-$cpuload_time))" -ge "300" ] && [ -z "$cpucd_time" ]; then
-			unset getlogtop
-			title="CPU 负载过高！"
-			cpucd_time=`date +%s`
-			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text} CPU 负 载过高: ${cpu_fuzai}" >> ${logfile}
-			content="${content}${markdown_splitline}####CPU 负载过高${markdown_linefeed}${markdown_tab}CPU 负载已连续五分钟超过预设${markdown_linefeed}${markdown_tab}接下来一小时不再提示${markdown_linefeed}${markdown_tab}当前负载：${cpu_fuzai}"
-		elif [ ! -z "$cpucd_time" ] && [ "$((`date +%s`-$cpucd_time))" -ge "3300" ] ;then
-			unset cpucd_time
-		fi
-	fi
-
 	if [ ! -z "$temperature_enable" ] && [ "$temperature_enable" -eq "1" ] && [ ! -z "$temperature" ]; then
 		[ -z "$temperature_time" ] && temperature_time=`date +%s`
 		local cpu_wendu=`soc_temp`;
@@ -684,11 +661,7 @@ function cpu_load(){
 		fi
 		
 		if [ "$((`date +%s`-$temperature_time))" -ge "300" ] && [ -z "$temperaturecd_time" ]; then
-			if [ ! -z "$title" ] && ( echo "$title"|grep -q "过高" ); then
-				title="设备报警！"
-			else
-				title="CPU 温度过高！"
-			fi
+			title="CPU 温度过高！"
 			temperaturecd_time=`date +%s`
 			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text} CPU 温 度过高: ${cpu_wendu}" >> ${logfile}
 			content="${content}${markdown_splitline}####CPU 温度过高${markdown_linefeed}${markdown_tab}CPU 温度已连续五分钟超过预设${markdown_linefeed}${markdown_tab}接下来一小时不再提示${markdown_linefeed}${markdown_tab}当前温度：${cpu_wendu}"
@@ -696,22 +669,51 @@ function cpu_load(){
 			unset temperaturecd_time
 		fi
 	fi
-	
-	[ -z "$cpucd_time" ] && [ -z "$temperaturecd_time" ] && [ -z "$getlogtop" ]&& return
-	[ -z "$getlogtop" ] && content="${content}${markdown_splitline}####当前 CPU 占用前三的进程"
+
+	if [ ! -z "$cpuload_enable" ] && [ "$cpuload_enable" -eq "1" ] && [ ! -z "$cpuload" ]; then
+		[ -z "$cpuload_time" ] && cpuload_time=`date +%s`
+		local cpu_fuzai=`cat /proc/loadavg|awk '{print $1}'` 2>/dev/null
+		[ -z "$cpu_fuzai" ] && echo "`date "+%Y-%m-%d %H:%M:%S"`  【！！！】无法读取设备负载，请检查命令" >> ${logfile}
+		
+		if [ `expr $cpu_fuzai \> $cpuload` -eq "1" ]; then
+			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！警报！！】 CPU 负载过高: ${cpu_fuzai}" >> ${logfile}
+			cputop log
+		else
+			cpuload_time=`date +%s`
+		fi
+		
+		if [ "$((`date +%s`-$cpuload_time))" -ge "300" ] && [ -z "$cpucd_time" ]; then
+			unset getlogtop
+			if [ ! -z "$title" ] && ( echo "$title"|grep -q "过高" ); then
+				title="设备报警！"
+			else
+				title="CPU 负载过高！"
+			fi
+			cpucd_time=`date +%s`
+			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text} CPU 负 载过高: ${cpu_fuzai}" >> ${logfile}
+			content="${content}${markdown_splitline}####CPU 负载过高${markdown_linefeed}${markdown_tab}CPU 负载已连续五分钟超过预设${markdown_linefeed}${markdown_tab}接下来一小时不再提示${markdown_linefeed}${markdown_tab}当前负载：${cpu_fuzai}"
+			cputop
+		elif [ ! -z "$cpucd_time" ] && [ "$((`date +%s`-$cpucd_time))" -ge "3300" ] ;then
+			unset cpucd_time
+		fi
+	fi
+}
+
+function cputop(){
+	[ -z "$1" ] && content="${content}${markdown_splitline}####当前 CPU 占用前三的进程"
 	local i=1 && local top_i=5 && `top -bn 1 > ${dir}top` >/dev/null 2>&1
 	while [ $i -le 3 ]; do
 		if ( ! cat ${dir}top|awk 'NR=='${top_i}|grep -q "top -bn 1" ); then
 			local top_name=`cat ${dir}top|awk 'NR=='${top_i}|awk '{print $8}'`;[ "$top_name" == "/bin/sh" ] || [ "$top_name" == "/bin/bash" ] && local top_name=`cat ${dir}top|awk 'NR=='${top_i}|awk '{print $9}'`
 			local top_load=`cat ${dir}top|awk 'NR=='${top_i}|awk '{print $7}'`
 			local temp_top="${top_name} ${top_load}"
-			[ ! -z "$getlogtop" ] && local logtop="$logtop  $temp_top"
-			[ -z "$getlogtop" ] && content="${content}${markdown_linefeed}${markdown_tab}${temp_top}25"
+			[ ! -z "$1" ] && local logtop="$logtop  $temp_top"
+			[ -z "$1" ] && content="${content}${markdown_linefeed}${markdown_tab}${temp_top}25"
 			local i=`expr ${i} + 1`
 		fi
 		local top_i=`expr ${top_i} + 1`
 	done
-	[ ! -z "$getlogtop" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！警报！！】 CPU 占用前三: ${logtop}" >> ${logfile}
+	[ ! -z "$1" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！警报！！】 CPU 占用前三: ${logtop}" >> ${logfile}
 	rm -f ${dir}top >/dev/null 2>&1
 }
 
