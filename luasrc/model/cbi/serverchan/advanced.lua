@@ -1,10 +1,10 @@
 local nt = require "luci.sys".net
 local fs=require"nixio.fs"
 
-m=Map("serverchan",translate("提示："),
+m=Map("serverchand",translate("提示："),
 translate("如果你不了解这些选项的含义，请不要修改这些选项"))
 
-s = m:section(TypedSection, "serverchan", "高级设置")
+s = m:section(TypedSection, "serverchand", "高级设置")
 s.anonymous = true
 s.addremove = false
 
@@ -37,16 +37,17 @@ a.description = translate("请尽量避免使用特殊符号，如双引号、$�
 a=s:option(Button,"soc",translate("测试温度命令"))
 a.inputtitle = translate("输出信息")
 a.write = function()
-	luci.sys.call("/usr/bin/serverchan/serverchan soc")
-	luci.http.redirect(luci.dispatcher.build_url("admin","services","serverchan","advanced"))
+	luci.sys.call("/usr/bin/
+		/serverchand soc")
+	luci.http.redirect(luci.dispatcher.build_url("admin","services","serverchand","advanced"))
 end
 
-if nixio.fs.access("/tmp/serverchan/soc_tmp") then
+if nixio.fs.access("/tmp/serverchand/soc_tmp") then
 e=s:option(TextValue,"soc_tmp")
 e.rows=2
 e.readonly=true
 e.cfgvalue = function()
-	return luci.sys.exec("cat /tmp/serverchan/soc_tmp && rm -f /tmp/serverchan/soc_tmp")
+	return luci.sys.exec("cat /tmp/serverchand/soc_tmp && rm -f /tmp/serverchand/soc_tmp")
 end
 end
 
@@ -74,7 +75,7 @@ a:value("",translate("无操作"))
 a:value("1",translate("重启路由器"))
 a:value("2",translate("重新拨号"))
 a:value("3",translate("修改相关设置项，尝试自动修复网络"))
-a.description = translate("选项 1 选项 2 不会修改设置，并最多尝试 2 次。<br/>选项 3 会将设置项备份于 /usr/bin/serverchan/configbak 目录，并在失败后还原。<br/>【！！无法保证兼容性！！】不熟悉系统设置项，不会救砖请勿使用")
+a.description = translate("选项 1 选项 2 不会修改设置，并最多尝试 2 次。<br/>选项 3 会将设置项备份于 /usr/bin/serverchand/configbak 目录，并在失败后还原。<br/>【！！无法保证兼容性！！】不熟悉系统设置项，不会救砖请勿使用")
 
 a=s:option(ListValue,"system_time_event",translate("定时重启"))
 a.default=""
