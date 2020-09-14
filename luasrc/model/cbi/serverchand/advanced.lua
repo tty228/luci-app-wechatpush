@@ -37,8 +37,7 @@ a.description = translate("请尽量避免使用特殊符号，如双引号、$�
 a=s:option(Button,"soc",translate("测试温度命令"))
 a.inputtitle = translate("输出信息")
 a.write = function()
-	luci.sys.call("/usr/bin/
-		/serverchand soc")
+	luci.sys.call("/usr/bin/serverchand/serverchand soc")
 	luci.http.redirect(luci.dispatcher.build_url("admin","services","serverchand","advanced"))
 end
 
