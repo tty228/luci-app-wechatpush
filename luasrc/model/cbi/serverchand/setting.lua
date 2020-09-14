@@ -7,7 +7,7 @@ local sys = require "luci.sys"
 local ifaces = sys.net:devices()
 
 m=Map("serverchand",translate("ServerChand"),
-translate("「Server酱-钉钉版」，英文名「ServerChan-DINGTalk」，是一款从服务器推送报警信息和日志到钉钉的工具。<br /><br />如果你在使用中遇到问题，请到这里提交：")
+translate("「Server酱-钉钉版」，英文名「ServerChan-DINGTalk」，是一款从服务器推送报警信息和日志到钉钉的工具。本插件由tty228/luci-app-serverchan创建，然后七年修改为钉钉机器人版自用。<br /><br />如果你在使用中遇到问题，请到这里提交：")
 .. [[<a href="https://github.com/zzsj0928/luci-app-serverchand" target="_blank">]]
 .. translate("github 项目地址")
 .. [[</a>]]
