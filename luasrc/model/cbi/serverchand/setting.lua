@@ -61,7 +61,7 @@ a.rmempty = true
 a.description = translate("<br/> 请输入设备 MAC 和设备别名，用“-”隔开，如：<br/> XX:XX:XX:XX:XX:XX-我的手机")
 
 --设备状态
-a=s:taboption("content", ListValue,"serverchan_ipv4",translate("ipv4 变动通知"))
+a=s:taboption("content", ListValue,"serverchand_ipv4",translate("ipv4 变动通知"))
 a.rmempty = true
 a.default=""
 a:value("",translate("关闭"))
@@ -70,7 +70,7 @@ a:value("2",translate("通过URL获取"))
 
 a = s:taboption("content", ListValue, "ipv4_interface", translate("接口名称"))
 a.rmempty = true
-a:depends({serverchan_ipv4="1"})
+a:depends({serverchand_ipv4="1"})
 for _, iface in ipairs(ifaces) do
 	if not (iface == "lo" or iface:match("^ifb.*")) then
 		local nets = net:get_interface(iface)
@@ -87,10 +87,10 @@ a.description = translate("<br/>一般选择 wan 接口，多拨环境请自行�
 a= s:taboption("content", Value, "ipv4_URL", "URL 地址")
 a.rmempty = true
 a.default = "members.3322.org/dyndns/getip"
-a:depends({serverchan_ipv4="2"})
+a:depends({serverchand_ipv4="2"})
 a.description = translate("<br/>会因服务器稳定性/连接频繁等原因导致获取失败")
 
-a=s:taboption("content", ListValue,"serverchan_ipv6",translate("ipv6 变动通知"))
+a=s:taboption("content", ListValue,"serverchand_ipv6",translate("ipv6 变动通知"))
 a.rmempty = true
 a.default="disable"
 a:value("0",translate("关闭"))
@@ -99,7 +99,7 @@ a:value("2",translate("通过URL获取"))
 
 a = s:taboption("content", ListValue, "ipv6_interface", translate("接口名称"))
 a.rmempty = true
-a:depends({serverchan_ipv6="1"})
+a:depends({serverchand_ipv6="1"})
 for _, iface in ipairs(ifaces) do
 	if not (iface == "lo" or iface:match("^ifb.*")) then
 		local nets = net:get_interface(iface)
@@ -116,14 +116,14 @@ a.description = translate("<br/>一般选择 wan 接口，多拨环境请自行�
 a= s:taboption("content", Value, "ipv6_URL", "URL 地址")
 a.rmempty = true
 a.default = "v6.ip.zxinc.org/getip"
-a:depends({serverchan_ipv6="2"})
+a:depends({serverchand_ipv6="2"})
 a.description = translate("<br/>会因服务器稳定性/连接频繁等原因导致获取失败")
 
-a=s:taboption("content", Flag,"serverchan_up",translate("设备上线通知"))
+a=s:taboption("content", Flag,"serverchand_up",translate("设备上线通知"))
 a.default=1
 a.rmempty = true
 
-a=s:taboption("content", Flag,"serverchan_down",translate("设备下线通知"))
+a=s:taboption("content", Flag,"serverchand_down",translate("设备下线通知"))
 a.default=1
 a.rmempty = true
 
@@ -228,11 +228,11 @@ e:depends("send_mode","2")
 e.inputstyle = "apply"
 function e.write(self, section)
 luci.sys.call("cbi.apply")
-        luci.sys.call("/usr/bin/serverchan/serverchan send &")
+        luci.sys.call("/usr/bin/serverchand/serverchand send &")
 end
 
 --免打扰
-a=s:taboption("disturb", ListValue,"serverchan_sheep",translate("免打扰时段设置"),translate("在指定整点时间段内，暂停推送消息<br/>免打扰时间中，定时推送也会被阻止。"))
+a=s:taboption("disturb", ListValue,"serverchand_sheep",translate("免打扰时段设置"),translate("在指定整点时间段内，暂停推送消息<br/>免打扰时间中，定时推送也会被阻止。"))
 a.rmempty = true
 
 a:value("",translate("关闭"))
@@ -247,8 +247,8 @@ a:value(t,translate("每天"..t.."点"))
 end
 a.default=0
 a.datatype=uinteger
-a:depends({serverchan_sheep="1"})
-a:depends({serverchan_sheep="2"})
+a:depends({serverchand_sheep="1"})
+a:depends({serverchand_sheep="2"})
 a=s:taboption("disturb", ListValue,"endtime",translate("免打扰结束时间"))
 a.rmempty = true
 
@@ -257,8 +257,8 @@ a:value(t,translate("每天"..t.."点"))
 end
 a.default=8
 a.datatype=uinteger
-a:depends({serverchan_sheep="1"})
-a:depends({serverchan_sheep="2"})
+a:depends({serverchand_sheep="1"})
+a:depends({serverchand_sheep="2"})
 
 a=s:taboption("disturb", ListValue,"macmechanism",translate("MAC过滤"))
 a:value("",translate("disable"))
@@ -268,17 +268,17 @@ a:value("interface",translate("仅通知此接口设备"))
 a.rmempty = true
 
 
-a = s:taboption("disturb", DynamicList, "serverchan_whitelist", translate("忽略列表"))
+a = s:taboption("disturb", DynamicList, "serverchand_whitelist", translate("忽略列表"))
 nt.mac_hints(function(mac, name) a :value(mac, "%s (%s)" %{ mac, name }) end)
 a.rmempty = true
 a:depends({macmechanism="allow"})
 
-a = s:taboption("disturb", DynamicList, "serverchan_blacklist", translate("关注列表"))
+a = s:taboption("disturb", DynamicList, "serverchand_blacklist", translate("关注列表"))
 nt.mac_hints(function(mac, name) a:value(mac, "%s (%s)" %{ mac, name }) end)
 a.rmempty = true
 a:depends({macmechanism="block"})
 
-a = s:taboption("disturb", ListValue, "serverchan_interface", translate("接口名称"))
+a = s:taboption("disturb", ListValue, "serverchand_interface", translate("接口名称"))
 a:depends({macmechanism="interface"})
 a.rmempty = true
 
