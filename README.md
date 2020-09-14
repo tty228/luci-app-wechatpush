@@ -1,3 +1,7 @@
+# 申明
+- 本插件由tty228/luci-app-serverchan原创，因微信推送存在诸多弊端（无法分开聊天工具与功能性消息推送，通知内不显示内容，内容需要点开才能查看等），故重新修改为本插件，为钉钉机器人API使用。
+
+#### 以下为原插件简介：
 # 简介
 - 用于 OpenWRT/LEDE 路由器上进行 Server酱 微信/Telegram 推送的插件
 - 基于 serverchan 提供的接口发送信息，Server酱说明：http://sc.ftqq.com/1.version
