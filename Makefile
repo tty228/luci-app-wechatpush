@@ -5,8 +5,8 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=luci-app-serverchan
-PKG_VERSION:=1.78
+PKG_NAME:=luci-app-serverchanding
+PKG_VERSION:=1.79
 PKG_RELEASE:=8
 
 include $(INCLUDE_DIR)/package.mk
@@ -16,7 +16,7 @@ define Package/$(PKG_NAME)
   CATEGORY:=LuCI
   SUBMENU:=3. Applications
   DEPENDS:=+iputils-arping +curl
-  TITLE:=LuCI support for serverchan
+  TITLE:=LuCI support for serverchan with DING Talk
   PKGARCH:=all
 endef
 
@@ -24,16 +24,16 @@ define Build/Compile
 endef
 
 define Package/$(PKG_NAME)/conffiles
-/etc/config/serverchan
+/etc/config/serverchand
 endef
 
 define Package/$(PKG_NAME)/install
-	$(INSTALL_DIR) $(1)/etc/init.d $(1)/usr/bin/serverchan $(1)/etc/config $(1)/usr/lib/lua/luci $(1)/etc/uci-defaults
+	$(INSTALL_DIR) $(1)/etc/init.d $(1)/usr/bin/serverchand $(1)/etc/config $(1)/usr/lib/lua/luci $(1)/etc/uci-defaults
 	$(CP) ./luasrc/* $(1)/usr/lib/lua/luci
-	$(INSTALL_CONF) ./root/etc/config/serverchan $(1)/etc/config
-	$(INSTALL_BIN) ./root/etc/init.d/serverchan $(1)/etc/init.d
-	$(INSTALL_BIN) ./root/etc/uci-defaults/luci-serverchan $(1)/etc/uci-defaults/luci-serverchan
-	$(INSTALL_BIN) ./root/usr/bin/serverchan/serverchan $(1)/usr/bin/serverchan
+	$(INSTALL_CONF) ./root/etc/config/serverchand $(1)/etc/config
+	$(INSTALL_BIN) ./root/etc/init.d/serverchand $(1)/etc/init.d
+	$(INSTALL_BIN) ./root/etc/uci-defaults/luci-serverchand $(1)/etc/uci-defaults/luci-serverchand
+	$(INSTALL_BIN) ./root/usr/bin/serverchan/serverchand $(1)/usr/bin/serverchand
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
