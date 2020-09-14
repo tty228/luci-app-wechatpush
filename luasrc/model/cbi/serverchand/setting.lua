@@ -7,7 +7,7 @@ local sys = require "luci.sys"
 local ifaces = sys.net:devices()
 
 m=Map("serverchand",translate("ServerChand"),
-translate("「Server酱-钉钉版」，英文名「ServerChan-DINGTalk」，是一款从服务器推送报警信息和日志到微信的工具。<br /><br />如果你在使用中遇到问题，请到这里提交：")
+translate("「Server酱-钉钉版」，英文名「ServerChan-DINGTalk」，是一款从服务器推送报警信息和日志到钉钉的工具。<br /><br />如果你在使用中遇到问题，请到这里提交：")
 .. [[<a href="https://github.com/zzsj0928/luci-app-serverchand" target="_blank">]]
 .. translate("github 项目地址")
 .. [[</a>]]
@@ -31,10 +31,10 @@ a.rmempty = true
 a=s:taboption("basic", ListValue,"send_tg",translate("推送模式"))
 a.default=""
 a.rmempty = true
-a:value("",translate("微信"))
+a:value("",translate("钉钉"))
 a:value("1",translate("Telegram"))
 
-a=s:taboption("basic", Value,"sckey",translate('SCKEY'), translate("Serverchan Sckey").."<br>调用代码获取<a href='http://sc.ftqq.com' target='_blank'>点击这里</a><br><br>")
+a=s:taboption("basic", Value,"sckey",translate('Webhook'), translate("钉钉机器人 Webhook").."<br>调用代码获取<a href='https://ding-doc.dingtalk.com/' target='_blank'>点击这里</a><br><br>")
 a.rmempty = true
 a:depends("send_tg","")
 
@@ -195,7 +195,7 @@ a.datatype=uinteger
 a:depends("send_mode","2")
 a.description = translate("<br/>从 00:00 开始，每 * 小时发送一次")
 
-a= s:taboption("crontab", Value, "send_title", translate("微信推送标题"))
+a= s:taboption("crontab", Value, "send_title", translate("钉钉推送标题"))
 a:depends("send_mode","1")
 a:depends("send_mode","2")
 a.placeholder = "OpenWrt By tty228 路由状态："
