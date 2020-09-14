@@ -6,16 +6,16 @@ local net = require "luci.model.network".init()
 local sys = require "luci.sys"
 local ifaces = sys.net:devices()
 
-m=Map("serverchan",translate("ServerChan"),
-translate("「Server酱」，英文名「ServerChan」，是一款从服务器推送报警信息和日志到微信的工具。<br /><br />如果你在使用中遇到问题，请到这里提交：")
-.. [[<a href="https://github.com/tty228/luci-app-serverchan" target="_blank">]]
+m=Map("serverchand",translate("ServerChand"),
+translate("「Server酱-钉钉版」，英文名「ServerChan-DINGTalk」，是一款从服务器推送报警信息和日志到微信的工具。<br /><br />如果你在使用中遇到问题，请到这里提交：")
+.. [[<a href="https://github.com/zzsj0928/luci-app-serverchand" target="_blank">]]
 .. translate("github 项目地址")
 .. [[</a>]]
 )
 
-m:section(SimpleSection).template  = "serverchan/status"
+m:section(SimpleSection).template  = "serverchand/status"
 
-s=m:section(NamedSection,"serverchan","serverchan",translate(""))
+s=m:section(NamedSection,"serverchand","serverchand",translate(""))
 s:tab("basic", translate("基本设置"))
 s:tab("content", translate("推送内容"))
 s:tab("crontab", translate("定时推送"))
@@ -24,7 +24,7 @@ s.addremove = false
 s.anonymous = true
 
 --基本设置
-a=s:taboption("basic", Flag,"serverchan_enable",translate("启用"))
+a=s:taboption("basic", Flag,"serverchand_enable",translate("启用"))
 a.default=0
 a.rmempty = true
 
