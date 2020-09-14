@@ -483,7 +483,7 @@ function rand_geturl(){
 							cat ${logfile} > /usr/bin/serverchand/errlog
 							sleep 2 && reboot && exit
 						elif [ "$retry_count" -eq "5" ] ;then
-							echo "$retry_count" > /usr/bin/serverchan/autoreboot_count
+							echo "$retry_count" > /usr/bin/serverchand/autoreboot_count
 							echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】修复失败，还原设置中，请自行检查网络设置" >> ${logfile}
 							cp -p -f /usr/bin/serverchand/configbak/network /etc/config/network
 							cp -p -f /usr/bin/serverchand/configbak/dhcp /etc/config/dhcp
