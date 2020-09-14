@@ -22,8 +22,8 @@ function read_config(){
 	[ -z "$up_timeout" ] || [ "$up_timeout" -eq "0" ] && up_timeout="2"
 	[ -z "$down_timeout" ] || [ "$down_timeout" -eq "0" ] && down_timeout="20";down_timeout=`expr ${down_timeout} / 2 + 1`
 	[ -z "$timeout_retry_count" ] && timeout_retry_count="2";[ "$timeout_retry_count" -eq "0" ] && timeout_retry_count="1"
-	markdown_splitline="%0D%0A%0D%0A---%0D%0A%0D%0A";markdown_linefeed="%0D%0A%0D%0A";markdown_tab="     ";markdown_space=" "
-	[ ! -z "$send_tg" ] && [ "$send_tg" -eq "1" ] && markdown_splitline="%0D%0A%0D%0A%0D%0A%0D%0A" && markdown_tab=""
+	markdown_splitline="\n\n---\n\n";markdown_linefeed="\n\n";markdown_tab="     ";markdown_space=" "
+	[ ! -z "$send_tg" ] && [ "$send_tg" -eq "1" ] && markdown_splitline="\n\n" && markdown_tab=""
 }
 
 # 初始化
