@@ -33,7 +33,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_CONF) ./root/etc/config/serverchand $(1)/etc/config
 	$(INSTALL_BIN) ./root/etc/init.d/serverchand $(1)/etc/init.d
 	$(INSTALL_BIN) ./root/etc/uci-defaults/luci-serverchand $(1)/etc/uci-defaults/luci-serverchand
-	$(INSTALL_BIN) ./root/usr/bin/serverchan/serverchand $(1)/usr/bin/serverchand
+	$(INSTALL_BIN) ./root/usr/bin/serverchand/serverchand $(1)/usr/bin/serverchand
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
