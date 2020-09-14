@@ -431,7 +431,7 @@ function rand_geturl(){
 				> ${dir}send_enable.lock && serverchand_first && deltemp
 				geterrdevicealiases
 				if [ "$?" -eq "0" ]; then
-					[ -f /usr/bin/serverchand/autoreboot_count ] && retry_count=`cat /usr/bin/serverchand/autoreboot_count` && rm -f /usr/bin/serverchan/autoreboot_count >/dev/null 2>&1
+					[ -f /usr/bin/serverchand/autoreboot_count ] && retry_count=`cat /usr/bin/serverchand/autoreboot_count` && rm -f /usr/bin/serverchand/autoreboot_count >/dev/null 2>&1
 					[ ! -z ${retry_count} ] && retry_count=0;retry_count=`expr $retry_count + 1`
 					if [ "$network_err_event" -eq "1" ] ;then
 						if [ "$retry_count" -lt "3" ] ;then
