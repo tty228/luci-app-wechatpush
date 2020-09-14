@@ -1,6 +1,6 @@
-f = SimpleForm("serverchan")
-luci.sys.call("/usr/bin/serverchan/serverchan client")
+f = SimpleForm("serverchand")
+luci.sys.call("/usr/bin/serverchand/serverchand client")
 f.reset = false
 f.submit = false
-f:append(Template("serverchan/client"))
+f:append(Template("serverchand/client"))
 return f
