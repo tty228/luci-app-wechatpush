@@ -519,7 +519,7 @@ function ip_changes(){
 			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}当前IP：${IPv4}" >> ${logfile}
 			echo IPv4 $IPv4 > ${dir}ip && echo -e IPv6 $last_IPv6 >> ${dir}ip
 			title="IP 地址变化"
-			content="${content}${markdown_splitline}####IP 地址变化${markdown_linefeed}${markdown_tab}当前 IP：${IPv4}"
+			content="${content}${markdown_splitline}#### IP 地址变化${markdown_linefeed}${markdown_tab}当前 IP：${IPv4}"
 		elif [ ! -z "$serverchand_ipv4" ] && [ "$serverchand_ipv4" -ne "0" ] && [ -z "$IPv4" ]; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】获取 IPv4 地址失败" >> ${logfile}
 		fi
@@ -529,7 +529,7 @@ function ip_changes(){
 			echo IPv4 $IPv4 > ${dir}ip && echo -e IPv6 $IPv6 >> ${dir}ip
 			[ -z "$title" ] && title="IPv6 地址变化"
 			[ ! -z "$title" ] && title="IP 地址变化"
-			content="${content}${markdown_splitline}####IPv6 地址变化${markdown_linefeed}${markdown_tab}当前 IPv6：${IPv6}"				
+			content="${content}${markdown_splitline}#### IPv6 地址变化${markdown_linefeed}${markdown_tab}当前 IPv6：${IPv6}"				
 		elif [ ! -z "$serverchand_ipv6" ] && [ "$serverchand_ipv6" -ne "0" ] && [ -z "$IPv6" ]; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】获取 IPv6 地址失败" >> ${logfile}
 		fi
@@ -540,7 +540,7 @@ function ip_changes(){
 		[ ! -z "$serverchand_ipv6" ] && [ "$serverchand_ipv6" -ne "0" ] && echo "`date "+%Y-%m-%d %H:%M:%S"`  当前IPv6: ${IPv6}" >> ${logfile}
 		echo IPv4 $IPv4 > ${dir}ip && echo -e IPv6 $IPv6 >> ${dir}ip	
 		title="路由器重新启动"
-		content="${content}${markdown_splitline}####路由器重新启动"
+		content="${content}${markdown_splitline}#### 路由器重新启动"
 		[ ! -z "$serverchand_ipv4" ] && [ "$serverchand_ipv4" -ne "0" ] && content="${content}${markdown_linefeed}${markdown_tab}当前IP：${IPv4}"
 		[ ! -z "$serverchand_ipv6" ] && [ "$serverchand_ipv6" -ne "0" ] && content="${content}${markdown_linefeed}${markdown_tab}当前IPv6：${IPv6}"
 	fi
@@ -578,13 +578,13 @@ function up(){
 			[ -f "${dir}content" ] && local content=`cat ${dir}content`	
 			if [ -z "$title" ]; then
 				local title="$ip_name 连接了你的路由器"
-				local content="${markdown_splitline}####新设备连接${markdown_linefeed}${markdown_tab}客户端名：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_name}${markdown_linefeed}${markdown_tab}客户端IP： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${1}${markdown_linefeed}${markdown_tab}客户端MAC：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_mac}"
+				local content="${markdown_splitline}#### 新设备连接${markdown_linefeed}${markdown_tab}客户端名：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_name}${markdown_linefeed}${markdown_tab}客户端IP： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${1}${markdown_linefeed}${markdown_tab}客户端MAC：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_mac}"
 			elif ( echo ${title}|grep -q "连接了你的路由器" ); then
 				local title="${ip_name} ${title}"
 				local content="${markdown_splitline}${markdown_tab}客户端名：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_name}${markdown_linefeed}${markdown_tab}客户端IP： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${1}${markdown_linefeed}${markdown_tab}客户端MAC：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_mac}"
 			else
 				local title="设备状态变化"
-				local content="${markdown_splitline}####新设备连接${markdown_linefeed}${markdown_tab}客户端名：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_name}${markdown_linefeed}${markdown_tab}客户端IP： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${1}${markdown_linefeed}${markdown_tab}客户端MAC：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_mac}"
+				local content="${markdown_splitline}#### 新设备连接${markdown_linefeed}${markdown_tab}客户端名：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_name}${markdown_linefeed}${markdown_tab}客户端IP： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${1}${markdown_linefeed}${markdown_tab}客户端MAC：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_mac}"
 			fi				
 			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}新设备 ${ip_name} ${1} 连接了">> ${logfile}
 			[ ! -z "$serverchand_blacklist" ] && local title="你偷偷关注的设备上线了"
@@ -623,13 +623,13 @@ function down_send(){
 		local time1=$(time_for_humans `expr ${time1} - ${time_up}`)
 		if [ -z "$title" ]; then
 			title="${ip_name} 断开连接"
-			content="${content}${markdown_splitline}####设备断开连接${markdown_linefeed}${markdown_tab}客户端名：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_name}${markdown_linefeed}${markdown_tab}客户端IP： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip}${markdown_linefeed}${markdown_tab}客户端MAC：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_mac}$ip_total${markdown_linefeed}${markdown_tab}在线时间： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${time1}"
+			content="${content}${markdown_splitline}#### 设备断开连接${markdown_linefeed}${markdown_tab}客户端名：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_name}${markdown_linefeed}${markdown_tab}客户端IP： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip}${markdown_linefeed}${markdown_tab}客户端MAC：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_mac}$ip_total${markdown_linefeed}${markdown_tab}在线时间： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${time1}"
 		elif ( echo "$title"|grep -q "断开连接" ); then
 			title="${ip_name} ${title}"
 			content="${content}${markdown_splitline}${markdown_tab}客户端名：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_name}${markdown_linefeed}${markdown_tab}客户端IP： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip}${markdown_linefeed}${markdown_tab}客户端MAC：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_mac}$ip_total${markdown_linefeed}${markdown_tab}在线时间： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${time1}"
 		else
 			title="设备状态变化"
-			content="${content}${markdown_splitline}####设备断开连接${markdown_linefeed}${markdown_tab}客户端名：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_name}${markdown_linefeed}${markdown_tab}客户端IP： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip}${markdown_linefeed}${markdown_tab}客户端MAC：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_mac}$ip_total${markdown_linefeed}${markdown_tab}在线时间： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${time1}"
+			content="${content}${markdown_splitline}#### 设备断开连接${markdown_linefeed}${markdown_tab}客户端名：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_name}${markdown_linefeed}${markdown_tab}客户端IP： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip}${markdown_linefeed}${markdown_tab}客户端MAC：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_mac}$ip_total${markdown_linefeed}${markdown_tab}在线时间： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${time1}"
 		fi
 		echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}设备 ${ip_name} ${ip} 断开连接 " >> ${logfile}
 	done
@@ -640,7 +640,7 @@ function down_send(){
 function current_device(){
 	[ -f ${dir}ipAddress ] && local logrow=$(grep -c "" ${dir}ipAddress) || local logrow="0";[ $logrow -eq "0" ] && return
 	[ -f ${dir}usage.db ] && local ip_total_db="总计流量${markdown_space}${markdown_space}${markdown_space}${markdown_space}"
-	content="${content}${markdown_splitline}####现有在线设备 ${logrow} 台，具体如下${markdown_linefeed}${markdown_tab}IP 地址${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_total_db}客户端名"
+	content="${content}${markdown_splitline}#### 现有在线设备 ${logrow} 台，具体如下${markdown_linefeed}${markdown_tab}IP 地址${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_total_db}客户端名"
 	local IPLIST=`cat ${dir}ipAddress|awk '{print $1}'`
 	for ip in $IPLIST; do
 		local ip_total=`usage get ${ip}`
@@ -682,7 +682,7 @@ function cpu_load(){
 			title="CPU 温度过高！"
 			temperaturecd_time=`date +%s`
 			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text} CPU 温 度过高: ${cpu_wendu}" >> ${logfile}
-			content="${content}${markdown_splitline}####CPU 温度过高${markdown_linefeed}${markdown_tab}CPU 温度已连续五分钟超过预设${markdown_linefeed}${markdown_tab}接下来一小时不再提示${markdown_linefeed}${markdown_tab}当前温度：${cpu_wendu}"
+			content="${content}${markdown_splitline}#### CPU 温度过高${markdown_linefeed}${markdown_tab}CPU 温度已连续五分钟超过预设${markdown_linefeed}${markdown_tab}接下来一小时不再提示${markdown_linefeed}${markdown_tab}当前温度：${cpu_wendu}"
 		elif [ ! -z "$temperaturecd_time" ] && [ "$((`date +%s`-$temperaturecd_time))" -ge "3300" ] ;then
 			unset temperaturecd_time
 		fi
@@ -709,7 +709,7 @@ function cpu_load(){
 			fi
 			cpucd_time=`date +%s`
 			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text} CPU 负 载过高: ${cpu_fuzai}" >> ${logfile}
-			content="${content}${markdown_splitline}####CPU 负载过高${markdown_linefeed}${markdown_tab}CPU 负载已连续五分钟超过预设${markdown_linefeed}${markdown_tab}接下来一小时不再提示${markdown_linefeed}${markdown_tab}当前负载：${cpu_fuzai}"
+			content="${content}${markdown_splitline}#### CPU 负载过高${markdown_linefeed}${markdown_tab}CPU 负载已连续五分钟超过预设${markdown_linefeed}${markdown_tab}接下来一小时不再提示${markdown_linefeed}${markdown_tab}当前负载：${cpu_fuzai}"
 			cputop
 		elif [ ! -z "$cpucd_time" ] && [ "$((`date +%s`-$cpucd_time))" -ge "3300" ] ;then
 			unset cpucd_time
@@ -718,7 +718,7 @@ function cpu_load(){
 }
 
 function cputop(){
-	[ -z "$1" ] && content="${content}${markdown_splitline}####当前 CPU 占用前三的进程"
+	[ -z "$1" ] && content="${content}${markdown_splitline}#### 当前 CPU 占用前三的进程"
 	local i=1 && local top_i=5 && `top -bn 1 > ${dir}top` >/dev/null 2>&1
 	while [ $i -le 3 ]; do
 		if ( ! cat ${dir}top|awk 'NR=='${top_i}|grep -q "top -bn 1" ); then
@@ -790,7 +790,7 @@ function send(){
 		done
 	fi
 	[ ! -z "$device_name" ] && local send_title="【$device_name】${send_title}"
-	local send_title=`echo "$send_title"|sed $'s/\ /%20/g'|sed $'s/\"/%22/g'|sed $'s/\#/%23/g'|sed $'s/\&/%26/g'|sed $'s/\,/%2C/g'|sed $'s/\//%2F/g'|sed $'s/\:/%3A/g'|sed $'s/\;/%3B/g'|sed $'s/\=/%3D/g'|sed $'s/\@/%40/g'`
+	local send_title=`echo "$send_title"|sed $'s/\ / /g'|sed $'s/\"/%22/g'|sed $'s/\#/%23/g'|sed $'s/\&/%26/g'|sed $'s/\,/%2C/g'|sed $'s/\//%2F/g'|sed $'s/\:/%3A/g'|sed $'s/\;/%3B/g'|sed $'s/\=/%3D/g'|sed $'s/\@/%40/g'`
 	[ -z "$send_content" ] && local send_content="${markdown_splitline}#### 我遇到了一个难题${markdown_linefeed}${markdown_tab}定时发送选项错误，你没有选择需要发送的项目，该怎么办呢${markdown_splitline}"
 	local nowtime=`date "+%Y-%m-%d %H:%M:%S"`
 	serverchand_send="curl -s \"https://oapi.dingtalk.com/robot/send?access_token=${sckey}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${send_title}\",\"text\":\"${nowtime}${markdown_linefeed}${send_content}\"}}'"
@@ -865,7 +865,7 @@ while [ "$serverchand_enable" -eq "1" ]; do
 	if [ ! -f "${dir}send_enable.lock" ] && [ ! -z "$title" ] && [ ! -z "$content" ]; then
 		nowtime=`date "+%Y-%m-%d %H:%M:%S"`
 		[ ! -z "$device_name" ] && title="【$device_name】$title"
-		title=`echo "$title"|sed $'s/\ /%20/g'|sed $'s/\"/%22/g'|sed $'s/\#/%23/g'|sed $'s/\&/%26/g'|sed $'s/\,/%2C/g'|sed $'s/\//%2F/g'|sed $'s/\:/%3A/g'|sed $'s/\;/%3B/g'|sed $'s/\=/%3D/g'|sed $'s/\@/%40/g'`
+		title=`echo "$title"|sed $'s/\ / /g'|sed $'s/\"/%22/g'|sed $'s/\#/%23/g'|sed $'s/\&/%26/g'|sed $'s/\,/%2C/g'|sed $'s/\//%2F/g'|sed $'s/\:/%3A/g'|sed $'s/\;/%3B/g'|sed $'s/\=/%3D/g'|sed $'s/\@/%40/g'`
 		serverchand_send="curl -s \"https://oapi.dingtalk.com/robot/send?access_token=${sckey}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${title}\",\"text\":\"${nowtime}${markdown_linefeed}${content}\"}}'"
 		[ "$disturb" -eq "0" ] && [ -z "$send_tg" ] && eval $serverchand_send >/dev/null 2>&1
 		[ "$disturb" -eq "0" ] && [ ! -z "$send_tg" ] && [ "$send_tg" -eq "1" ] && curl -d "text=${title}${markdown_linefeed}${nowtime}${markdown_linefeed}${content}" -X POST "${tgtoken}" >/dev/null 2>&1
