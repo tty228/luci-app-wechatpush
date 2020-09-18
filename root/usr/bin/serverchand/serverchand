@@ -660,7 +660,7 @@ function current_device(){
 				local ip_total="${ip_total}${markdown_space}"
 			done
 		fi
-		content="${content}${markdown_linefeed}${markdown_tab}${ip}<font color=#76CCFF>┋</font>${ip_total}<font color=#76CCFF>┋</font>**_<font color=#92D050>${ip_name}</font>_**"
+		content="${content}${markdown_linefeed}${markdown_tab}${ip}<font color=#76CCFF>┋</font>${ip_total}<font color=#76CCFF>┋</font>**<font color=#92D050>${ip_name}</font>**"
 		unset i n ip_total ip_mac ip_name
 	done
 }
