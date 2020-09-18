@@ -273,7 +273,7 @@ function serverchand_disturb(){
 	if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ]; then
 		unset sheep_starttime
 		rm -f ${dir}sheep_usage ${dir}old_sheep_usage  2>/dev/null
-		disturb_text="【微信推送】"
+		disturb_text="【钉钉推送】"
 		[ ! -z "$send_tg" ] && [ "$send_tg" -eq "1" ] && disturb_text="【Telegram推送】"
 		return 0
 	else
@@ -519,7 +519,7 @@ function ip_changes(){
 			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}当前IP：${IPv4}" >> ${logfile}
 			echo IPv4 $IPv4 > ${dir}ip && echo -e IPv6 $last_IPv6 >> ${dir}ip
 			title="IP 地址变化"
-			content="${content}${markdown_splitline}#### IP 地址变化${markdown_linefeed}${markdown_tab}当前 IP：${IPv4}"
+			content="${content}${markdown_splitline}#### <font color=#92D050>IP 地址变化</font>${markdown_linefeed}${markdown_tab}当前 IP：${IPv4}"
 		elif [ ! -z "$serverchand_ipv4" ] && [ "$serverchand_ipv4" -ne "0" ] && [ -z "$IPv4" ]; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】获取 IPv4 地址失败" >> ${logfile}
 		fi
@@ -529,7 +529,7 @@ function ip_changes(){
 			echo IPv4 $IPv4 > ${dir}ip && echo -e IPv6 $IPv6 >> ${dir}ip
 			[ -z "$title" ] && title="IPv6 地址变化"
 			[ ! -z "$title" ] && title="IP 地址变化"
-			content="${content}${markdown_splitline}#### IPv6 地址变化${markdown_linefeed}${markdown_tab}当前 IPv6：${IPv6}"				
+			content="${content}${markdown_splitline}#### <font color=#92D050>IPv6 地址变化</font>${markdown_linefeed}${markdown_tab}当前 IPv6：${IPv6}"				
 		elif [ ! -z "$serverchand_ipv6" ] && [ "$serverchand_ipv6" -ne "0" ] && [ -z "$IPv6" ]; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】获取 IPv6 地址失败" >> ${logfile}
 		fi
@@ -540,7 +540,7 @@ function ip_changes(){
 		[ ! -z "$serverchand_ipv6" ] && [ "$serverchand_ipv6" -ne "0" ] && echo "`date "+%Y-%m-%d %H:%M:%S"`  当前IPv6: ${IPv6}" >> ${logfile}
 		echo IPv4 $IPv4 > ${dir}ip && echo -e IPv6 $IPv6 >> ${dir}ip	
 		title="路由器重新启动"
-		content="${content}${markdown_splitline}#### 路由器重新启动"
+		content="${content}${markdown_splitline}#### <font color=#92D050>路由器重新启动</font>"
 		[ ! -z "$serverchand_ipv4" ] && [ "$serverchand_ipv4" -ne "0" ] && content="${content}${markdown_linefeed}${markdown_tab}当前IP：${IPv4}"
 		[ ! -z "$serverchand_ipv6" ] && [ "$serverchand_ipv6" -ne "0" ] && content="${content}${markdown_linefeed}${markdown_tab}当前IPv6：${IPv6}"
 	fi
@@ -682,7 +682,7 @@ function cpu_load(){
 			title="CPU 温度过高！"
 			temperaturecd_time=`date +%s`
 			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text} CPU 温 度过高: ${cpu_wendu}" >> ${logfile}
-			content="${content}${markdown_splitline}#### CPU 温度过高${markdown_linefeed}${markdown_tab}CPU 温度已连续五分钟超过预设${markdown_linefeed}${markdown_tab}接下来一小时不再提示${markdown_linefeed}${markdown_tab}当前温度：${cpu_wendu}"
+			content="${content}${markdown_splitline}#### <font color=#FF6666>CPU 温度过高</font>${markdown_linefeed}${markdown_tab}CPU 温度已连续五分钟超过预设${markdown_linefeed}${markdown_tab}接下来一小时不再提示${markdown_linefeed}${markdown_tab}当前温度：${cpu_wendu}"
 		elif [ ! -z "$temperaturecd_time" ] && [ "$((`date +%s`-$temperaturecd_time))" -ge "3300" ] ;then
 			unset temperaturecd_time
 		fi
@@ -709,7 +709,7 @@ function cpu_load(){
 			fi
 			cpucd_time=`date +%s`
 			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text} CPU 负 载过高: ${cpu_fuzai}" >> ${logfile}
-			content="${content}${markdown_splitline}#### CPU 负载过高${markdown_linefeed}${markdown_tab}CPU 负载已连续五分钟超过预设${markdown_linefeed}${markdown_tab}接下来一小时不再提示${markdown_linefeed}${markdown_tab}当前负载：${cpu_fuzai}"
+			content="${content}${markdown_splitline}#### <font color=#FF6666>CPU 负载过高</font>${markdown_linefeed}${markdown_tab}CPU 负载已连续五分钟超过预设${markdown_linefeed}${markdown_tab}接下来一小时不再提示${markdown_linefeed}${markdown_tab}当前负载：${cpu_fuzai}"
 			cputop
 		elif [ ! -z "$cpucd_time" ] && [ "$((`date +%s`-$cpucd_time))" -ge "3300" ] ;then
 			unset cpucd_time
