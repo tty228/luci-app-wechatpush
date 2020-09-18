@@ -639,8 +639,8 @@ function down_send(){
 # 当前设备列表
 function current_device(){
 	[ -f ${dir}ipAddress ] && local logrow=$(grep -c "" ${dir}ipAddress) || local logrow="0";[ $logrow -eq "0" ] && return
-	[ -f ${dir}usage.db ] && local ip_total_db="总计流量${markdown_space}${markdown_space}${markdown_space}${markdown_space}"
-	content="${content}${markdown_splitline}#### 现有在线设备 ${logrow} 台，具体如下${markdown_linefeed}${markdown_tab}IP 地址${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_total_db}客户端名"
+	[ -f ${dir}usage.db ] && local ip_total_db="总计流量"
+	content="${content}${markdown_splitline}#### 现有在线设备 ${logrow} 台，具体如下${markdown_linefeed}${markdown_tab}客户端名${markdown_space}${markdown_space}${markdown_space}${markdown_space}IP 地址${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_total_db}"
 	local IPLIST=`cat ${dir}ipAddress|awk '{print $1}'`
 	for ip in $IPLIST; do
 		local ip_total=`usage get ${ip}`
@@ -660,7 +660,7 @@ function current_device(){
 				local ip_total="${ip_total}${markdown_space}"
 			done
 		fi
-		content="${content}${markdown_linefeed}${markdown_tab}${ip}${ip_total}${ip_name}"
+		content="${content}${markdown_linefeed}${markdown_tab}【${ip_name}】${markdown_linefeed}「${ip}」${ip_total}"
 		unset i n ip_total ip_mac ip_name
 	done
 }
