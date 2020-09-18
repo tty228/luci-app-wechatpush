@@ -657,7 +657,7 @@ function current_device(){
 		if [ ! -z "$ip_total" ]; then	
 			local n=`expr 11 - ${#ip_total}`
 			for i in `seq 1 $n`; do
-				local ip_total="${ip_total}
+				local ip_total="${ip_total}"
 			done
 		fi
 		content="${content}${markdown_linefeed}${markdown_tab}${ip}<font color=#76CCFF>┋</font>${ip_total}<font color=#76CCFF>┋</font>**<font color=#92D050>${ip_name}</font>**"
