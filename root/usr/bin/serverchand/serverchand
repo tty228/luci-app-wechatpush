@@ -175,9 +175,9 @@ function usage(){
 # 流量数据单位换算
 function bytes_for_humans {
 	[ ! "$1" ] && return
-	[ "$1" -gt 1073741824 ] && echo "`awk 'BEGIN{printf "%.2f\n",'$1'/'1073741824'}'` GB" && return
-	[ "$1" -lt 1073741824 ] && echo "`awk 'BEGIN{printf "%.2f\n",'$1'/'1048576'}'` MB" && return
-	[ "$1" -lt 1048576 ] && echo "`awk 'BEGIN{printf "%.2f\n",'$1'/'1024'}'` KB" && return
+	[ "$1" -gt 1073741824 ] && echo "`awk 'BEGIN{printf "%.2f\n",'$1'/'1073741824'}'`G" && return
+	[ "$1" -lt 1073741824 ] && echo "`awk 'BEGIN{printf "%.2f\n",'$1'/'1048576'}'`M" && return
+	[ "$1" -lt 1048576 ] && echo "`awk 'BEGIN{printf "%.2f\n",'$1'/'1024'}'`K" && return
 	[ "$1" -lt 1024 ] && echo "${1} bytes"
 }
 
@@ -640,7 +640,7 @@ function down_send(){
 function current_device(){
 	[ -f ${dir}ipAddress ] && local logrow=$(grep -c "" ${dir}ipAddress) || local logrow="0";[ $logrow -eq "0" ] && return
 	[ -f ${dir}usage.db ] && local ip_total_db="总计流量"
-	content="${content}${markdown_splitline}#### 现有在线设备 ${logrow} 台，具体如下${markdown_linefeed}${markdown_tab}【客户端名】${markdown_space}${markdown_space}${markdown_space}${markdown_space}「IP 地址」${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_total_db}"
+	content="${content}${markdown_splitline}#### 现有在线设备 ${logrow} 台，具体如下${markdown_linefeed}${markdown_tab}IP 地址${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_total_db}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}**客户端名**"
 	local IPLIST=`cat ${dir}ipAddress|awk '{print $1}'`
 	for ip in $IPLIST; do
 		local ip_total=`usage get ${ip}`
@@ -866,9 +866,9 @@ while [ "$serverchand_enable" -eq "1" ]; do
 		nowtime=`date "+%Y-%m-%d %H:%M:%S"`
 		[ ! -z "$device_name" ] && title="【$device_name】$title"
 		title=`echo "$title"|sed $'s/\ / /g'|sed $'s/\"/%22/g'|sed $'s/\#/%23/g'|sed $'s/\&/%26/g'|sed $'s/\,/%2C/g'|sed $'s/\//%2F/g'|sed $'s/\:/%3A/g'|sed $'s/\;/%3B/g'|sed $'s/\=/%3D/g'|sed $'s/\@/%40/g'`
-		serverchand_send="curl -s \"https://oapi.dingtalk.com/robot/send?access_token=${sckey}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${title}\",\"text\":\"#### ${title}${markdown_linefeed}${nowtime}${markdown_linefeed}${content}${markdown_linefeed}#### ${title}\"}}'"
+		serverchand_send="curl -s \"https://oapi.dingtalk.com/robot/send?access_token=${sckey}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${title}\",\"text\":\"#### **<font color=#6A65FF>${title}</font>**${markdown_linefeed}${nowtime}${markdown_linefeed}${content}${markdown_linefeed}**<font color=#6A65FF>${title}</font>**\"}}'"
 		[ "$disturb" -eq "0" ] && [ -z "$send_tg" ] && eval $serverchand_send >/dev/null 2>&1
-		[ "$disturb" -eq "0" ] && [ ! -z "$send_tg" ] && [ "$send_tg" -eq "1" ] && curl -d "text=${title}${markdown_linefeed}${nowtime}${markdown_linefeed}${content}" -X POST "${tgtoken}" >/dev/null 2>&1
+		[ "$disturb" -eq "0" ] && [ ! -z "$send_tg" ] && [ "$send_tg" -eq "1" ] && curl -d "text=<font color=#6A65FF>${title}</font>${markdown_linefeed}${nowtime}${markdown_linefeed}${content}" -X POST "${tgtoken}" >/dev/null 2>&1
 	fi
 	
 	while [ -f "${dir}send_enable.lock" ]; do
