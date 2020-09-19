@@ -726,7 +726,7 @@ function cputop(){
 			local top_load=`cat ${dir}top|awk 'NR=='${top_i}|awk '{print $7}'`
 			local temp_top="${top_name} ${top_load}"
 			[ ! -z "$1" ] && local logtop="$logtop  $temp_top"
-			[ -z "$1" ] && content="${content}${markdown_linefeed}${markdown_tab}${temp_top}25"
+			[ -z "$1" ] && content="${content}${markdown_linefeed}${markdown_tab}${temp_top}"
 			local i=`expr ${i} + 1`
 		fi
 		local top_i=`expr ${top_i} + 1`
@@ -751,12 +751,12 @@ function send(){
 		local systemstatustime=`cat /proc/uptime|awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("运行时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}'`;unset run_days run_hour run_minute run_second
 		local send_content="${send_content}${markdown_splitline}#### **<font color=#76CCFF>系统运行状态</font>**"
 		local send_content="${send_content}${markdown_linefeed}${markdown_tab}平均负载：${systemload}"
-		local send_content="${send_content}${markdown_linefeed}${markdown_tab}CPU占用：${cpuload}25"
-		local send_content="${send_content}${markdown_linefeed}${markdown_tab}内存占用：${ramload}25"
+		local send_content="${send_content}${markdown_linefeed}${markdown_tab}CPU占用：${cpuload}"
+		local send_content="${send_content}${markdown_linefeed}${markdown_tab}内存占用：${ramload}"
 		local send_content="${send_content}${markdown_linefeed}${markdown_tab}${systemstatustime}"
 	fi
 
-	[ ! -z "$router_temp" ] && [ "$router_temp" -eq "1" ] && local cputemp=`soc_temp` && local send_content="${send_content}${markdown_splitline}#### 设备温度${markdown_linefeed}${markdown_tab}CPU：${cputemp}%e2%84%83"	#%e2%84%83="℃"
+	[ ! -z "$router_temp" ] && [ "$router_temp" -eq "1" ] && local cputemp=`soc_temp` && local send_content="${send_content}${markdown_splitline}#### 设备温度${markdown_linefeed}${markdown_tab}CPU：${cputemp}℃"	#%e2%84%83="℃"
 
 	if [ ! -z "$router_wan" ] && [ "$router_wan" -eq "1" ]; then
 		local send_wanIP=`getip wanipv4`;local send_hostIP=`getip hostipv4`
