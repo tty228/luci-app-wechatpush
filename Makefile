@@ -6,8 +6,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-serverchand
-PKG_VERSION:=1.80
-PKG_RELEASE:=2
+PKG_VERSION:=1.90
+PKG_RELEASE:=1
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -34,7 +34,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_BIN) ./root/etc/init.d/serverchand $(1)/etc/init.d
 	$(INSTALL_BIN) ./root/etc/uci-defaults/luci-serverchand $(1)/etc/uci-defaults/luci-serverchand
 	$(INSTALL_BIN) ./root/usr/bin/serverchand/serverchand $(1)/usr/bin/serverchand
-$(INSTALL_DATA) ./root/usr/share/rpcd/acl.d/luci-app-serverchand.json $(1)/usr/share/rpcd/acl.d/luci-app-serverchand.json
+	$(INSTALL_DATA) ./root/usr/share/rpcd/acl.d/luci-app-serverchand.json $(1)/usr/share/rpcd/acl.d/luci-app-serverchand.json
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
