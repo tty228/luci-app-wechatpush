@@ -32,16 +32,20 @@ a=s:taboption("basic", ListValue,"send_tg",translate("推送模式"))
 a.default=""
 a.rmempty = true
 a:value("",translate("微信"))
+a:value("2",translate("微信测试号版"))
 a:value("1",translate("Telegram"))
 
 a=s:taboption("basic", Value,"sckey",translate('SCKEY'), translate("Serverchan Sckey").."<br>调用代码获取<a href='http://sc.ftqq.com' target='_blank'>点击这里</a><br><br>")
 a.rmempty = true
 a:depends("send_tg","")
 
-a=s:taboption("basic", Value, "tgtoken", translate("tg推送链接"),translate("").."<br>获取机器人<a href='https://t.me/notificationme_bot' target='_blank'>点击这里</a><br><br>")
+a=s:taboption("basic", Value,"sctkey",translate('SCKEY'), translate("Serverchan Sckey").."<br>调用代码获取<a href='https://sct.ftqq.com/' target='_blank'>点击这里</a><br><br>")
+a.rmempty = true
+a:depends("send_tg","2")
+
+a=s:taboption("basic", Value, "tgtoken", translate("tg推送链接"),translate("").."<br>目前公众号已停用，需要自建服务器<br>获取机器人<a href='https://github.com/Fndroid/tg_push_bot' target='_blank'>点击这里</a><br>此处填入推送链接，如https://tgbot.lbyczf.com/sendMessage/:Token<br>")
 a.rmempty = true
 a:depends("send_tg","1")
-a.placeholder="https://tgbot.lbyczf.com/sendMessage/:Token"
 
 a=s:taboption("basic", Value,"device_name",translate('本设备名称'))
 a.rmempty = true
@@ -52,6 +56,20 @@ a.rmempty = true
 a.optional = false
 a.default = "60"
 a.description = translate("越短的时间时间响应越及时，但会占用更多的系统资源")
+
+a=s:taboption("basic", ListValue,"oui_data",translate("MAC设备信息数据库"))
+a.rmempty = true
+a.default=""
+a:value("",translate("关闭"))
+a:value("1",translate("简化版"))
+a:value("2",translate("完整版"))
+a:value("3",translate("网络查询"))
+a.description = translate("原始数据大小为 4.36m，处理后的完整版约 1.2M，简化版约 250kb <br/>若无梯子，请勿使用网络查询")
+
+a=s:taboption("basic", Flag,"oui_dir",translate("下载到内存"))
+a.rmempty = true
+a:depends("oui_data","1")
+a:depends("oui_data","2")
 
 a=s:taboption("basic", Flag,"debuglevel",translate("开启日志"))
 a.rmempty = true
@@ -88,7 +106,7 @@ a= s:taboption("content", Value, "ipv4_URL", "URL 地址")
 a.rmempty = true
 a.default = "members.3322.org/dyndns/getip"
 a:depends({serverchan_ipv4="2"})
-a.description = translate("<br/>会因服务器稳定性/连接频繁等原因导致获取失败")
+a.description = translate("<br/>会因服务器稳定性、连接频繁等原因导致获取失败<br/>如接口可以正常获取 IP，不推荐使用")
 
 a=s:taboption("content", ListValue,"serverchan_ipv6",translate("ipv6 变动通知"))
 a.rmempty = true
@@ -117,7 +135,7 @@ a= s:taboption("content", Value, "ipv6_URL", "URL 地址")
 a.rmempty = true
 a.default = "v6.ip.zxinc.org/getip"
 a:depends({serverchan_ipv6="2"})
-a.description = translate("<br/>会因服务器稳定性/连接频繁等原因导致获取失败")
+a.description = translate("<br/>会因服务器稳定性、连接频繁等原因导致获取失败<br/>如接口可以正常获取 IP，不推荐使用")
 
 a=s:taboption("content", Flag,"serverchan_up",translate("设备上线通知"))
 a.default=1
@@ -139,6 +157,7 @@ a:depends({cpuload_enable="1"})
 a=s:taboption("content", Flag,"temperature_enable",translate("CPU 温度报警"))
 a.default=70
 a.rmempty = true
+a.description = translate("请确认设备可以获取温度，如需修改命令，请移步高级设置")
 
 a= s:taboption("content", Value, "temperature", "温度报警阈值")
 a.rmempty = true
