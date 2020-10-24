@@ -152,10 +152,10 @@ a.rmempty = true
 a= s:taboption("content", Value, "cpuload", "负载报警阈值")
 a.default = 2
 a.rmempty = true
-
 a:depends({cpuload_enable="1"})
+
 a=s:taboption("content", Flag,"temperature_enable",translate("CPU 温度报警"))
-a.default=70
+a.default=1
 a.rmempty = true
 a.description = translate("请确认设备可以获取温度，如需修改命令，请移步高级设置")
 
@@ -165,6 +165,27 @@ a.default = "80"
 a.datatype="uinteger"
 a:depends({temperature_enable="1"})
 a.description = translate("<br/>设备报警只会在连续五分钟超过设定值时才会推送<br/>而且一个小时内不会再提醒第二次")
+
+a=s:taboption("content", Flag,"client_usage",translate("设备异常流量"))
+a.default=0
+a.rmempty = true
+
+a= s:taboption("content", Value, "client_usage_max", "每分钟流量限制")
+a.default = "10M"
+a.rmempty = true
+a:depends({client_usage="1"})
+a.description = translate("设备异常流量警报（byte），你可以追加 K 或者 M")
+
+a=s:taboption("content", Flag,"client_usage_disturb",translate("异常流量免打扰"))
+a.default=1
+a.rmempty = true
+a:depends({client_usage="1"})
+
+a = s:taboption("content", DynamicList, "client_usage_whitelist", translate("异常流量关注列表"))
+nt.mac_hints(function(mac, name) a:value(mac, "%s (%s)" %{ mac, name }) end)
+a.rmempty = true
+a:depends({client_usage_disturb="1"})
+a.description = translate("请输入设备 MAC")
 
 --定时推送
 a=s:taboption("crontab", ListValue,"send_mode",translate("定时任务设定"))
