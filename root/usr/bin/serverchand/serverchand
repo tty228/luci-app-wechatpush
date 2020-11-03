@@ -714,7 +714,7 @@ function down(){
 		if [ "$ip_name" != "$tmp_name" ]; then
 			LockFile lock
 			local tmp_str=$(echo "$1 ${ip_mac} ${ip_name} `cat ${dir}ipAddress|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u` ${ip_interface}")
-			sed -i "/$1/d" ${dir}ipAddress
+			sed -i "/^${1} /d" ${dir}ipAddress
 			echo "$tmp_str" >> ${dir}ipAddress
 			LockFile unlock
 		fi
