@@ -480,6 +480,7 @@ function unattended(){
 	geterrdevicealiases;[ $? -eq "1" ] && return
 	
 	if [ ! -z "$system_time_event" ]; then
+		local interfaceuptime=`getinterfaceuptime`
 		if [ ! -z "$autoreboot_time" ] && [ `cat /proc/uptime|awk -F. '{run_hour=$1/3600;printf("%d",run_hour)}'` -ge "$autoreboot_time" ] && [ "$system_time_event" -eq "1" ]; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【无人值守任务】重启路由器咯" >> ${logfile}
 			cat ${logfile} > /usr/bin/serverchand/errlog
