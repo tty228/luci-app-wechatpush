@@ -906,7 +906,7 @@ function send(){
 	local send_title=`echo "$send_title"|sed $'s/\ / /g'|sed $'s/\"/%22/g'|sed $'s/\#/%23/g'|sed $'s/\&/%26/g'|sed $'s/\,/%2C/g'|sed $'s/\//%2F/g'|sed $'s/\:/%3A/g'|sed $'s/\;/%3B/g'|sed $'s/\=/%3D/g'|sed $'s/\@/%40/g'`
 	[ -z "$send_content" ] && local send_content="${markdown_splitline}#### <font color=#FF6666>我遇到了一个难题</font>${markdown_linefeed}${markdown_tab}定时发送选项错误，你没有选择需要发送的项目，该怎么办呢${markdown_splitline}"
 	local nowtime=`date "+%Y-%m-%d %H:%M:%S"`
-	serverchand_send="curl -s \"https://oapi.dingtalk.com/robot/send?access_token=${sckey}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${send_title}\",\"text\":\"${nowtime}${markdown_linefeed}${send_content}\"}}'"
+	serverchand_send="curl -s \"https://oapi.dingtalk.com/robot/send?access_token=${sckey}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${send_title}\",\"text\":\"#### <font color=#6A65FF>${send_title}</font>${markdown_linefeed}${nowtime}${markdown_linefeed}${send_content}\"}}'"
 	[ "$send_disturb" -eq "0" ] && [ -z "$send_tg" ] && eval $serverchand_send >/dev/null 2>&1
 	[ "$send_disturb" -eq "0" ] && [ ! -z "$send_tg" ] && [ "$send_tg" -eq "1" ] && curl -d "text=${send_title}${markdown_linefeed}${nowtime}${markdown_linefeed}${send_content}" -X POST "${tgtoken}" >/dev/null 2>&1
 	deltemp
