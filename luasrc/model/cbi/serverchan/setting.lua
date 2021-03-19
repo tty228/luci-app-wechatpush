@@ -27,15 +27,14 @@ s.anonymous = true
 a=s:taboption("basic", Flag,"serverchan_enable",translate("启用"))
 a.rmempty = true
 
-a=s:taboption("basic", Value,"sckey",translate('微信推送/新旧共用'), translate("").."<br>旧版调用代码<a href='http://sc.ftqq.com' target='_blank'>点击这里</a><br>调用代码获取<a href='https://sct.ftqq.com/' target='_blank'>点击这里</a><br>")
+a=s:taboption("basic", Value,"sckey",translate('微信推送/新旧共用'), translate("").."旧版调用代码<a href='http://sc.ftqq.com' target='_blank'>点击这里</a><br>调用代码获取<a href='https://sct.ftqq.com/' target='_blank'>点击这里</a><br>")
 a.rmempty = true
 
-a=s:taboption("basic", Value, "tg_token", translate("TG_token"),translate("").."<br>获取机器人<a href='https://telegram.me/botfather' target='_blank'>点击这里</a><br>新建机器人并拉入群组/频道，填入 token<br>")
+a=s:taboption("basic", Value, "tg_token", translate("TG_token"),translate("").."获取机器人<a href='https://t.me/BotFather' target='_blank'>点击这里</a><br>与创建的机器人发一条消息，开启对话<br>")
 a.rmempty = true
 
-a=s:taboption("basic", Value,"chat_id",translate('TG_chatid'))
+a=s:taboption("basic", Value,"chat_id",translate('TG_chatid'),translate("").."获取 chat_id <a href='https://t.me/BotFather' target='_blank'>点击这里</a>")
 a.rmempty = true
-a.description = translate('用 tg_token 替换下列URL中的****，并用浏览器打开<br> https://api.telegram.org/bot****/getUpdates<br>找到你的chat_id，并填入<br>{"chat":{"id":TG_chatid,"title":"群组名","type":"channel"}')
 
 a=s:taboption("basic", Value,"device_name",translate('本设备名称'))
 a.rmempty = true
