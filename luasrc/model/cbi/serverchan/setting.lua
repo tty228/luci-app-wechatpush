@@ -33,7 +33,7 @@ a.rmempty = true
 a=s:taboption("basic", Value, "tg_token", translate("TG_token"),translate("").."获取机器人<a href='https://t.me/BotFather' target='_blank'>点击这里</a><br>与创建的机器人发一条消息，开启对话<br>")
 a.rmempty = true
 
-a=s:taboption("basic", Value,"chat_id",translate('TG_chatid'),translate("").."获取 chat_id <a href='https://t.me/BotFather' target='_blank'>点击这里</a>")
+a=s:taboption("basic", Value,"chat_id",translate('TG_chatid'),translate("").."获取 chat_id <a href='https://t.me/getuserIDbot' target='_blank'>点击这里</a>")
 a.rmempty = true
 
 a=s:taboption("basic", Value,"device_name",translate('本设备名称'))
