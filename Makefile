@@ -27,7 +27,7 @@ define Package/$(PKG_NAME)/conffiles
 /etc/config/serverchan
 endef
 
-define Package/luci-app-serverchan/install
+define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/lib/lua/luci
 	cp -pR ./luasrc/* $(1)/usr/lib/lua/luci
 	$(INSTALL_DIR) $(1)/
