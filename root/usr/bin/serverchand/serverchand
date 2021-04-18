@@ -147,7 +147,7 @@ function getname(){
 	done
 	( ! echo "$tmp_name"|grep -q -w "unknown\|*" ) && [ ! -z "$tmp_name" ] && echo "$tmp_name" && return || unset tmp_name # 为unknown时重新读取
 	[ -f "$oui_base" ] && local tmp_name=$(cat $oui_base|grep -i $(echo "$2"|cut -c 1,2,4,5,7,8)|sed -nr 's#^.*16)..(.*)#\1#gp'|sed 's/ /_/g')
-	[ "$oui_data" -eq "4" ] && local tmp_name=$(curl -sS "http://standards-oui.ieee.org/oui.txt"|grep -i $(echo "$2"|cut -c 1,2,4,5,7,8)|sed -nr 's#^.*16)..(.*)#\1#gp'|sed 's/ /_/g')
+	[ ! -z "$oui_data" ] && [ "$oui_data" -eq "4" ] && local tmp_name=$(curl -sS "http://standards-oui.ieee.org/oui.txt"|grep -i $(echo "$2"|cut -c 1,2,4,5,7,8)|sed -nr 's#^.*16)..(.*)#\1#gp'|sed 's/ /_/g')
 	[ -z "$tmp_name" ] && local tmp_name="unknown"
 	echo "$tmp_name"
 }
@@ -231,8 +231,9 @@ function get_client_usage(){
 	( echo $client_usage_max|sed -r 's/.*(.)$/\1/'|grep -q "K\|k" ) && client_usage_max=`expr ${client_usage_max%?} \* 1024`
 	( echo $client_usage_max|sed -r 's/.*(.)$/\1/'|grep -q "M\|m" ) && client_usage_max=`expr ${client_usage_max%?} \* 1048576`
 	( echo $client_usage_max|sed -r 's/.*(.)$/\1/'|grep -q "G\|g" ) && client_usage_max=`expr ${client_usage_max%?} \* 1073741824`
-	[ "$client_usage_disturb" -eq "0" ] || [ -z "$client_usage_disturb" ] && [ -f "${dir}ipAddress" ] && local MACLIST=`cat ${dir}ipAddress|awk '{print $2}'|grep -v "^$"|sort -u`
-	[ ! -z "$client_usage_disturb" ] && [ "$client_usage_disturb" -eq "1" ] && [ ! -z "$client_usage_whitelist" ] && local MACLIST=`echo "$client_usage_whitelist"`
+	[ -z "$client_usage_disturb" ] && client_usage_disturb="0"
+	[ "$client_usage_disturb" -eq "0" ] && [ -f "${dir}ipAddress" ] && local MACLIST=`cat ${dir}ipAddress|awk '{print $2}'|grep -v "^$"|sort -u`
+	[ "$client_usage_disturb" -eq "1" ] && [ ! -z "$client_usage_whitelist" ] && local MACLIST=`echo "$client_usage_whitelist"`
 	[ -z "$MACLIST" ] && return
 
 	if [ "$((`date +%s`-$get_client_usage_time))" -ge "60" ]; then
