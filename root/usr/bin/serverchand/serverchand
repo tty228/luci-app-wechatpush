@@ -461,7 +461,7 @@ EOF
 function geterrdevicealiases(){
 	[ -z "$err_device_aliases" ] && return
 	[ -f ${dir}ipAddress ] && local logrow=$(grep -c "" ${dir}ipAddress) || local logrow="0";[ $logrow -eq "0" ] && return
-	local MACLIST=`cat ${dir}ipAddress|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
+	local MACLIST=`cat ${dir}ipAddress|awk '{print $2}'|grep -v "^$"|sort -u`
 	for mac in $MACLIST; do
 		[ -z "$err_mac" ] && [ ! -z "$mac" ] && local err_mac=`echo "$err_device_aliases"|grep -i $mac|grep -v "^$"|sort -u|head -n1`
 	done
