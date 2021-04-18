@@ -72,6 +72,9 @@ a:depends("oui_data","1")
 a:depends("oui_data","2")
 a.description = translate("懒得做自动更新了，下载到内存中，重启会重新下载 <br/>若无梯子，还是下到机身吧")
 
+a=s:taboption("basic", Flag,"reset_regularly",translate("每天零点重置流量数据"))
+a.rmempty = true
+
 a=s:taboption("basic", Flag,"debuglevel",translate("开启日志"))
 a.rmempty = true
 
