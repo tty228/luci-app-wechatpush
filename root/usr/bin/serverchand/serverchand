@@ -355,11 +355,6 @@ function serverchand_cron(){
 		return
 	fi
 	
-# 重置流量
-	if [ ! -z "$reset_regularly" ] && [ "$reset_regularly" -eq "1" ]; then
-		crontab -l > conf && echo -e "0 0 * * * rm /tmp/serverchand/usage.db >/dev/null 2>&1" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
-		crontab -l > conf && echo -e "0 0 * * * rm /tmp/serverchand/usage6.db >/dev/null 2>&1" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
-	fi
 	[ ! -z "$regular_time_2" ] && local regular_time_2=",${regular_time_2}"
 	[ ! -z "$regular_time_3" ] && local regular_time_3=",${regular_time_3}"
 	# 定时发送
@@ -372,6 +367,11 @@ function serverchand_cron(){
 		( echo `crontab -l`|grep "serverchand"|grep -q " */$interval_time " ) && return
 		del_cron
 		crontab -l > conf && echo -e "0 */$interval_time * * * /usr/bin/serverchand/serverchand send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
+	fi
+	# 重置流量
+	if [ ! -z "$reset_regularly" ] && [ "$reset_regularly" -eq "1" ]; then
+		crontab -l > conf && echo -e "0 0 * * * rm /tmp/serverchand/usage.db >/dev/null 2>&1" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
+		crontab -l > conf && echo -e "0 0 * * * rm /tmp/serverchand/usage6.db >/dev/null 2>&1" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
 	fi
 	re_cron
 }
