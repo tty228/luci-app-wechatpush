@@ -878,7 +878,7 @@ function send(){
 		local send_content="${send_content}${markdown_linefeed}${markdown_tab}${systemstatustime}"
 	fi
 
-	[ ! -z "$router_temp" ] && [ "$router_temp" -eq "1" ] && local cputemp=`soc_temp` && local send_content="${send_content}${markdown_splitline}#### 设备温度${markdown_linefeed}${markdown_tab}CPU：${cputemp}℃"	#%e2%84%83="℃"
+	[ ! -z "$router_temp" ] && [ "$router_temp" -eq "1" ] && local cputemp=`soc_temp` && local send_content="${send_content}${markdown_splitline}#### **<font color=#76CCFF>设备温度</font>**${markdown_linefeed}${markdown_tab}CPU：${cputemp}℃"	#%e2%84%83="℃"
 
 	if [ ! -z "$router_wan" ] && [ "$router_wan" -eq "1" ]; then
 		local send_wanIP=`getip wanipv4`;local send_hostIP=`getip hostipv4`
