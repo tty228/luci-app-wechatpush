@@ -2,10 +2,15 @@
 - 本插件由tty228/luci-app-serverchan原创.
 - 因微信推送存在诸多弊端（无法分开聊天工具与功能性消息推送，通知内不显示内容，内容需要点开才能查看等）,
 - 故由  然后七年  @zzsj0928 重新修改为本插件，为钉钉机器人API使用。
-
-<img src="https://raw.githubusercontent.com/zzsj0928/ReadmeContents/main/Serverchand/Msg.Notification.jpg" width="500"> <img src="https://raw.githubusercontent.com/zzsj0928/ReadmeContents/main/Serverchand/Msg.List.jpg" width="500">
-
+- 
+# 显示效果
+## 通知栏：直接显示推送主题，一目了然，按设备不同，分组显示
+<img src="https://raw.githubusercontent.com/zzsj0928/ReadmeContents/main/Serverchand/Msg.Notification.jpg" width="500">
+## 消息列表：直接显示最新推送的标题
+<img src="https://raw.githubusercontent.com/zzsj0928/ReadmeContents/main/Serverchand/Msg.List.jpg" width="500">
+## 消息内容：直接显示所有推送信息，不用二次点开再查看
 <img src="https://raw.githubusercontent.com/zzsj0928/ReadmeContents/main/Serverchand/MsgContentDetials.jpeg" width="500">
+
 
 
 
