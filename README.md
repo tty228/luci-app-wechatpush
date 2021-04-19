@@ -6,8 +6,10 @@
 # 显示效果
 ## 通知栏：直接显示推送主题，一目了然，按设备不同，分组显示
 <img src="https://raw.githubusercontent.com/zzsj0928/ReadmeContents/main/Serverchand/Msg.Notification.jpg" width="500">
+
 ## 消息列表：直接显示最新推送的标题
 <img src="https://raw.githubusercontent.com/zzsj0928/ReadmeContents/main/Serverchand/Msg.List.jpg" width="500">
+
 ## 消息内容：直接显示所有推送信息，不用二次点开再查看
 <img src="https://raw.githubusercontent.com/zzsj0928/ReadmeContents/main/Serverchand/MsgContentDetials.jpeg" width="500">
 
