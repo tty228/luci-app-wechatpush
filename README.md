@@ -13,6 +13,8 @@
 ## 消息内容：直接显示所有推送信息，不用二次点开再查看
 <img src="https://raw.githubusercontent.com/zzsj0928/ReadmeContents/main/Serverchand/MsgContentDetials.jpeg" width="500">
 
+# 下载
+- [luci-app-serverchand](https://github.com/zzsj0928/luci-app-serverchand/releases)
 
 
 
