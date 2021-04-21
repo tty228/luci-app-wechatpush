@@ -28,24 +28,32 @@ a=s:taboption("basic", Flag,"serverchand_enable",translate("启用"))
 a.default=0
 a.rmempty = true
 
-a=s:taboption("basic", ListValue,"send_tg",translate("推送模式"))
+a=s:taboption("basic", ListValue,"send_we",translate("推送模式"))
 a.default=""
 a.rmempty = true
 a:value("",translate("钉钉"))
-a:value("1",translate("Telegram"))
-a:value("2",translate("微信测试号版"))
+a:value("1",translate("企业微信"))
+a:value("2",translate("PushPlus"))
 
 a=s:taboption("basic", Value,"sckey",translate('Webhook'), translate("钉钉机器人 Webhook").."<br>调用代码获取<a href='https://ding-doc.dingtalk.com/' target='_blank'>点击这里</a><br><br>")
 a.rmempty = true
-a:depends("send_tg","")
+a:depends("send_we","")
 
-a=s:taboption("basic", Value,"sctkey",translate('SCKEY'), translate("Serverchan Sckey").."<br>调用代码获取<a href='https://sct.ftqq.com/' target='_blank'>点击这里</a><br><br>")
+a=s:taboption("basic", Value, "we_webhook", translate("Webhook"),translate("企业微信机器人 Webhook").."<br>调用代码获取<a href='https://www.baidu.com/s?wd=%E4%BC%81%E4%B8%9A%E5%BE%AE%E4%BF%A1%20%E6%B7%BB%E5%8A%A0%E6%9C%BA%E5%99%A8%E4%BA%BA' target='_blank'>点击这里</a><br><br>")
 a.rmempty = true
-a:depends("send_tg","2")
+a:depends("send_we","1")
 
-a=s:taboption("basic", Value, "tgtoken", translate("tg推送链接"),translate("").."<br>目前公众号已停用，需要自建服务器<br>获取机器人<a href='https://github.com/Fndroid/tg_push_bot' target='_blank'>点击这里</a><br>此处填入推送链接，如https://tgbot.lbyczf.com/sendMessage/:Token<br>")
+a=s:taboption("basic", Value,"pp_token",translate('PushPlus Token'), translate("PushPlus Token").."<br>调用代码获取<a href='http://pushplus.plus/doc/' target='_blank'>点击这里</a><br><br>")
 a.rmempty = true
-a:depends("send_tg","1")
+a:depends("send_we","2")
+
+a=s:taboption("basic", Value,"pp_channel",translate('PushPlus Channel'), translate("PushPlus Channel").."<br>第三方webhook或企业微信调用<br>默认为空或wechat，以推送至微信公众号<br>具体channel设定参见：<a href='http://pushplus.plus/doc/extend/webhook.html' target='_blank'>点击这里</a><br><br>")
+a.rmempty = true
+a:depends("send_we","2")
+
+a=s:taboption("basic", Value,"pp_webhook",translate('PushPlus Token'), translate("PushPlus 自定义Webhook").."<br>第三方webhook或企业微信调用<br>默认为空或wechat，以推送至微信公众号<br>具体自定义Webhook设定参见：<a href='http://pushplus.plus/doc/extend/webhook.html' target='_blank'>点击这里</a><br><br>")
+a.rmempty = true
+a:depends("send_we","2")
 
 a=s:taboption("basic", Value,"device_name",translate('本设备名称'))
 a.rmempty = true

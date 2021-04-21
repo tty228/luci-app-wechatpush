@@ -10,7 +10,7 @@ function get_config(){
 
 # 初始化设置信息
 function read_config(){
-	get_config "serverchand_enable" "sckey" "serverchand_ipv4" "ipv4_interface" "ipv4_URL" "serverchand_ipv6" "ipv6_interface" "ipv6_URL" "serverchand_up" "serverchand_down" "serverchand_sheep" "serverchand_whitelist" "serverchand_blacklist" "serverchand_interface" "starttime" "endtime" "cpuload_enable" "cpuload" "temperature_enable" "temperature" "device_name" "err_enable" "network_err_event" "err_sheep_enable" "system_time_event" "autoreboot_time" "network_restart_time" "public_ip_event" "public_ip_retry_count" "soc_code" "sleeptime" "up_timeout" "down_timeout" "device_aliases" "debuglevel" "cpuload" "temperature" "send_mode" "regular_time" "regular_time_2" "regular_time_3" "interval_time" "thread_num" "timeout_retry_count" "send_tg" "tgtoken" "err_device_aliases" "sctkey" "oui_dir" "oui_data" "client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" "reset_regularly"
+	get_config "serverchand_enable" "sckey" "serverchand_ipv4" "ipv4_interface" "ipv4_URL" "serverchand_ipv6" "ipv6_interface" "ipv6_URL" "serverchand_up" "serverchand_down" "serverchand_sheep" "serverchand_whitelist" "serverchand_blacklist" "serverchand_interface" "starttime" "endtime" "cpuload_enable" "cpuload" "temperature_enable" "temperature" "device_name" "err_enable" "network_err_event" "err_sheep_enable" "system_time_event" "autoreboot_time" "network_restart_time" "public_ip_event" "public_ip_retry_count" "soc_code" "sleeptime" "up_timeout" "down_timeout" "device_aliases" "debuglevel" "cpuload" "temperature" "send_mode" "regular_time" "regular_time_2" "regular_time_3" "interval_time" "thread_num" "timeout_retry_count" "send_we" "we_webhook" "pp_token" "pp_channel" "pp_webhook" "err_device_aliases" "oui_dir" "oui_data" "client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" "reset_regularly"
 	for str_version in "wrtbwmon" "iputils-arping" "curl" "iw"; do
 		eval `echo ${str_version:0:2}"_version"`=`opkg list-installed|grep -w ^${str_version}|awk '{print $3}'` 2>/dev/null
 	done
@@ -24,8 +24,10 @@ function read_config(){
 	[ -z "$up_timeout" ] || [ "$up_timeout" -eq "0" ] && up_timeout="2"
 	[ -z "$down_timeout" ] || [ "$down_timeout" -eq "0" ] && down_timeout="20";down_timeout=`expr ${down_timeout} / 2 + 1`
 	[ -z "$timeout_retry_count" ] && timeout_retry_count="2";[ "$timeout_retry_count" -eq "0" ] && timeout_retry_count="1"
-	markdown_splitline="\n\n---\n\n";markdown_linefeed="\n\n";markdown_tab="     ";markdown_space=" "
-	[ ! -z "$send_tg" ] && [ "$send_tg" -eq "1" ] && markdown_splitline="\n\n" && markdown_tab=""
+	markdown_splitline="\n\n---\n\n";markdown_linefeed="\n\n";markdown_tab="     ";markdown_space=" ";greenfont="<font color=#92D050>";bluefont="<font color=#76CCFF>";fontend="</font>";
+	tabletab=${bluefont}┋${fontend};boldstar="**"
+	[ ! -z "$send_we" ] && [ "$send_we" -eq "1" ] && markdown_splitline="\n\n-------\n\n" && markdown_tab=" "
+	[ ! -z "$send_we" ] && [ "$send_we" -eq "2" ] && percentsym=25 && markdown_splitline="%0D%0A%0D%0A" && markdown_linefeed="%0D%0A%0D%0A" && greenfont="" && bluefont="" && fontend="" && tabletab="     " && boldstar=""
 }
 
 # 初始化
@@ -42,7 +44,7 @@ function serverchand_init(){
 	[ ! -f "/usr/sbin/wrtbwmon" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】未安装 wrtbwmon ，流量统计不可用" >> ${logfile}
 	[ -z "$ip_version" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法获取依赖项 iputils-arping 版本号，请确认插件是否正常运行" >> ${logfile}
 	[ -z "$cu_version" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法获取依赖项 curl 版本号，请确认插件是否正常运行" >> ${logfile}
-	[ -z "$sckey" ] && [ -z "$sctkey" ] && [ -z "$tgtoken" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】请填写正确的 sckey " >> ${logfile} && return 1
+	[ -z "$sckey" ] && [ -z "$pp_token" ] && [ -z "$we_webhook" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】请填写正确的Token/Webhook " >> ${logfile} && return 1
 	local interfacelist=`getinterfacelist` && [ -z "$interfacelist" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法正确获取接口信息，请确认插件是否正常运行" >> ${logfile}
 	return 0
 }
@@ -379,7 +381,7 @@ function serverchand_disturb(){
 		unset sheep_starttime
 		rm -f ${dir}sheep_usage ${dir}old_sheep_usage  2>/dev/null
 		disturb_text="【钉钉推送】"
-		[ ! -z "$send_tg" ] && [ "$send_tg" -eq "1" ] && disturb_text="【Telegram推送】"
+		[ ! -z "$send_we" ] && [ "$send_we" -eq "1" ] && disturb_text="【企业微信推送】"
 		return 0
 	else
 		[ -z "$sheep_starttime" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【免打扰】夜深了，该休息了" >> ${logfile} && sheep_starttime=`date +%s`
@@ -762,7 +764,7 @@ function down_send(){
 function current_device(){
 	[ -f ${dir}ipAddress ] && local logrow=$(grep -c "" ${dir}ipAddress) || local logrow="0";[ $logrow -eq "0" ] && return
 	[ -f ${dir}usage.db ] && local ip_total_db="总计流量"
-	content="${content}${markdown_splitline}#### **<font color=#76CCFF>现有在线设备 ${logrow} 台，具体如下</font>**${markdown_linefeed}${markdown_tab}IP 地址<font color=#76CCFF>┋</font>${ip_total_db}<font color=#76CCFF>┋</font>**客户端名**"
+	content="${content}${markdown_splitline}#### **<font color=#76CCFF>现有在线设备 ${logrow} 台，具体如下</font>**${markdown_linefeed}${markdown_tab}IP 地址${markdown_tab}${tabletab}${ip_total_db}${tabletab}${boldstar}客户端名${boldstar}"
 	local IPLIST=`cat ${dir}ipAddress|awk '{print $1}'`
 	for ip in $IPLIST; do
 		local ip_mac=`getmac ${ip}`
@@ -782,7 +784,7 @@ function current_device(){
 				local ip_total="${ip_total}"
 			done
 		fi
-		content="${content}${markdown_linefeed}${markdown_tab}${ip}<font color=#76CCFF>┋</font>${ip_total}<font color=#76CCFF>┋</font>**<font color=#92D050>${ip_name}</font>**"
+		content="${content}${markdown_linefeed}${markdown_tab}${ip}${tabletab}${ip_total}${tabletab}${boldstar}${greenfont}${ip_name}${fontend}${boldstar}"
 		unset i n ip_total ip_mac ip_name
 	done
 }
@@ -873,8 +875,8 @@ function send(){
 		local systemstatustime=`cat /proc/uptime|awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("运行时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}'`;unset run_days run_hour run_minute run_second
 		local send_content="${send_content}${markdown_splitline}#### **<font color=#76CCFF>系统运行状态</font>**"
 		local send_content="${send_content}${markdown_linefeed}${markdown_tab}平均负载：${systemload}"
-		local send_content="${send_content}${markdown_linefeed}${markdown_tab}CPU占用：${cpuload}"
-		local send_content="${send_content}${markdown_linefeed}${markdown_tab}内存占用：${ramload}"
+		local send_content="${send_content}${markdown_linefeed}${markdown_tab}CPU占用：${cpuload}${percentsym}"
+		local send_content="${send_content}${markdown_linefeed}${markdown_tab}内存占用：${ramload}${percentsym}"
 		local send_content="${send_content}${markdown_linefeed}${markdown_tab}${systemstatustime}"
 	fi
 
@@ -907,7 +909,7 @@ function send(){
 			local ip_name=`getname ${ip} ${ip_mac}`
 			local ip_total=`usage get ${ip_mac}`;[ ! -z "$ip_total" ] && local ip_total="总计流量：${ip_total}  "
 			local ip_name=`cut_str $ip_name 18`
-			local send_content="${send_content}${markdown_linefeed}${markdown_tab}<font color=#92D050>【${ip_name}】</font>  ${ip}${markdown_linefeed}${markdown_tab}${ip_total}在线 ${time1}"
+			local send_content="${send_content}${markdown_linefeed}${markdown_tab}${greenfont}【${ip_name}】${fontend}  ${ip}${markdown_linefeed}${markdown_tab}${ip_total}在线 ${time1}"
 			unset ip_total time_down time_up time1 ip_mac ip_name
 		done
 	fi
@@ -916,8 +918,10 @@ function send(){
 	[ -z "$send_content" ] && local send_content="${markdown_splitline}#### <font color=#FF6666>我遇到了一个难题</font>${markdown_linefeed}${markdown_tab}定时发送选项错误，你没有选择需要发送的项目，该怎么办呢${markdown_splitline}"
 	local nowtime=`date "+%Y-%m-%d %H:%M:%S"`
 	serverchand_send="curl -s \"https://oapi.dingtalk.com/robot/send?access_token=${sckey}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${send_title}\",\"text\":\"#### <font color=#6A65FF>${send_title}</font>${markdown_linefeed}${nowtime}${markdown_linefeed}${send_content}\"}}'"
-	[ "$send_disturb" -eq "0" ] && [ -z "$send_tg" ] && eval $serverchand_send >/dev/null 2>&1
-	[ "$send_disturb" -eq "0" ] && [ ! -z "$send_tg" ] && [ "$send_tg" -eq "1" ] && curl -d "text=${send_title}${markdown_linefeed}${nowtime}${markdown_linefeed}${send_content}" -X POST "${tgtoken}" >/dev/null 2>&1
+	wechatent_send="curl -s \"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${we_webhook}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${send_title}\",\"content\":\"#### <font color=#6A65FF>${send_title}</font>${markdown_linefeed}${nowtime}${markdown_linefeed}${send_content}\"}}'"
+	[ "$send_disturb" -eq "0" ] && [ -z "$send_we" ] && eval $serverchand_send >/dev/null 2>&1
+	[ "$send_disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "1" ] && eval $wechatent_send >/dev/null 2>&1
+	[ "$send_disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "2" ] &&  curl -s "http://pushplus.plus/send?token=${pp_token}" -d "&channel=${pp_channel}&webhook=${pp_webhook}&title=${send_title}&content=${send_content}&template=markdown" >/dev/null 2>&1
 	deltemp
 	echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}定时推送任务完成" >> ${logfile}
 }
@@ -992,10 +996,11 @@ while [ "$serverchand_enable" -eq "1" ]; do
 		[ ! -z "$device_name" ] && title="【$device_name】$title"
 		title=`echo "$title"|sed $'s/\ / /g'|sed $'s/\"/%22/g'|sed $'s/\#/%23/g'|sed $'s/\&/%26/g'|sed $'s/\,/%2C/g'|sed $'s/\//%2F/g'|sed $'s/\:/%3A/g'|sed $'s/\;/%3B/g'|sed $'s/\=/%3D/g'|sed $'s/\@/%40/g'`
 		serverchand_send="curl -s \"https://oapi.dingtalk.com/robot/send?access_token=${sckey}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${title}\",\"text\":\"#### **<font color=#6A65FF>${title}</font>**${markdown_linefeed}${nowtime}${markdown_linefeed}${content}${markdown_linefeed}**<font color=#6A65FF>${title}</font>**\"}}'"
-		[ "$disturb" -eq "0" ] && [ -z "$send_tg" ] && eval $serverchand_send >/dev/null 2>&1
-		[ "$disturb" -eq "0" ] && [ ! -z "$send_tg" ] && [ "$send_tg" -eq "1" ] && curl -d "text=<font color=#6A65FF>${title}</font>${markdown_linefeed}${nowtime}${markdown_linefeed}${content}" -X POST "${tgtoken}" >/dev/null 2>&1
-		[ "$disturb" -eq "0" ] && [ ! -z "$send_tg" ] && [ "$send_tg" -eq "2" ] && curl -s "http://sctapi.ftqq.com/${sctkey}.send?text=${title}" -d "desp=${nowtime}${markdown_linefeed}${content}" >/dev/null 2>&1
-	fi
+		wechatent_send="curl -s \"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${we_webhook}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${title}\",\"content\":\"#### **<font color=#6A65FF>${title}</font>**${markdown_linefeed}${nowtime}${markdown_linefeed}${content}${markdown_linefeed}**<font color=#6A65FF>${title}</font>**\"}}'"
+		[ "$disturb" -eq "0" ] && [ -z "$send_we" ] && eval $serverchand_send >/dev/null 2>&1
+		[ "$disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "1" ] && eval $wechatent_send >/dev/null 2>&1
+		[ "$disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "2" ] && curl -s "http://pushplus.plus/send?token=${pp_token}" -d "&channel=${pp_channel}&webhook=${pp_webhook}&title=${title}&content=${nowtime}${markdown_linefeed}${content}&template=markdown" >/dev/null 2>&1	
+		fi
 	
 	while [ -f "${dir}send_enable.lock" ]; do
 		sleep $sleeptime
