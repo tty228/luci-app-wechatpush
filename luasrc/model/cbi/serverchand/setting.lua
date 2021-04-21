@@ -51,7 +51,7 @@ a=s:taboption("basic", Value,"pp_channel",translate('PushPlus Channel'), transla
 a.rmempty = true
 a:depends("send_we","2")
 
-a=s:taboption("basic", Value,"pp_webhook",translate('PushPlus Token'), translate("PushPlus 自定义Webhook").."<br>第三方webhook或企业微信调用<br>默认为空或wechat，以推送至微信公众号<br>具体自定义Webhook设定参见：<a href='http://pushplus.plus/doc/extend/webhook.html' target='_blank'>点击这里</a><br><br>")
+a=s:taboption("basic", Value,"pp_webhook",translate('PushPlus Custom Webhook'), translate("PushPlus 自定义Webhook").."<br>第三方webhook或企业微信调用<br>默认为空或wechat，以推送至微信公众号<br>具体自定义Webhook设定参见：<a href='http://pushplus.plus/doc/extend/webhook.html' target='_blank'>点击这里</a><br><br>")
 a.rmempty = true
 a:depends("send_we","2")
 
