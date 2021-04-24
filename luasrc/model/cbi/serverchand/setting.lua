@@ -52,7 +52,7 @@ a.rmempty = true
 a:depends("send_we","2")
 a:value("wechat",translate("wechat：PushPlus微信公众号"))
 a:value("cp",translate("cp：企业微信应用"))
-a:value("webhook",translate("webhok：第三方webhook"))
+a:value("webhook",translate("webhook：第三方webhook"))
 a:value("sms",translate("sms：短信"))
 a:value("mail",translate("mail：邮箱"))
 a.description = translate("第三方webhook：企业微信、钉钉、飞书、server酱<br>sms短信/mail邮箱：PushPlus暂未开放<br>具体channel设定参见：<a href='http://pushplus.plus/doc/extend/webhook.html' target='_blank'>点击这里</a>")
