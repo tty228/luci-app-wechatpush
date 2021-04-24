@@ -47,13 +47,29 @@ a=s:taboption("basic", Value,"pp_token",translate('PushPlus Token'), translate("
 a.rmempty = true
 a:depends("send_we","2")
 
-a=s:taboption("basic", Value,"pp_channel",translate('PushPlus Channel'), translate("PushPlus Channel").."<br>第三方webhook或企业微信调用<br>默认为空或wechat，以推送至微信公众号<br>具体channel设定参见：<a href='http://pushplus.plus/doc/extend/webhook.html' target='_blank'>点击这里</a><br><br>")
+a=s:taboption("basic", ListValue,"pp_channel",translate('PushPlus Channel'))
 a.rmempty = true
 a:depends("send_we","2")
+a:value("wechat",translate("wechat：PushPlus微信公众号"))
+a:value("cp",translate("cp：企业微信应用"))
+a:value("webhook",translate("webhok：第三方webhook"))
+a:value("sms",translate("sms：短信"))
+a:value("mail",translate("mail：邮箱"))
+a.description = translate("第三方webhook：企业微信、钉钉、飞书、server酱<br>sms短信/mail邮箱：PushPlus暂未开放<br>具体channel设定参见：<a href='http://pushplus.plus/doc/extend/webhook.html' target='_blank'>点击这里</a>")
 
-a=s:taboption("basic", Value,"pp_webhook",translate('PushPlus Custom Webhook'), translate("PushPlus 自定义Webhook").."<br>第三方webhook或企业微信调用<br>默认为空或wechat，以推送至微信公众号<br>具体自定义Webhook设定参见：<a href='http://pushplus.plus/doc/extend/webhook.html' target='_blank'>点击这里</a><br><br>")
+a=s:taboption("basic", Value,"pp_webhook",translate('PushPlus Custom Webhook'), translate("PushPlus 自定义Webhook").."<br>第三方webhook或企业微信调用<br>具体自定义Webhook设定参见：<a href='http://pushplus.plus/doc/extend/webhook.html' target='_blank'>点击这里</a><br><br>")
 a.rmempty = true
-a:depends("send_we","2")
+a:depends("pp_channel","cp")
+a:depends("pp_channel","webhook")
+
+a=s:taboption("basic", Flag,"pp_topic_enable",translate("PushPlus 一对多推送"))
+a.default=0
+a.rmempty = true
+a:depends("pp_channel","wechat")
+
+a=s:taboption("basic", Value,"pp_topic",translate('PushPlus Topic'), translate("PushPlus 群组编码").."<br>一对多推送时指定的群组编码<br>具体群组编码Topic设定参见：<a href='http://www.pushplus.plus/push2.html' target='_blank'>点击这里</a><br><br>")
+a.rmempty = true
+a:depends("pp_topic_enable","1")
 
 a=s:taboption("basic", Value,"device_name",translate('本设备名称'))
 a.rmempty = true
