@@ -10,7 +10,7 @@ function get_config(){
 
 # 初始化设置信息
 function read_config(){
-	get_config "serverchand_enable" "sckey" "serverchand_ipv4" "ipv4_interface" "ipv4_URL" "serverchand_ipv6" "ipv6_interface" "ipv6_URL" "serverchand_up" "serverchand_down" "serverchand_sheep" "serverchand_whitelist" "serverchand_blacklist" "serverchand_interface" "starttime" "endtime" "cpuload_enable" "cpuload" "temperature_enable" "temperature" "device_name" "err_enable" "network_err_event" "err_sheep_enable" "system_time_event" "autoreboot_time" "network_restart_time" "public_ip_event" "public_ip_retry_count" "soc_code" "sleeptime" "up_timeout" "down_timeout" "device_aliases" "debuglevel" "cpuload" "temperature" "send_mode" "regular_time" "regular_time_2" "regular_time_3" "interval_time" "thread_num" "timeout_retry_count" "send_we" "we_webhook" "pp_token" "pp_channel" "pp_webhook" "err_device_aliases" "oui_dir" "oui_data" "client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" "reset_regularly"
+	get_config "serverchand_enable" "sckey" "serverchand_ipv4" "ipv4_interface" "ipv4_URL" "serverchand_ipv6" "ipv6_interface" "ipv6_URL" "serverchand_up" "serverchand_down" "serverchand_sheep" "serverchand_whitelist" "serverchand_blacklist" "serverchand_interface" "starttime" "endtime" "cpuload_enable" "cpuload" "temperature_enable" "temperature" "device_name" "err_enable" "network_err_event" "err_sheep_enable" "system_time_event" "autoreboot_time" "network_restart_time" "public_ip_event" "public_ip_retry_count" "soc_code" "sleeptime" "up_timeout" "down_timeout" "device_aliases" "debuglevel" "cpuload" "temperature" "send_mode" "regular_time" "regular_time_2" "regular_time_3" "interval_time" "thread_num" "timeout_retry_count" "send_we" "we_webhook" "pp_token" "pp_channel" "pp_webhook" "pp_topic_enable" "pp_topic" "err_device_aliases" "oui_dir" "oui_data" "client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" "reset_regularly"
 	for str_version in "wrtbwmon" "iputils-arping" "curl" "iw"; do
 		eval `echo ${str_version:0:2}"_version"`=`opkg list-installed|grep -w ^${str_version}|awk '{print $3}'` 2>/dev/null
 	done
@@ -921,7 +921,7 @@ function send(){
 	wechatent_send="curl -s \"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${we_webhook}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${send_title}\",\"content\":\"#### <font color=#6A65FF>${send_title}</font>${markdown_linefeed}${nowtime}${markdown_linefeed}${send_content}\"}}'"
 	[ "$send_disturb" -eq "0" ] && [ -z "$send_we" ] && eval $serverchand_send >/dev/null 2>&1
 	[ "$send_disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "1" ] && eval $wechatent_send >/dev/null 2>&1
-	[ "$send_disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "2" ] &&  curl -s "http://pushplus.plus/send?token=${pp_token}" -d "&channel=${pp_channel}&webhook=${pp_webhook}&title=${send_title}&content=${send_content}&template=markdown" >/dev/null 2>&1
+	[ "$send_disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "2" ] &&  curl -s "http://pushplus.plus/send?token=${pp_token}" -d "&channel=${pp_channel}&webhook=${pp_webhook}&topic=${pp_topic}&title=${send_title}&content=${send_content}&template=markdown" >/dev/null 2>&1
 	deltemp
 	echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}定时推送任务完成" >> ${logfile}
 }
@@ -999,7 +999,7 @@ while [ "$serverchand_enable" -eq "1" ]; do
 		wechatent_send="curl -s \"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${we_webhook}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${title}\",\"content\":\"#### **<font color=#6A65FF>${title}</font>**${markdown_linefeed}${nowtime}${markdown_linefeed}${content}${markdown_linefeed}**<font color=#6A65FF>${title}</font>**\"}}'"
 		[ "$disturb" -eq "0" ] && [ -z "$send_we" ] && eval $serverchand_send >/dev/null 2>&1
 		[ "$disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "1" ] && eval $wechatent_send >/dev/null 2>&1
-		[ "$disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "2" ] && curl -s "http://pushplus.plus/send?token=${pp_token}" -d "&channel=${pp_channel}&webhook=${pp_webhook}&title=${title}&content=${nowtime}${markdown_linefeed}${content}&template=markdown" >/dev/null 2>&1	
+		[ "$disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "2" ] && curl -s "http://pushplus.plus/send?token=${pp_token}" -d "&channel=${pp_channel}&webhook=${pp_webhook}&topic=${pp_topic}&title=${title}&content=${nowtime}${markdown_linefeed}${content}&template=markdown" >/dev/null 2>&1	
 		fi
 	
 	while [ -f "${dir}send_enable.lock" ]; do
