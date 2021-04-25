@@ -10,7 +10,7 @@ function get_config(){
 
 # 初始化设置信息
 function read_config(){
-	get_config "pushbot_enable" "sckey" "pushbot_ipv4" "ipv4_interface" "ipv4_URL" "pushbot_ipv6" "ipv6_interface" "ipv6_URL" "pushbot_up" "pushbot_down" "pushbot_sheep" "pushbot_whitelist" "pushbot_blacklist" "pushbot_interface" "starttime" "endtime" "cpuload_enable" "cpuload" "temperature_enable" "temperature" "device_name" "err_enable" "network_err_event" "err_sheep_enable" "system_time_event" "autoreboot_time" "network_restart_time" "public_ip_event" "public_ip_retry_count" "soc_code" "sleeptime" "up_timeout" "down_timeout" "device_aliases" "debuglevel" "cpuload" "temperature" "send_mode" "regular_time" "regular_time_2" "regular_time_3" "interval_time" "thread_num" "timeout_retry_count" "send_we" "we_webhook" "pp_token" "pp_channel" "pp_webhook" "pp_topic_enable" "pp_topic" "err_device_aliases" "oui_dir" "oui_data" "client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" "reset_regularly"
+	get_config "pushbot_enable" "dd_webhook" "pushbot_ipv4" "ipv4_interface" "ipv4_URL" "pushbot_ipv6" "ipv6_interface" "ipv6_URL" "pushbot_up" "pushbot_down" "pushbot_sheep" "pushbot_whitelist" "pushbot_blacklist" "pushbot_interface" "starttime" "endtime" "cpuload_enable" "cpuload" "temperature_enable" "temperature" "device_name" "err_enable" "network_err_event" "err_sheep_enable" "system_time_event" "autoreboot_time" "network_restart_time" "public_ip_event" "public_ip_retry_count" "soc_code" "sleeptime" "up_timeout" "down_timeout" "device_aliases" "debuglevel" "cpuload" "temperature" "send_mode" "regular_time" "regular_time_2" "regular_time_3" "interval_time" "thread_num" "timeout_retry_count" "send_we" "we_webhook" "pp_token" "pp_channel" "pp_webhook" "pp_topic_enable" "pp_topic" "err_device_aliases" "oui_dir" "oui_data" "client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" "reset_regularly"
 	for str_version in "wrtbwmon" "iputils-arping" "curl" "iw"; do
 		eval `echo ${str_version:0:2}"_version"`=`opkg list-installed|grep -w ^${str_version}|awk '{print $3}'` 2>/dev/null
 	done
@@ -44,7 +44,7 @@ function pushbot_init(){
 	[ ! -f "/usr/sbin/wrtbwmon" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】未安装 wrtbwmon ，流量统计不可用" >> ${logfile}
 	[ -z "$ip_version" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法获取依赖项 iputils-arping 版本号，请确认插件是否正常运行" >> ${logfile}
 	[ -z "$cu_version" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法获取依赖项 curl 版本号，请确认插件是否正常运行" >> ${logfile}
-	[ -z "$sckey" ] && [ -z "$pp_token" ] && [ -z "$we_webhook" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】请填写正确的Token/Webhook " >> ${logfile} && return 1
+	[ -z "$ddwebh" ] && [ -z "$pp_token" ] && [ -z "$we_webhook" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】请填写正确的Token/Webhook " >> ${logfile} && return 1
 	local interfacelist=`getinterfacelist` && [ -z "$interfacelist" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法正确获取接口信息，请确认插件是否正常运行" >> ${logfile}
 	return 0
 }
@@ -917,7 +917,7 @@ function send(){
 	local send_title=`echo "$send_title"|sed $'s/\ / /g'|sed $'s/\"/%22/g'|sed $'s/\#/%23/g'|sed $'s/\&/%26/g'|sed $'s/\,/%2C/g'|sed $'s/\//%2F/g'|sed $'s/\:/%3A/g'|sed $'s/\;/%3B/g'|sed $'s/\=/%3D/g'|sed $'s/\@/%40/g'`
 	[ -z "$send_content" ] && local send_content="${markdown_splitline}#### <font color=#FF6666>我遇到了一个难题</font>${markdown_linefeed}${markdown_tab}定时发送选项错误，你没有选择需要发送的项目，该怎么办呢${markdown_splitline}"
 	local nowtime=`date "+%Y-%m-%d %H:%M:%S"`
-	pushbot_send="curl -s \"https://oapi.dingtalk.com/robot/send?access_token=${sckey}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${send_title}\",\"text\":\"#### <font color=#6A65FF>${send_title}</font>${markdown_linefeed}${nowtime}${markdown_linefeed}${send_content}\"}}'"
+	pushbot_send="curl -s \"https://oapi.dingtalk.com/robot/send?access_token=${dd_webhook}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${send_title}\",\"text\":\"#### <font color=#6A65FF>${send_title}</font>${markdown_linefeed}${nowtime}${markdown_linefeed}${send_content}\"}}'"
 	wechatent_send="curl -s \"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${we_webhook}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${send_title}\",\"content\":\"#### <font color=#6A65FF>${send_title}</font>${markdown_linefeed}${nowtime}${markdown_linefeed}${send_content}\"}}'"
 	[ "$send_disturb" -eq "0" ] && [ -z "$send_we" ] && eval $pushbot_send >/dev/null 2>&1
 	[ "$send_disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "1" ] && eval $wechatent_send >/dev/null 2>&1
@@ -995,7 +995,7 @@ while [ "$pushbot_enable" -eq "1" ]; do
 		nowtime=`date "+%Y-%m-%d %H:%M:%S"`
 		[ ! -z "$device_name" ] && title="【$device_name】$title"
 		title=`echo "$title"|sed $'s/\ / /g'|sed $'s/\"/%22/g'|sed $'s/\#/%23/g'|sed $'s/\&/%26/g'|sed $'s/\,/%2C/g'|sed $'s/\//%2F/g'|sed $'s/\:/%3A/g'|sed $'s/\;/%3B/g'|sed $'s/\=/%3D/g'|sed $'s/\@/%40/g'`
-		pushbot_send="curl -s \"https://oapi.dingtalk.com/robot/send?access_token=${sckey}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${title}\",\"text\":\"#### **<font color=#6A65FF>${title}</font>**${markdown_linefeed}${nowtime}${markdown_linefeed}${content}${markdown_linefeed}**<font color=#6A65FF>${title}</font>**\"}}'"
+		pushbot_send="curl -s \"https://oapi.dingtalk.com/robot/send?access_token=${dd_webhook}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${title}\",\"text\":\"#### **<font color=#6A65FF>${title}</font>**${markdown_linefeed}${nowtime}${markdown_linefeed}${content}${markdown_linefeed}**<font color=#6A65FF>${title}</font>**\"}}'"
 		wechatent_send="curl -s \"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${we_webhook}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${title}\",\"content\":\"#### **<font color=#6A65FF>${title}</font>**${markdown_linefeed}${nowtime}${markdown_linefeed}${content}${markdown_linefeed}**<font color=#6A65FF>${title}</font>**\"}}'"
 		[ "$disturb" -eq "0" ] && [ -z "$send_we" ] && eval $pushbot_send >/dev/null 2>&1
 		[ "$disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "1" ] && eval $wechatent_send >/dev/null 2>&1
