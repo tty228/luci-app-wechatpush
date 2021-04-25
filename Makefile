@@ -6,8 +6,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-pushbot
-PKG_VERSION:=2.20
-PKG_RELEASE:=5
+PKG_VERSION:=3.00
+PKG_RELEASE:=1
 
 include $(INCLUDE_DIR)/package.mk
 
