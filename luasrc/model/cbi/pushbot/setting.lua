@@ -6,16 +6,16 @@ local net = require "luci.model.network".init()
 local sys = require "luci.sys"
 local ifaces = sys.net:devices()
 
-m=Map("serverchand",translate("ServerChand"),
-translate("「Server酱-钉钉版」，英文名「ServerChan-DINGTalk」，是一款从服务器推送报警信息和日志到钉钉的工具。本插件由tty228/luci-app-serverchan创建，然后七年修改为钉钉机器人版自用。<br /><br />如果你在使用中遇到问题，请到这里提交：")
-.. [[<a href="https://github.com/zzsj0928/luci-app-serverchand" target="_blank">]]
+m=Map("pushbot",translate("pushbot"),
+translate("「全能推送」，英文名「PushBot」，是一款从服务器推送报警信息和日志到各平台的工具。支持钉钉推送，企业微信推送，PushPlus推送。<br>本插件由tty228/luci-app-serverchan创建，然后七年修改为钉钉机器人版自用。<br /><br />如果你在使用中遇到问题，请到这里提交：")
+.. [[<a href="https://github.com/zzsj0928/luci-app-pushbot" target="_blank">]]
 .. translate("github 项目地址")
 .. [[</a>]]
 )
 
-m:section(SimpleSection).template  = "serverchand/status"
+m:section(SimpleSection).template  = "pushbot/status"
 
-s=m:section(NamedSection,"serverchand","serverchand",translate(""))
+s=m:section(NamedSection,"pushbot","pushbot",translate(""))
 s:tab("basic", translate("基本设置"))
 s:tab("content", translate("推送内容"))
 s:tab("crontab", translate("定时推送"))
@@ -24,7 +24,7 @@ s.addremove = false
 s.anonymous = true
 
 --基本设置
-a=s:taboption("basic", Flag,"serverchand_enable",translate("启用"))
+a=s:taboption("basic", Flag,"pushbot_enable",translate("启用"))
 a.default=0
 a.rmempty = true
 
@@ -107,7 +107,7 @@ a.rmempty = true
 a.description = translate("<br/> 请输入设备 MAC 和设备别名，用“-”隔开，如：<br/> XX:XX:XX:XX:XX:XX-我的手机")
 
 --设备状态
-a=s:taboption("content", ListValue,"serverchand_ipv4",translate("ipv4 变动通知"))
+a=s:taboption("content", ListValue,"pushbot_ipv4",translate("ipv4 变动通知"))
 a.rmempty = true
 a.default=""
 a:value("",translate("关闭"))
@@ -116,7 +116,7 @@ a:value("2",translate("通过URL获取"))
 
 a = s:taboption("content", ListValue, "ipv4_interface", translate("接口名称"))
 a.rmempty = true
-a:depends({serverchand_ipv4="1"})
+a:depends({pushbot_ipv4="1"})
 for _, iface in ipairs(ifaces) do
 	if not (iface == "lo" or iface:match("^ifb.*")) then
 		local nets = net:get_interface(iface)
@@ -133,10 +133,10 @@ a.description = translate("<br/>一般选择 wan 接口，多拨环境请自行�
 a= s:taboption("content", Value, "ipv4_URL", "URL 地址")
 a.rmempty = true
 a.default = "members.3322.org/dyndns/getip"
-a:depends({serverchand_ipv4="2"})
+a:depends({pushbot_ipv4="2"})
 a.description = translate("<br/>会因服务器稳定性、连接频繁等原因导致获取失败<br/>如接口可以正常获取 IP，不推荐使用")
 
-a=s:taboption("content", ListValue,"serverchand_ipv6",translate("ipv6 变动通知"))
+a=s:taboption("content", ListValue,"pushbot_ipv6",translate("ipv6 变动通知"))
 a.rmempty = true
 a.default="disable"
 a:value("0",translate("关闭"))
@@ -145,7 +145,7 @@ a:value("2",translate("通过URL获取"))
 
 a = s:taboption("content", ListValue, "ipv6_interface", translate("接口名称"))
 a.rmempty = true
-a:depends({serverchand_ipv6="1"})
+a:depends({pushbot_ipv6="1"})
 for _, iface in ipairs(ifaces) do
 	if not (iface == "lo" or iface:match("^ifb.*")) then
 		local nets = net:get_interface(iface)
@@ -162,14 +162,14 @@ a.description = translate("<br/>一般选择 wan 接口，多拨环境请自行�
 a= s:taboption("content", Value, "ipv6_URL", "URL 地址")
 a.rmempty = true
 a.default = "v6.ip.zxinc.org/getip"
-a:depends({serverchand_ipv6="2"})
+a:depends({pushbot_ipv6="2"})
 a.description = translate("<br/>会因服务器稳定性、连接频繁等原因导致获取失败<br/>如接口可以正常获取 IP，不推荐使用")
 
-a=s:taboption("content", Flag,"serverchand_up",translate("设备上线通知"))
+a=s:taboption("content", Flag,"pushbot_up",translate("设备上线通知"))
 a.default=1
 a.rmempty = true
 
-a=s:taboption("content", Flag,"serverchand_down",translate("设备下线通知"))
+a=s:taboption("content", Flag,"pushbot_down",translate("设备下线通知"))
 a.default=1
 a.rmempty = true
 
@@ -296,11 +296,11 @@ e:depends("send_mode","2")
 e.inputstyle = "apply"
 function e.write(self, section)
 luci.sys.call("cbi.apply")
-        luci.sys.call("/usr/bin/serverchand/serverchand send &")
+        luci.sys.call("/usr/bin/pushbot/pushbot send &")
 end
 
 --免打扰
-a=s:taboption("disturb", ListValue,"serverchand_sheep",translate("免打扰时段设置"),translate("在指定整点时间段内，暂停推送消息<br/>免打扰时间中，定时推送也会被阻止。"))
+a=s:taboption("disturb", ListValue,"pushbot_sheep",translate("免打扰时段设置"),translate("在指定整点时间段内，暂停推送消息<br/>免打扰时间中，定时推送也会被阻止。"))
 a.rmempty = true
 
 a:value("",translate("关闭"))
@@ -315,8 +315,8 @@ a:value(t,translate("每天"..t.."点"))
 end
 a.default=0
 a.datatype=uinteger
-a:depends({serverchand_sheep="1"})
-a:depends({serverchand_sheep="2"})
+a:depends({pushbot_sheep="1"})
+a:depends({pushbot_sheep="2"})
 a=s:taboption("disturb", ListValue,"endtime",translate("免打扰结束时间"))
 a.rmempty = true
 
@@ -325,8 +325,8 @@ a:value(t,translate("每天"..t.."点"))
 end
 a.default=8
 a.datatype=uinteger
-a:depends({serverchand_sheep="1"})
-a:depends({serverchand_sheep="2"})
+a:depends({pushbot_sheep="1"})
+a:depends({pushbot_sheep="2"})
 
 a=s:taboption("disturb", ListValue,"macmechanism",translate("MAC过滤"))
 a:value("",translate("disable"))
@@ -336,17 +336,17 @@ a:value("interface",translate("仅通知此接口设备"))
 a.rmempty = true
 
 
-a = s:taboption("disturb", DynamicList, "serverchand_whitelist", translate("忽略列表"))
+a = s:taboption("disturb", DynamicList, "pushbot_whitelist", translate("忽略列表"))
 nt.mac_hints(function(mac, name) a :value(mac, "%s (%s)" %{ mac, name }) end)
 a.rmempty = true
 a:depends({macmechanism="allow"})
 
-a = s:taboption("disturb", DynamicList, "serverchand_blacklist", translate("关注列表"))
+a = s:taboption("disturb", DynamicList, "pushbot_blacklist", translate("关注列表"))
 nt.mac_hints(function(mac, name) a:value(mac, "%s (%s)" %{ mac, name }) end)
 a.rmempty = true
 a:depends({macmechanism="block"})
 
-a = s:taboption("disturb", ListValue, "serverchand_interface", translate("接口名称"))
+a = s:taboption("disturb", ListValue, "pushbot_interface", translate("接口名称"))
 a:depends({macmechanism="interface"})
 a.rmempty = true
 
