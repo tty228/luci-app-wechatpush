@@ -1,15 +1,6 @@
 # 改名公告
 `2021年04月25日 起luci-app-serverchand 改名为 luci-app-pushbot`
 
-
-自2021年04月25日起，本项目luci-app-serverchand改名为luci-app-pushbot 全能推送。
-
-
-见：
-
-https://github.com/zzsj0928/luci-app-pushbot
-
-
 如需拉取编译
 请把：
 
