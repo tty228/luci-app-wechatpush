@@ -3,20 +3,20 @@
 # 读取设置文件
 function get_config(){
 	while [[ "$*" != "" ]]; do
-		eval ${1}='`uci get serverchand.serverchand.$1`' 2>/dev/null
+		eval ${1}='`uci get pushbot.pushbot.$1`' 2>/dev/null
 		shift
 	done
 }
 
 # 初始化设置信息
 function read_config(){
-	get_config "serverchand_enable" "sckey" "serverchand_ipv4" "ipv4_interface" "ipv4_URL" "serverchand_ipv6" "ipv6_interface" "ipv6_URL" "serverchand_up" "serverchand_down" "serverchand_sheep" "serverchand_whitelist" "serverchand_blacklist" "serverchand_interface" "starttime" "endtime" "cpuload_enable" "cpuload" "temperature_enable" "temperature" "device_name" "err_enable" "network_err_event" "err_sheep_enable" "system_time_event" "autoreboot_time" "network_restart_time" "public_ip_event" "public_ip_retry_count" "soc_code" "sleeptime" "up_timeout" "down_timeout" "device_aliases" "debuglevel" "cpuload" "temperature" "send_mode" "regular_time" "regular_time_2" "regular_time_3" "interval_time" "thread_num" "timeout_retry_count" "send_we" "we_webhook" "pp_token" "pp_channel" "pp_webhook" "pp_topic_enable" "pp_topic" "err_device_aliases" "oui_dir" "oui_data" "client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" "reset_regularly"
+	get_config "pushbot_enable" "sckey" "pushbot_ipv4" "ipv4_interface" "ipv4_URL" "pushbot_ipv6" "ipv6_interface" "ipv6_URL" "pushbot_up" "pushbot_down" "pushbot_sheep" "pushbot_whitelist" "pushbot_blacklist" "pushbot_interface" "starttime" "endtime" "cpuload_enable" "cpuload" "temperature_enable" "temperature" "device_name" "err_enable" "network_err_event" "err_sheep_enable" "system_time_event" "autoreboot_time" "network_restart_time" "public_ip_event" "public_ip_retry_count" "soc_code" "sleeptime" "up_timeout" "down_timeout" "device_aliases" "debuglevel" "cpuload" "temperature" "send_mode" "regular_time" "regular_time_2" "regular_time_3" "interval_time" "thread_num" "timeout_retry_count" "send_we" "we_webhook" "pp_token" "pp_channel" "pp_webhook" "pp_topic_enable" "pp_topic" "err_device_aliases" "oui_dir" "oui_data" "client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" "reset_regularly"
 	for str_version in "wrtbwmon" "iputils-arping" "curl" "iw"; do
 		eval `echo ${str_version:0:2}"_version"`=`opkg list-installed|grep -w ^${str_version}|awk '{print $3}'` 2>/dev/null
 	done
-	dir="/tmp/serverchand/" && mkdir -p ${dir}
-	[ ! -z "$oui_dir" ] && [ "$oui_dir" -eq "1" ] && oui_base="${dir}oui_base.txt" || oui_base="/usr/bin/serverchand/oui_base.txt"
-	debuglevel=`echo "$debuglevel"` && [ -z "$debuglevel" ] && logfile="/dev/null" || logfile="${dir}serverchand.log"
+	dir="/tmp/pushbot/" && mkdir -p ${dir}
+	[ ! -z "$oui_dir" ] && [ "$oui_dir" -eq "1" ] && oui_base="${dir}oui_base.txt" || oui_base="/usr/bin/pushbot/oui_base.txt"
+	debuglevel=`echo "$debuglevel"` && [ -z "$debuglevel" ] && logfile="/dev/null" || logfile="${dir}pushbot.log"
 	device_aliases=`echo "$device_aliases"|sed 's/ /\n/g'|sed 's/-/ /'` 2>/dev/null
 	err_device_aliases=`echo "$err_device_aliases"|sed 's/ /\n/g'` 2>/dev/null
 	client_usage_whitelist=`echo "$client_usage_whitelist"|sed 's/ /\n/g'` 2>/dev/null
@@ -31,16 +31,16 @@ function read_config(){
 }
 
 # 初始化
-function serverchand_init(){
+function pushbot_init(){
 	enable_detection
-	if [ -f "/usr/bin/serverchand/errlog" ]; then
-		cat /usr/bin/serverchand/errlog > ${logfile}
+	if [ -f "/usr/bin/pushbot/errlog" ]; then
+		cat /usr/bin/pushbot/errlog > ${logfile}
 		echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】载入上次重启前日志" >> ${logfile}
 		echo "--------------------------------------------------------" >> ${logfile}
 	fi
 	down_oui &
 	deltemp
-	rm -f ${dir}fd1 ${dir}sheep_usage ${dir}old_sheep_usage ${dir}client_usage_aliases ${dir}old_client_usage_aliases /usr/bin/serverchand/errlog >/dev/null 2>&1
+	rm -f ${dir}fd1 ${dir}sheep_usage ${dir}old_sheep_usage ${dir}client_usage_aliases ${dir}old_client_usage_aliases /usr/bin/pushbot/errlog >/dev/null 2>&1
 	[ ! -f "/usr/sbin/wrtbwmon" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】未安装 wrtbwmon ，流量统计不可用" >> ${logfile}
 	[ -z "$ip_version" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法获取依赖项 iputils-arping 版本号，请确认插件是否正常运行" >> ${logfile}
 	[ -z "$cu_version" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法获取依赖项 curl 版本号，请确认插件是否正常运行" >> ${logfile}
@@ -82,7 +82,7 @@ function deltemp(){
 function enable_detection(){
 	[ ! "$1" ] && local time_n=1
 	for i in `seq 1 $time_n`; do
-		get_config serverchand_enable;[ -z "$serverchand_enable" ] || [ "$serverchand_enable" -eq "0" ] && `/etc/init.d/serverchand stop` || sleep 1
+		get_config pushbot_enable;[ -z "$pushbot_enable" ] || [ "$pushbot_enable" -eq "0" ] && `/etc/init.d/pushbot stop` || sleep 1
 	done
 }
 
@@ -320,7 +320,7 @@ function cut_str {
 }
 
 # 在线设备列表
-function serverchand_first(){
+function pushbot_first(){
 	[ -f "${dir}ipAddress" ] && local IPLIST=`cat ${dir}ipAddress|awk '{print $1}'|grep -v "^$"|sort -u`
 	for ip in $IPLIST; do
 		read -u 5
@@ -343,40 +343,40 @@ function serverchand_first(){
 }
 
 # 创建计划任务
-function serverchand_cron(){
+function pushbot_cron(){
 	function del_cron(){
-		( echo `crontab -l`|grep -q "serverchand" ) && crontab -l > conf && sed -i "/serverchand/d" conf && crontab conf && rm -f conf >/dev/null 2>&1
+		( echo `crontab -l`|grep -q "pushbot" ) && crontab -l > conf && sed -i "/pushbot/d" conf && crontab conf && rm -f conf >/dev/null 2>&1
 	}
 	function re_cron(){
 		/etc/init.d/cron stop
 		/etc/init.d/cron start
 	}
 	del_cron
-	if [ -z "$serverchand_enable" ] || [ -z "$send_mode" -a -z "$reset_regularly" ]; then
+	if [ -z "$pushbot_enable" ] || [ -z "$send_mode" -a -z "$reset_regularly" ]; then
 		re_cron
 		return
 	fi
 	
 	# 重置流量
 	if [ ! -z "$reset_regularly" ] && [ "$reset_regularly" -eq "1" ]; then
-		crontab -l > conf && echo -e "0 0 * * * rm /tmp/serverchand/usage.db >/dev/null 2>&1" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
-		crontab -l > conf && echo -e "0 0 * * * rm /tmp/serverchand/usage6.db >/dev/null 2>&1" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
+		crontab -l > conf && echo -e "0 0 * * * rm /tmp/pushbot/usage.db >/dev/null 2>&1" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
+		crontab -l > conf && echo -e "0 0 * * * rm /tmp/pushbot/usage6.db >/dev/null 2>&1" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
 	fi
 	[ ! -z "$regular_time_2" ] && local regular_time_2=",${regular_time_2}"
 	[ ! -z "$regular_time_3" ] && local regular_time_3=",${regular_time_3}"
 	# 定时发送
 	if [ ! -z "$regular_time" ] || [ ! -z "$regular_time_2" ] || [ ! -z "$regular_time_3" ]; then
-		crontab -l > conf && echo -e "0 $regular_time$regular_time_2$regular_time_3 * * * /usr/bin/serverchand/serverchand send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
+		crontab -l > conf && echo -e "0 $regular_time$regular_time_2$regular_time_3 * * * /usr/bin/pushbot/pushbot send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
 	# 间隔发送
 	elif [ ! -z "$interval_time" ]; then
-		crontab -l > conf && echo -e "0 */$interval_time * * * /usr/bin/serverchand/serverchand send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
+		crontab -l > conf && echo -e "0 */$interval_time * * * /usr/bin/pushbot/pushbot send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
 	fi
 	re_cron
 }
 
 # 免打扰检测
-function serverchand_disturb(){
-	[ -z "$serverchand_sheep" ] || [ -z "$starttime" ] || [ -z "$endtime" ] && return 0
+function pushbot_disturb(){
+	[ -z "$pushbot_sheep" ] || [ -z "$starttime" ] || [ -z "$endtime" ] && return 0
 	if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ]; then
 		unset sheep_starttime
 		rm -f ${dir}sheep_usage ${dir}old_sheep_usage  2>/dev/null
@@ -385,12 +385,12 @@ function serverchand_disturb(){
 		return 0
 	else
 		[ -z "$sheep_starttime" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【免打扰】夜深了，该休息了" >> ${logfile} && sheep_starttime=`date +%s`
-		if [ "$serverchand_sheep" -eq "1" ] ;then
+		if [ "$pushbot_sheep" -eq "1" ] ;then
 			while [ `date +%H` -lt "$endtime" ]; do
 				enable_detection
 				sleep $sleeptime
 			done
-		elif  [ "$serverchand_sheep" -eq "2" ] ;then
+		elif  [ "$pushbot_sheep" -eq "2" ] ;then
 			disturb_text="【免打扰】"
 			return 1
 		fi
@@ -400,23 +400,23 @@ function serverchand_disturb(){
 # 文件锁
 function LockFile(){
 	if [ $1 = "lock" ] ;then
-		[ ! -f "${dir}serverchand.lock" ] && > ${dir}serverchand.lock && return
-		while [ -f "${dir}serverchand.lock" ]; do
+		[ ! -f "${dir}pushbot.lock" ] && > ${dir}pushbot.lock && return
+		while [ -f "${dir}pushbot.lock" ]; do
 			enable_detection 1
 		done
 		LockFile lock
 	fi
-	[ $1 = "unlock" ] && rm -f ${dir}serverchand.lock >/dev/null 2>&1
+	[ $1 = "unlock" ] && rm -f ${dir}pushbot.lock >/dev/null 2>&1
 	return
 }
 
 # 检测黑白名单
 function blackwhitelist(){
 	[ ! "$1" ] && return 1
-	[ -z "$serverchand_whitelist" ] && [ -z "$serverchand_blacklist" ] && [ -z "$serverchand_interface" ] && return
-	[ ! -z "$serverchand_whitelist" ] && ( ! echo "$serverchand_whitelist"|grep -q -i -w $1) && return
-	[ ! -z "$serverchand_blacklist" ] && ( echo "$serverchand_blacklist"|grep -q -i -w $1) && return
-	[ ! -z "$serverchand_interface" ] && ( echo `getinterface ${1}`|grep -q -i -w $serverchand_interface ) && return
+	[ -z "$pushbot_whitelist" ] && [ -z "$pushbot_blacklist" ] && [ -z "$pushbot_interface" ] && return
+	[ ! -z "$pushbot_whitelist" ] && ( ! echo "$pushbot_whitelist"|grep -q -i -w $1) && return
+	[ ! -z "$pushbot_blacklist" ] && ( echo "$pushbot_blacklist"|grep -q -i -w $1) && return
+	[ ! -z "$pushbot_interface" ] && ( echo `getinterface ${1}`|grep -q -i -w $pushbot_interface ) && return
 	return 1
 }
 
@@ -436,7 +436,7 @@ function get_client(){
 		local js_str="${js_str}<div class='th'><%:${tmp_uptime}%></div></div>"
 	done < ${dir}ipAddress
 	fi
-cat>/usr/lib/lua/luci/view/serverchand/client.htm<<EOF
+cat>/usr/lib/lua/luci/view/pushbot/client.htm<<EOF
 <h2><%:在线设备列表%></h2><div class="table" id="traffic"><div class="tr table-titles"><div class="th" id="thClient" style="width:17%"><%:客户端名%></div><div class="th" id="thMAC" style="width:10%"><%:MAC%></div><div class="th" id="thIP" style="width:17%"><%:IP%></div><div class="th" id="thTotal" style="width:9%"><%:总计流量%></div><div class="th" id="thFirstSeen" style="width:15%"><%:在线时间%></div></div>
 $js_str
 </div>
@@ -490,7 +490,7 @@ function unattended(){
 		local interfaceuptime=`getinterfaceuptime`
 		if [ ! -z "$autoreboot_time" ] && [ `cat /proc/uptime|awk -F. '{run_hour=$1/3600;printf("%d",run_hour)}'` -ge "$autoreboot_time" ] && [ "$system_time_event" -eq "1" ]; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【无人值守任务】重启路由器咯" >> ${logfile}
-			cat ${logfile} > /usr/bin/serverchand/errlog
+			cat ${logfile} > /usr/bin/pushbot/errlog
 			sleep 2 && reboot && exit
 		elif [ ! -z "$network_restart_time" ] && [ ! -z "$interfaceuptime" ] && [ `echo "$interfaceuptime"|awk -F. '{run_hour=$1/3600;printf("%d",run_hour)}'` -ge "$network_restart_time" ] && [ "$system_time_event" -eq "2" ]; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【无人值守任务】重新拨号咯" >> ${logfile}
@@ -511,10 +511,10 @@ function unattended(){
 			ifup wan >/dev/null 2>&1
 			sleep 60
 			local wanIP=`getip wanipv4` && local hostIP=`getip hostipv4`
-			[ ! -z "$serverchand_ipv4" ] && [ "$serverchand_ipv4" -eq "1" ] && local IPv4=${wanIP}
-			[ ! -z "$serverchand_ipv4" ] && [ "$serverchand_ipv4" -eq "2" ] && local IPv4=${hostIP}
-			[ ! -z "$serverchand_ipv6" ] && [ "$serverchand_ipv6" -eq "1" ] && local IPv6=`getip wanipv6`
-			[ ! -z "$serverchand_ipv6" ] && [ "$serverchand_ipv6" -eq "2" ] && local IPv6=`getip hostipv6`
+			[ ! -z "$pushbot_ipv4" ] && [ "$pushbot_ipv4" -eq "1" ] && local IPv4=${wanIP}
+			[ ! -z "$pushbot_ipv4" ] && [ "$pushbot_ipv4" -eq "2" ] && local IPv4=${hostIP}
+			[ ! -z "$pushbot_ipv6" ] && [ "$pushbot_ipv6" -eq "1" ] && local IPv6=`getip wanipv6`
+			[ ! -z "$pushbot_ipv6" ] && [ "$pushbot_ipv6" -eq "2" ] && local IPv6=`getip hostipv6`
 			[ ! -z "$wanIP" ] && [ ! -z "$hostIP" ] && ( ! echo "$wanIP"|grep -q -w ${hostIP} ) && echo IPv4 $IPv4 > ${dir}ip && echo -e IPv6 $last_IPv6 >> ${dir}ip
 		fi
 	fi
@@ -538,16 +538,16 @@ function rand_geturl(){
 			local network_enable="404"
 			[ -z "$network_err_time" ] && network_err_time=`date +%s`
 			if [ ! -z "$network_err_event" ] && [ "$((`date +%s`-$network_err_time))" -ge "600" ]; then
-				> ${dir}send_enable.lock && serverchand_first && deltemp
+				> ${dir}send_enable.lock && pushbot_first && deltemp
 				geterrdevicealiases
 				if [ "$?" -eq "0" ]; then
-					[ -f /usr/bin/serverchand/autoreboot_count ] && retry_count=`cat /usr/bin/serverchand/autoreboot_count` && rm -f /usr/bin/serverchand/autoreboot_count >/dev/null 2>&1
+					[ -f /usr/bin/pushbot/autoreboot_count ] && retry_count=`cat /usr/bin/pushbot/autoreboot_count` && rm -f /usr/bin/pushbot/autoreboot_count >/dev/null 2>&1
 					[ ! -z ${retry_count} ] && retry_count=0;retry_count=`expr $retry_count + 1`
 					if [ "$network_err_event" -eq "1" ] ;then
 						if [ "$retry_count" -lt "3" ] ;then
-							echo "$retry_count" > /usr/bin/serverchand/autoreboot_count
+							echo "$retry_count" > /usr/bin/pushbot/autoreboot_count
 							echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】正在尝试重启路由，当前第 $retry_count 次 " >> ${logfile}
-							cat ${logfile} > /usr/bin/serverchand/errlog
+							cat ${logfile} > /usr/bin/pushbot/errlog
 							sleep 2 && reboot && exit
 						fi
 						[ "$retry_count" -eq "3" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】已经重启路由2次，修复失败，请主人自行修复哦" >> ${logfile}
@@ -568,11 +568,11 @@ function rand_geturl(){
 							sleep 60 && network_restart
 						elif [ "$retry_count" -eq "3" ] ;then
 							echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】正在尝试修复网络，当前第 3 次，备份设置项，并修改相关设置" >> ${logfile}
-							mkdir -p /usr/bin/serverchand/configbak
-							cp -p -f /etc/config/network /usr/bin/serverchand/configbak/network
-							cp -p -f /etc/config/dhcp /usr/bin/serverchand/configbak/dhcp
-							cp -p -f /etc/config/firewall /usr/bin/serverchand/configbak/firewall
-							cp -p -f /etc/firewall.user /usr/bin/serverchand/configbak/firewall.user
+							mkdir -p /usr/bin/pushbot/configbak
+							cp -p -f /etc/config/network /usr/bin/pushbot/configbak/network
+							cp -p -f /etc/config/dhcp /usr/bin/pushbot/configbak/dhcp
+							cp -p -f /etc/config/firewall /usr/bin/pushbot/configbak/firewall
+							cp -p -f /etc/firewall.user /usr/bin/pushbot/configbak/firewall.user
 							uci set network.wan.peerdns='0'
 							uci delete network.wan.dns
 							uci add_list network.wan.dns='223.5.5.5'
@@ -589,22 +589,22 @@ function rand_geturl(){
 							uci commit firewall
 							sleep 60 && network_restart
 						elif [ "$retry_count" -eq "4" ] ;then
-							echo "$retry_count" > /usr/bin/serverchand/autoreboot_count
-							cat ${logfile} > /usr/bin/serverchand/errlog
+							echo "$retry_count" > /usr/bin/pushbot/autoreboot_count
+							cat ${logfile} > /usr/bin/pushbot/errlog
 							sleep 2 && reboot && exit
 						elif [ "$retry_count" -eq "5" ] ;then
-							echo "$retry_count" > /usr/bin/serverchand/autoreboot_count
+							echo "$retry_count" > /usr/bin/pushbot/autoreboot_count
 							echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】修复失败，还原设置中，请自行检查网络设置" >> ${logfile}
-							cp -p -f /usr/bin/serverchand/configbak/network /etc/config/network
-							cp -p -f /usr/bin/serverchand/configbak/dhcp /etc/config/dhcp
-							cp -p -f /usr/bin/serverchand/configbak/firewall /etc/config/firewall
-							cp -p -f /usr/bin/serverchand/configbak/firewall.user /etc/firewall.user
-							cat ${logfile} > /usr/bin/serverchand/errlog
+							cp -p -f /usr/bin/pushbot/configbak/network /etc/config/network
+							cp -p -f /usr/bin/pushbot/configbak/dhcp /etc/config/dhcp
+							cp -p -f /usr/bin/pushbot/configbak/firewall /etc/config/firewall
+							cp -p -f /usr/bin/pushbot/configbak/firewall.user /etc/firewall.user
+							cat ${logfile} > /usr/bin/pushbot/errlog
 							sleep 2 && reboot && exit
 						fi
 					fi
 				fi
-			elif [ -f /usr/bin/serverchand/autoreboot_count ]; then
+			elif [ -f /usr/bin/pushbot/autoreboot_count ]; then
 				network_err_time=`expr $network_err_time - 600` && sleep 60
 			fi
 			enable_detection
@@ -612,47 +612,47 @@ function rand_geturl(){
 		fi
 	continue
 	done
-	rm -f /usr/bin/serverchand/autoreboot_count >/dev/null 2>&1
+	rm -f /usr/bin/pushbot/autoreboot_count >/dev/null 2>&1
 }
 
 # 检测 ip 状况
 function ip_changes(){
-	[ ! -z "$serverchand_ipv4" ] && [ "$serverchand_ipv4" -eq "1" ] && local IPv4=`getip wanipv4`
-	[ ! -z "$serverchand_ipv4" ] && [ "$serverchand_ipv4" -eq "2" ] && local IPv4=`getip hostipv4`
-	[ ! -z "$serverchand_ipv6" ] && [ "$serverchand_ipv6" -eq "1" ] && local IPv6=`getip wanipv6`
-	[ ! -z "$serverchand_ipv6" ] && [ "$serverchand_ipv6" -eq "2" ] && local IPv6=`getip hostipv6`
+	[ ! -z "$pushbot_ipv4" ] && [ "$pushbot_ipv4" -eq "1" ] && local IPv4=`getip wanipv4`
+	[ ! -z "$pushbot_ipv4" ] && [ "$pushbot_ipv4" -eq "2" ] && local IPv4=`getip hostipv4`
+	[ ! -z "$pushbot_ipv6" ] && [ "$pushbot_ipv6" -eq "1" ] && local IPv6=`getip wanipv6`
+	[ ! -z "$pushbot_ipv6" ] && [ "$pushbot_ipv6" -eq "2" ] && local IPv6=`getip hostipv6`
 
 	if [ -f ${dir}ip ]; then
 		local last_IPv4=$(cat "${dir}ip"|grep IPv4|awk '{print $2}'|grep -v "^$"|sort -u|head -n1)
 		local last_IPv6=$(cat "${dir}ip"|grep IPv6|awk '{print $2}'|grep -v "^$"|sort -u|head -n1)
-		if [ ! -z "$serverchand_ipv4" ] && [ "$serverchand_ipv4" -ne "0" ] && [ ! -z "$IPv4" ] && ( ! echo ${IPv4}|grep -w -q ${last_IPv4} ); then
+		if [ ! -z "$pushbot_ipv4" ] && [ "$pushbot_ipv4" -ne "0" ] && [ ! -z "$IPv4" ] && ( ! echo ${IPv4}|grep -w -q ${last_IPv4} ); then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}当前IP：${IPv4}" >> ${logfile}
 			echo IPv4 $IPv4 > ${dir}ip && echo -e IPv6 $last_IPv6 >> ${dir}ip
 			title="IP 地址变化"
 			content="${content}${markdown_splitline}#### <font color=#92D050>IP 地址变化</font>${markdown_linefeed}${markdown_tab}当前 IP：${IPv4}"
-		elif [ ! -z "$serverchand_ipv4" ] && [ "$serverchand_ipv4" -ne "0" ] && [ -z "$IPv4" ]; then
+		elif [ ! -z "$pushbot_ipv4" ] && [ "$pushbot_ipv4" -ne "0" ] && [ -z "$IPv4" ]; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】获取 IPv4 地址失败" >> ${logfile}
 		fi
 		
-		if [ ! -z "$serverchand_ipv6" ] && [ "$serverchand_ipv6" -ne "0" ] && [ ! -z "$IPv6" ] && ( ! echo "$IPv6"|grep -w -q ${last_IPv6} ); then
+		if [ ! -z "$pushbot_ipv6" ] && [ "$pushbot_ipv6" -ne "0" ] && [ ! -z "$IPv6" ] && ( ! echo "$IPv6"|grep -w -q ${last_IPv6} ); then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}当前IPv6：${IPv6}" >> ${logfile}
 			echo IPv4 $IPv4 > ${dir}ip && echo -e IPv6 $IPv6 >> ${dir}ip
 			[ -z "$title" ] && title="IPv6 地址变化"
 			[ ! -z "$title" ] && title="IP 地址变化"
 			content="${content}${markdown_splitline}#### <font color=#92D050>IPv6 地址变化</font>${markdown_linefeed}${markdown_tab}当前 IPv6：${IPv6}"				
-		elif [ ! -z "$serverchand_ipv6" ] && [ "$serverchand_ipv6" -ne "0" ] && [ -z "$IPv6" ]; then
+		elif [ ! -z "$pushbot_ipv6" ] && [ "$pushbot_ipv6" -ne "0" ] && [ -z "$IPv6" ]; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】获取 IPv6 地址失败" >> ${logfile}
 		fi
 		
 	else
 		echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}路由器已经重启!" >> ${logfile}
-		[ ! -z "$serverchand_ipv4" ] && [ "$serverchand_ipv4" -ne "0" ] && echo "`date "+%Y-%m-%d %H:%M:%S"`  当前IP: ${IPv4}" >> ${logfile}
-		[ ! -z "$serverchand_ipv6" ] && [ "$serverchand_ipv6" -ne "0" ] && echo "`date "+%Y-%m-%d %H:%M:%S"`  当前IPv6: ${IPv6}" >> ${logfile}
+		[ ! -z "$pushbot_ipv4" ] && [ "$pushbot_ipv4" -ne "0" ] && echo "`date "+%Y-%m-%d %H:%M:%S"`  当前IP: ${IPv4}" >> ${logfile}
+		[ ! -z "$pushbot_ipv6" ] && [ "$pushbot_ipv6" -ne "0" ] && echo "`date "+%Y-%m-%d %H:%M:%S"`  当前IPv6: ${IPv6}" >> ${logfile}
 		echo IPv4 $IPv4 > ${dir}ip && echo -e IPv6 $IPv6 >> ${dir}ip	
 		title="路由器重新启动"
 		content="${content}${markdown_splitline}#### <font color=#92D050>路由器重新启动</font>"
-		[ ! -z "$serverchand_ipv4" ] && [ "$serverchand_ipv4" -ne "0" ] && content="${content}${markdown_linefeed}${markdown_tab}当前IP：${IPv4}"
-		[ ! -z "$serverchand_ipv6" ] && [ "$serverchand_ipv6" -ne "0" ] && content="${content}${markdown_linefeed}${markdown_tab}当前IPv6：${IPv6}"
+		[ ! -z "$pushbot_ipv4" ] && [ "$pushbot_ipv4" -ne "0" ] && content="${content}${markdown_linefeed}${markdown_tab}当前IP：${IPv4}"
+		[ ! -z "$pushbot_ipv6" ] && [ "$pushbot_ipv6" -ne "0" ] && content="${content}${markdown_linefeed}${markdown_tab}当前IPv6：${IPv6}"
 	fi
 	
 	if [ ! -z "$content" ] ;then
@@ -683,8 +683,8 @@ function up(){
 			local ip_name=`getname ${1} ${ip_mac}`
 			blackwhitelist ${ip_mac};local ip_blackwhite=$?
 			echo "$1 ${ip_mac} ${ip_name} `date +%s` ${ip_interface}" >> ${dir}ipAddress
-			[ -f "${dir}send_enable.lock" ] || [ -z "$serverchand_up" ] || [ -z "$ip_blackwhite" ] && LockFile unlock && return
-			[ ! -z "$serverchand_up" ] && [ "$serverchand_up" -ne "1" ] && LockFile unlock && return
+			[ -f "${dir}send_enable.lock" ] || [ -z "$pushbot_up" ] || [ -z "$ip_blackwhite" ] && LockFile unlock && return
+			[ ! -z "$pushbot_up" ] && [ "$pushbot_up" -ne "1" ] && LockFile unlock && return
 			[ ! -z "$ip_blackwhite" ] && [ "$ip_blackwhite" -ne "0" ] && LockFile unlock && return
 			[ -f "${dir}title" ] && local title=`cat ${dir}title`
 			[ -f "${dir}content" ] && local content=`cat ${dir}content`	
@@ -699,7 +699,7 @@ function up(){
 				local content="${markdown_splitline}#### <font color=#92D050>新设备连接</font>${markdown_linefeed}${markdown_tab}客户端名：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_name}${markdown_linefeed}${markdown_tab}客户端IP： ${markdown_space}${markdown_space}${markdown_space}${markdown_space}${1}${markdown_linefeed}${markdown_tab}客户端MAC：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_mac}${markdown_linefeed}${markdown_tab}网络接口：${markdown_space}${markdown_space}${markdown_space}${markdown_space}${markdown_space}${ip_interface}"
 			fi				
 			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}新设备 ${ip_name} ${1} 连接了">> ${logfile}
-			#[ ! -z "$serverchand_blacklist" ] && local title="你偷偷关注的设备上线了"
+			#[ ! -z "$pushbot_blacklist" ] && local title="你偷偷关注的设备上线了"
 			[ ! -z "$title" ] && echo "$title" >${dir}title
 			[ ! -z "$content" ] && echo -n "$content" >>${dir}content
 		fi
@@ -737,8 +737,8 @@ function down_send(){
 	for ip in $IPLIST; do
 		local ip_mac=`getmac ${ip}`
 		blackwhitelist ${ip_mac};local ip_blackwhite=$?
-		[ -z "$serverchand_down" ] || [ -z "$ip_blackwhite" ] && continue
-		[ ! -z "$serverchand_down" ] && [ "$serverchand_down" -ne "1" ] && continue
+		[ -z "$pushbot_down" ] || [ -z "$ip_blackwhite" ] && continue
+		[ ! -z "$pushbot_down" ] && [ "$pushbot_down" -ne "1" ] && continue
 		[ ! -z "$ip_blackwhite" ] && [ "$ip_blackwhite" -ne "0" ] && continue
 		local ip_name=`getname ${ip} ${ip_mac}`
 		local time_up=`cat ${dir}tmp_downlist|grep -w ${ip}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`
@@ -862,11 +862,11 @@ function cputop(){
 # 发送定时数据
 function send(){
 	echo "`date "+%Y-%m-%d %H:%M:%S"` 【定时数据】创建定时任务" >> ${logfile}
-	serverchand_disturb;local send_disturb=$?
+	pushbot_disturb;local send_disturb=$?
 	get_config "send_title" "router_status" "client_list" "router_temp" "router_wan"
 
 	[ -z "$send_title" ] && local send_title="路由状态："
-	[ ! -z "$client_list" ] && [ "$client_list" -eq "1" ] && > ${dir}send_enable.lock && serverchand_first &
+	[ ! -z "$client_list" ] && [ "$client_list" -eq "1" ] && > ${dir}send_enable.lock && pushbot_first &
 
 	if [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ]; then
 		local systemload=`cat /proc/loadavg|awk '{print $1" "$2" "$3}'`
@@ -886,7 +886,7 @@ function send(){
 		local send_wanIP=`getip wanipv4`;local send_hostIP=`getip hostipv4`
 		local send_content="${send_content}${markdown_splitline}#### **<font color=#76CCFF>WAN 口信息</font>**${markdown_linefeed}${markdown_tab}接口ip:${send_wanIP}"
 		local send_content="${send_content}${markdown_linefeed}${markdown_tab}外网ip:${send_hostIP}"
-		if [ ! -z "$serverchand_ipv6" ] && [ "$serverchand_ipv6" -ne "0" ]; then
+		if [ ! -z "$pushbot_ipv6" ] && [ "$pushbot_ipv6" -ne "0" ]; then
 			local send_wanIPv6=`getip wanipv6`;local send_hostIPv6=`getip hostipv6`
 			local send_content="${send_content}${markdown_linefeed}${markdown_tab}ipv6 :${send_wanIPv6}"
 			local send_content="${send_content}${markdown_linefeed}${markdown_tab}外网v6:${send_hostIPv6}"
@@ -917,9 +917,9 @@ function send(){
 	local send_title=`echo "$send_title"|sed $'s/\ / /g'|sed $'s/\"/%22/g'|sed $'s/\#/%23/g'|sed $'s/\&/%26/g'|sed $'s/\,/%2C/g'|sed $'s/\//%2F/g'|sed $'s/\:/%3A/g'|sed $'s/\;/%3B/g'|sed $'s/\=/%3D/g'|sed $'s/\@/%40/g'`
 	[ -z "$send_content" ] && local send_content="${markdown_splitline}#### <font color=#FF6666>我遇到了一个难题</font>${markdown_linefeed}${markdown_tab}定时发送选项错误，你没有选择需要发送的项目，该怎么办呢${markdown_splitline}"
 	local nowtime=`date "+%Y-%m-%d %H:%M:%S"`
-	serverchand_send="curl -s \"https://oapi.dingtalk.com/robot/send?access_token=${sckey}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${send_title}\",\"text\":\"#### <font color=#6A65FF>${send_title}</font>${markdown_linefeed}${nowtime}${markdown_linefeed}${send_content}\"}}'"
+	pushbot_send="curl -s \"https://oapi.dingtalk.com/robot/send?access_token=${sckey}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${send_title}\",\"text\":\"#### <font color=#6A65FF>${send_title}</font>${markdown_linefeed}${nowtime}${markdown_linefeed}${send_content}\"}}'"
 	wechatent_send="curl -s \"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${we_webhook}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${send_title}\",\"content\":\"#### <font color=#6A65FF>${send_title}</font>${markdown_linefeed}${nowtime}${markdown_linefeed}${send_content}\"}}'"
-	[ "$send_disturb" -eq "0" ] && [ -z "$send_we" ] && eval $serverchand_send >/dev/null 2>&1
+	[ "$send_disturb" -eq "0" ] && [ -z "$send_we" ] && eval $pushbot_send >/dev/null 2>&1
 	[ "$send_disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "1" ] && eval $wechatent_send >/dev/null 2>&1
 	[ "$send_disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "2" ] &&  curl -s "http://pushplus.plus/send?token=${pp_token}" -d "&channel=${pp_channel}&webhook=${pp_webhook}&topic=${pp_topic}&title=${send_title}&content=${send_content}&template=markdown" >/dev/null 2>&1
 	deltemp
@@ -929,7 +929,7 @@ function send(){
 # 初始化
 read_config
 deltemp
-serverchand_cron
+pushbot_cron
 
 # 限制并发进程
 [ -z "$thread_num" ] || [ "$thread_num" -eq "0" ] && thread_num=5
@@ -950,19 +950,19 @@ if [ "$1" ] ;then
 fi
 
 # 载入在线设备
-serverchand_init;[ $? -eq 1 ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】读取设置出错，请检查设置项 " >> ${logfile} && exit
+pushbot_init;[ $? -eq 1 ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】读取设置出错，请检查设置项 " >> ${logfile} && exit
 echo "`date "+%Y-%m-%d %H:%M:%S"` 【初始化】载入在线设备" >> ${logfile}
-> ${dir}send_enable.lock && serverchand_first && deltemp
+> ${dir}send_enable.lock && pushbot_first && deltemp
 echo "`date "+%Y-%m-%d %H:%M:%S"` 【初始化】初始化完成" >> ${logfile}
 
 # 循环
-while [ "$serverchand_enable" -eq "1" ]; do
+while [ "$pushbot_enable" -eq "1" ]; do
 	deltemp
 	usage update
-	serverchand_disturb;disturb=$?
+	pushbot_disturb;disturb=$?
 
 	# 外网IP变化检测
-	if [ ! -z "$serverchand_ipv4" ] && [ ! -z "$serverchand_ipv6" ] && [ "$serverchand_ipv4" -ne "0" ] || [ "$serverchand_ipv6" -ne "0" ]; then
+	if [ ! -z "$pushbot_ipv4" ] && [ ! -z "$pushbot_ipv6" ] && [ "$pushbot_ipv4" -ne "0" ] || [ "$pushbot_ipv6" -ne "0" ]; then
 		rand_geturl
 		ip_changes
 	fi
@@ -971,7 +971,7 @@ while [ "$serverchand_enable" -eq "1" ]; do
 	if [ ! -f "${dir}send_enable.lock" ]; then
 		[ ! -z "$title" ] && echo "$title" > ${dir}title
 		[ ! -z "$content" ] && echo "$content" > ${dir}content
-		serverchand_first
+		pushbot_first
 		[ -f "${dir}title" ] && title=`cat ${dir}title` && rm -f ${dir}title >/dev/null 2>&1
 		[ -f "${dir}content" ] && content=`cat ${dir}content` && rm -f ${dir}content >/dev/null 2>&1
 	fi
@@ -995,9 +995,9 @@ while [ "$serverchand_enable" -eq "1" ]; do
 		nowtime=`date "+%Y-%m-%d %H:%M:%S"`
 		[ ! -z "$device_name" ] && title="【$device_name】$title"
 		title=`echo "$title"|sed $'s/\ / /g'|sed $'s/\"/%22/g'|sed $'s/\#/%23/g'|sed $'s/\&/%26/g'|sed $'s/\,/%2C/g'|sed $'s/\//%2F/g'|sed $'s/\:/%3A/g'|sed $'s/\;/%3B/g'|sed $'s/\=/%3D/g'|sed $'s/\@/%40/g'`
-		serverchand_send="curl -s \"https://oapi.dingtalk.com/robot/send?access_token=${sckey}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${title}\",\"text\":\"#### **<font color=#6A65FF>${title}</font>**${markdown_linefeed}${nowtime}${markdown_linefeed}${content}${markdown_linefeed}**<font color=#6A65FF>${title}</font>**\"}}'"
+		pushbot_send="curl -s \"https://oapi.dingtalk.com/robot/send?access_token=${sckey}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${title}\",\"text\":\"#### **<font color=#6A65FF>${title}</font>**${markdown_linefeed}${nowtime}${markdown_linefeed}${content}${markdown_linefeed}**<font color=#6A65FF>${title}</font>**\"}}'"
 		wechatent_send="curl -s \"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${we_webhook}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${title}\",\"content\":\"#### **<font color=#6A65FF>${title}</font>**${markdown_linefeed}${nowtime}${markdown_linefeed}${content}${markdown_linefeed}**<font color=#6A65FF>${title}</font>**\"}}'"
-		[ "$disturb" -eq "0" ] && [ -z "$send_we" ] && eval $serverchand_send >/dev/null 2>&1
+		[ "$disturb" -eq "0" ] && [ -z "$send_we" ] && eval $pushbot_send >/dev/null 2>&1
 		[ "$disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "1" ] && eval $wechatent_send >/dev/null 2>&1
 		[ "$disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "2" ] && curl -s "http://pushplus.plus/send?token=${pp_token}" -d "&channel=${pp_channel}&webhook=${pp_webhook}&topic=${pp_topic}&title=${title}&content=${nowtime}${markdown_linefeed}${content}&template=markdown" >/dev/null 2>&1	
 		fi
