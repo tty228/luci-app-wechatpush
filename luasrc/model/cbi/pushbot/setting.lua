@@ -35,7 +35,7 @@ a:value("",translate("钉钉"))
 a:value("1",translate("企业微信"))
 a:value("2",translate("PushPlus"))
 
-a=s:taboption("basic", Value,"sckey",translate('Webhook'), translate("钉钉机器人 Webhook").."<br>调用代码获取<a href='https://ding-doc.dingtalk.com/' target='_blank'>点击这里</a><br><br>")
+a=s:taboption("basic", Value,"ddwebh",translate('Webhook'), translate("钉钉机器人 Webhook").."<br>调用代码获取<a href='https://ding-doc.dingtalk.com/' target='_blank'>点击这里</a><br><br>")
 a.rmempty = true
 a:depends("send_we","")
 
