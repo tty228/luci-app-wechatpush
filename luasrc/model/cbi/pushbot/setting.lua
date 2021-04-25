@@ -7,7 +7,7 @@ local sys = require "luci.sys"
 local ifaces = sys.net:devices()
 
 m=Map("pushbot",translate("pushbot"),
-translate("「全能推送」，英文名「PushBot」，是一款从服务器推送报警信息和日志到各平台的工具。支持钉钉推送，企业微信推送，PushPlus推送。<br>本插件由tty228/luci-app-serverchan创建，然后七年修改为钉钉机器人版自用。<br /><br />如果你在使用中遇到问题，请到这里提交：")
+translate("「全能推送」，英文名「PushBot」，是一款从服务器推送报警信息和日志到各平台的工具。<br>支持钉钉推送，企业微信推送，PushPlus推送。<br>本插件由tty228/luci-app-serverchan创建，然后七年修改为全能推送自用。<br /><br />如果你在使用中遇到问题，请到这里提交：")
 .. [[<a href="https://github.com/zzsj0928/luci-app-pushbot" target="_blank">]]
 .. translate("github 项目地址")
 .. [[</a>]]
