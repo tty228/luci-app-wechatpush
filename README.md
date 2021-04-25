@@ -1,5 +1,5 @@
 # 改名公告
-`2021年04月25日 起luci-app-serverchand 改名为 luci-app-pushbot`
+#### 2021年04月25日 起luci-app-serverchand 改名为 luci-app-pushbot
 
 如需拉取编译
 请把：
