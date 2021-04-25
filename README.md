@@ -2,7 +2,8 @@
 - 本插件由[tty228/luci-app-serverchan](https://github.com/tty228/luci-app-serverchan)原创.
 - 因微信推送存在诸多弊端（无法分开聊天工具与功能性消息推送，通知内不显示内容，内容需要点开才能查看等）,
 - 故由  然后七年  @zzsj0928 重新修改为本插件，为钉钉机器人API使用。
-- 
+- 本插件工作在：openwrt
+- 本插件支持：钉钉推送,企业微信推送,PushPlus推送,微信推送,企业微信应用推送,飞书推送,钉钉机器人推送,企业微信机器人推送,飞书机器人推送,一对多推送
 # 显示效果
 ## 通知栏：直接显示推送主题，一目了然，按设备不同，分组显示
 <img src="https://raw.githubusercontent.com/zzsj0928/ReadmeContents/main/Serverchand/Msg.Notification.jpg" width="500">
