@@ -18,7 +18,7 @@
 
 `CONFIG_PACKAGE_luci-app-pushbot=y`
 
-注意：本次改名需要提前备份配置，并于PushBot中重新配置。
+注意：本次改名需要提前备份serverchand配置，并于PushBot中重新配置。
 
 再次谢谢各位支持
 
