@@ -5,7 +5,7 @@
 
 include $(TOPDIR)/rules.mk
 
-PKG_NAME:=luci-app-serverchand
+PKG_NAME:=luci-app-pushbot
 PKG_VERSION:=2.15
 PKG_RELEASE:=2
 
@@ -16,7 +16,7 @@ define Package/$(PKG_NAME)
   CATEGORY:=LuCI
   SUBMENU:=3. Applications
   DEPENDS:=+iputils-arping +curl
-  TITLE:=LuCI support for serverchan with DING Talk
+  TITLE:=LuCI support for Pushbot
   PKGARCH:=all
 endef
 
@@ -24,17 +24,17 @@ define Build/Compile
 endef
 
 define Package/$(PKG_NAME)/conffiles
-/etc/config/serverchand
+/etc/config/pushbot
 endef
 
 define Package/$(PKG_NAME)/install
-	$(INSTALL_DIR) $(1)/etc/init.d $(1)/usr/bin/serverchand $(1)/etc/config $(1)/usr/lib/lua/luci $(1)/etc/uci-defaults $(1)/usr/share/rpcd/acl.d
+	$(INSTALL_DIR) $(1)/etc/init.d $(1)/usr/bin/pushbot $(1)/etc/config $(1)/usr/lib/lua/luci $(1)/etc/uci-defaults $(1)/usr/share/rpcd/acl.d
 	$(CP) ./luasrc/* $(1)/usr/lib/lua/luci
-	$(INSTALL_CONF) ./root/etc/config/serverchand $(1)/etc/config
-	$(INSTALL_BIN) ./root/etc/init.d/serverchand $(1)/etc/init.d
-	$(INSTALL_BIN) ./root/etc/uci-defaults/luci-serverchand $(1)/etc/uci-defaults/luci-serverchand
-	$(INSTALL_BIN) ./root/usr/bin/serverchand/serverchand $(1)/usr/bin/serverchand
-	$(INSTALL_DATA) ./root/usr/share/rpcd/acl.d/luci-app-serverchand.json $(1)/usr/share/rpcd/acl.d/luci-app-serverchand.json
+	$(INSTALL_CONF) ./root/etc/config/pushbot $(1)/etc/config
+	$(INSTALL_BIN) ./root/etc/init.d/pushbot $(1)/etc/init.d
+	$(INSTALL_BIN) ./root/etc/uci-defaults/luci-pushbot $(1)/etc/uci-defaults/luci-pushbot
+	$(INSTALL_BIN) ./root/usr/bin/pushbot/pushbot $(1)/usr/bin/pushbot
+	$(INSTALL_DATA) ./root/usr/share/rpcd/acl.d/luci-app-pushbot.json $(1)/usr/share/rpcd/acl.d/luci-app-pushbot.json
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
