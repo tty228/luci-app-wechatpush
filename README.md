@@ -1,5 +1,35 @@
-# 申明
+# 改名公告
 `2021年04月25日 起luci-app-serverchand 改名为 luci-app-pushbot`
+自2021年04月25日起，本项目luci-app-serverchand改名为luci-app-pushbot 全能推送。
+
+
+见：
+
+https://github.com/zzsj0928/luci-app-pushbot
+
+
+如需拉取编译
+请把：
+
+`# git clone https://github.com/zzsj0928/luci-app-serverchand package/luci-app-serverchand`
+
+改为
+
+`git clone https://github.com/zzsj0928/luci-app-pushbot package/luci-app-pushbot`
+
+并把 .config 中
+
+`CONFIG_PACKAGE_luci-app-serverchand=y`
+
+改为
+
+`CONFIG_PACKAGE_luci-app-pushbot=y`
+
+注意：本次改名需要提前备份配置，并于PushBot中重新配置。
+
+再次谢谢各位支持
+
+# 申明
 - 本插件由[tty228/luci-app-serverchan](https://github.com/tty228/luci-app-serverchan)原创.
 - 因微信推送存在诸多弊端（无法分开聊天工具与功能性消息推送，通知内不显示内容，内容需要点开才能查看等）,
 - 故由  然后七年  @zzsj0928 重新修改为本插件，为钉钉机器人API使用。
