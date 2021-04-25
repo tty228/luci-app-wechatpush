@@ -1,5 +1,5 @@
 # 申明
-<font color=#92D050> 2021年04月25日 起luci-app-serverchand 改名为 luci-app-pushbot </font>
+`2021年04月25日 起luci-app-serverchand 改名为 luci-app-pushbot </font>`
 - 本插件由[tty228/luci-app-serverchan](https://github.com/tty228/luci-app-serverchan)原创.
 - 因微信推送存在诸多弊端（无法分开聊天工具与功能性消息推送，通知内不显示内容，内容需要点开才能查看等）,
 - 故由  然后七年  @zzsj0928 重新修改为本插件，为钉钉机器人API使用。
