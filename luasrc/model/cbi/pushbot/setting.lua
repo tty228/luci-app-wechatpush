@@ -88,7 +88,7 @@ a:depends("send_we","4")
 
 a=s:taboption("basic", Value,"bark_srv",translate('Bark Server'), translate("Bark 自建服务器地址").."<br>如https://your.domain:port<br>具体自建服务器设定参见：<a href='https://github.com/Finb/Bark' target='_blank'>点击这里</a><br><br>")
 a.rmempty = true
-a:depends("bark_srv_enable","0")
+a:depends("bark_srv_enable","1")
 
 a=s:taboption("basic", Value,"device_name",translate('本设备名称'))
 a.rmempty = true
