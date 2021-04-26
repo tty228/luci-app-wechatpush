@@ -29,7 +29,7 @@ function read_config(){
 	[ ! -z "$send_we" ] && [ "$send_we" -eq "1" ] && markdown_splitline="\n\n-------\n\n" && markdown_tab=" "
 	[ ! -z "$send_we" ] && [ "$send_we" -eq "2" ] && percentsym=25 && markdown_splitline="%0D%0A%0D%0A" && markdown_linefeed="%0D%0A%0D%0A" && greenfont="" && bluefont="" && fontend="" && tabletab="     " && boldstar=""
 	[ ! -z "$send_we" ] && [ "$send_we" -eq "3" ] && titlel4="" && titlebold="【" && titleboldend="】" && titleblue="" && titlegreen="" && titleend="" && titlered="" && greenfont="" && bluefont="" && fontend="" && tabletab="     " && boldstar="" && markdown_splitline="\n---\n" && markdown_linefeed="\n"
-	[ ! -z "$send_we" ] && [ "$send_we" -eq "4" ] && titlel4="" && titlebold="【" && titleboldend="】" && titleblue="" && titlegreen="" && titleend="" && titlered="" && greenfont="" && bluefont="" && fontend="" && tabletab="     " && boldstar="" && markdown_splitline="%0D%0A%0D%0A" && markdown_linefeed="%0D%0A%0D%0A"  && [ -z "$bark_srv" ] && bark_srv="https://api.day.app"
+	[ ! -z "$send_we" ] && [ "$send_we" -eq "4" ] && titlel4="" && titlebold="【" && titleboldend="】" && titleblue="" && titlegreen="" && titleend="" && titlered="" && greenfont="" && bluefont="" && fontend="" && tabletab="     " && boldstar="" && markdown_splitline="%0D%0A%0D%0A" && markdown_linefeed="%0D%0A%0D%0A" && percentsym=25 && [ -z "$bark_srv" ] && bark_srv="https://api.day.app"
 }
 
 # 初始化
