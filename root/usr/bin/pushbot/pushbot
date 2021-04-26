@@ -28,8 +28,8 @@ function read_config(){
 	tabletab=${bluefont}┋${fontend};boldstar="**";titlel4="####";titlebold="**";titleboldend="**";titleblue="<font color=#76CCFF>";titlegreen="<font color=#92D050>";titleend="</font>";titlered="<font color=#FF6666>"
 	[ ! -z "$send_we" ] && [ "$send_we" -eq "1" ] && markdown_splitline="\n\n-------\n\n" && markdown_tab=" "
 	[ ! -z "$send_we" ] && [ "$send_we" -eq "2" ] && percentsym=25 && markdown_splitline="%0D%0A%0D%0A" && markdown_linefeed="%0D%0A%0D%0A" && greenfont="" && bluefont="" && fontend="" && tabletab="     " && boldstar=""
-	[ ! -z "$send_we" ] && [ "$send_we" -eq "3" ] && titlel4="" && titlebold="【" && titleboldend="】" && titleblue="" && titlegreen="" && titleend="" && titlered=""
-	[ ! -z "$send_we" ] && [ "$send_we" -eq "4" ] && titlel4="" && titlebold="【" && titleboldend="】" && titleblue="" && titlegreen="" && titleend="" && titlered="" && [ -z "$bark_srv" ] && bark_srv="https://api.day.app"
+	[ ! -z "$send_we" ] && [ "$send_we" -eq "3" ] && titlel4="" && titlebold="【" && titleboldend="】" && titleblue="" && titlegreen="" && titleend="" && titlered="" && greenfont="" && bluefont="" && fontend=""
+	[ ! -z "$send_we" ] && [ "$send_we" -eq "4" ] && titlel4="" && titlebold="【" && titleboldend="】" && titleblue="" && titlegreen="" && titleend="" && titlered=""  && greenfont="" && bluefont="" && fontend="" && [ -z "$bark_srv" ] && bark_srv="https://api.day.app"
 }
 
 # 初始化
@@ -921,10 +921,11 @@ function send(){
 	local nowtime=`date "+%Y-%m-%d %H:%M:%S"`
 	pushbot_send="curl -s \"https://oapi.dingtalk.com/robot/send?access_token=${dd_webhook}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${send_title}\",\"text\":\"${titlel4} <font color=#6A65FF>${send_title}</font>${markdown_linefeed}${nowtime}${markdown_linefeed}${send_content}\"}}'"
 	wechatent_send="curl -s \"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${we_webhook}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${send_title}\",\"content\":\"${titlel4} <font color=#6A65FF>${send_title}</font>${markdown_linefeed}${nowtime}${markdown_linefeed}${send_content}\"}}'"
+	feishu_send="curl -X POST https://open.feishu.cn/open-apis/bot/v2/hook/${fs_webhook} -H 'Content-Type: application/json' -d '{\"msg_type\": \"post\",\"content\": {\"post\": {\"zh_cn\": {\"title\": \"${send_title}\",\"content\": [[{\"tag\": \"text\",\"text\": \"${nowtime}${markdown_linefeed}${send_content}\"}]]}}}}'"
 	[ "$send_disturb" -eq "0" ] && [ -z "$send_we" ] && eval $pushbot_send >/dev/null 2>&1
 	[ "$send_disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "1" ] && eval $wechatent_send >/dev/null 2>&1
 	[ "$send_disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "2" ] && curl -s "http://pushplus.plus/send?token=${pp_token}" -d "&channel=${pp_channel}&webhook=${pp_webhook}&topic=${pp_topic}&title=${send_title}&content=${nowtime}${markdown_linefeed}${send_content}&template=markdown" >/dev/null 2>&1
-	[ "$send_disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "3" ] && curl -X POST https://open.feishu.cn/open-apis/bot/v2/hook/${fs_webhook} -H 'Content-Type: application/json' -d '{"msg_type": "post","content": {"post": {"zh_cn": {"title": "'${send_title}'","content": [[{"tag": "text","text": "'${nowtime}${markdown_linefeed}${send_content}'"}]]}}}}' >/dev/null 2>&1
+	[ "$send_disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "3" ] && eval $feishu_send >/dev/null 2>&1
 	[ "$send_disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "4" ] && curl -s "${bark_srv}/${bark_token}/${send_title}/${nowtime}${markdown_linefeed}${send_content}?isArchive=1" >/dev/null 2>&1
 	deltemp
 	echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}定时推送任务完成" >> ${logfile}
@@ -1001,10 +1002,11 @@ while [ "$pushbot_enable" -eq "1" ]; do
 		title=`echo "$title"|sed $'s/\ / /g'|sed $'s/\"/%22/g'|sed $'s/\#/%23/g'|sed $'s/\&/%26/g'|sed $'s/\,/%2C/g'|sed $'s/\//%2F/g'|sed $'s/\:/%3A/g'|sed $'s/\;/%3B/g'|sed $'s/\=/%3D/g'|sed $'s/\@/%40/g'`
 		pushbot_send="curl -s \"https://oapi.dingtalk.com/robot/send?access_token=${dd_webhook}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${title}\",\"text\":\"${titlel4} ${titlebold}<font color=#6A65FF>${title}</font>${titleboldend}${markdown_linefeed}${nowtime}${markdown_linefeed}${content}${markdown_linefeed}${titlebold}<font color=#6A65FF>${title}</font>${titleboldend}\"}}'"
 		wechatent_send="curl -s \"https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=${we_webhook}\" -H 'Content-Type: application/json' -d '{\"msgtype\": \"markdown\",\"markdown\": {\"title\":\"${title}\",\"content\":\"${titlel4} ${titlebold}<font color=#6A65FF>${title}</font>${titleboldend}${markdown_linefeed}${nowtime}${markdown_linefeed}${content}${markdown_linefeed}${titlebold}<font color=#6A65FF>${title}</font>${titleboldend}\"}}'"
+		feishu_send="curl -X POST https://open.feishu.cn/open-apis/bot/v2/hook/${fs_webhook} -H 'Content-Type: application/json' -d '{\"msg_type\": \"post\",\"content\": {\"post\": {\"zh_cn\": {\"title\": \"${title}\",\"content\": [[{\"tag\": \"text\",\"text\": \"${nowtime}${markdown_linefeed}${content}\"}]]}}}}'"
 		[ "$disturb" -eq "0" ] && [ -z "$send_we" ] && eval $pushbot_send >/dev/null 2>&1
 		[ "$disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "1" ] && eval $wechatent_send >/dev/null 2>&1
 		[ "$disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "2" ] && curl -s "http://pushplus.plus/send?token=${pp_token}" -d "&channel=${pp_channel}&webhook=${pp_webhook}&topic=${pp_topic}&title=${title}&content=${nowtime}${markdown_linefeed}${content}&template=markdown" >/dev/null 2>&1	
-		[ "$disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "3" ] && curl -X POST https://open.feishu.cn/open-apis/bot/v2/hook/${fs_webhook} -H 'Content-Type: application/json' -d '{"msg_type": "post","content": {"post": {"zh_cn": {"title": "'${title}'","content": [[{"tag": "text","text": "'${nowtime}${markdown_linefeed}${content}'"}]]}}}}' >/dev/null 2>&1
+		[ "$disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "3" ] && eval $feishu_send 2>&1
 		[ "$disturb" -eq "0" ] && [ ! -z "$send_we" ] && [ "$send_we" -eq "4" ] && curl -s "${bark_srv}/${bark_token}/${title}/${nowtime}${markdown_linefeed}${content}?isArchive=1" >/dev/null 2>&1
 		fi
 	
