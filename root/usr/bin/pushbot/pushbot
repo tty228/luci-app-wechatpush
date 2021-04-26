@@ -28,8 +28,8 @@ function read_config(){
 	tabletab=${bluefont}┋${fontend};boldstar="**";titlel4="####";titlebold="**";titleboldend="**";titleblue="<font color=#76CCFF>";titlegreen="<font color=#92D050>";titleend="</font>";titlered="<font color=#FF6666>"
 	[ ! -z "$send_we" ] && [ "$send_we" -eq "1" ] && markdown_splitline="\n\n-------\n\n" && markdown_tab=" "
 	[ ! -z "$send_we" ] && [ "$send_we" -eq "2" ] && percentsym=25 && markdown_splitline="%0D%0A%0D%0A" && markdown_linefeed="%0D%0A%0D%0A" && greenfont="" && bluefont="" && fontend="" && tabletab="     " && boldstar=""
-	[ ! -z "$send_we" ] && [ "$send_we" -eq "3" ] && titlel4="" && titlebold="" && titleboldend="" && titleblue="" && titlegreen="" && titleend="" && titlered=""
-	[ ! -z "$send_we" ] && [ "$send_we" -eq "4" ] && titlel4="" && titlebold="" && titleboldend="" && titleblue="" && titlegreen="" && titleend="" && titlered="" && [ -z "$bark_srv" ] && bark_srv="https://api.day.app"
+	[ ! -z "$send_we" ] && [ "$send_we" -eq "3" ] && titlel4="" && titlebold="【" && titleboldend="】" && titleblue="" && titlegreen="" && titleend="" && titlered=""
+	[ ! -z "$send_we" ] && [ "$send_we" -eq "4" ] && titlel4="" && titlebold="【" && titleboldend="】" && titleblue="" && titlegreen="" && titleend="" && titlered="" && [ -z "$bark_srv" ] && bark_srv="https://api.day.app"
 }
 
 # 初始化
