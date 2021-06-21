@@ -30,6 +30,9 @@ a.rmempty = true
 a=s:taboption("basic", Value,"sckey",translate('微信推送/新旧共用'), translate("").."旧版调用代码<a href='http://sc.ftqq.com' target='_blank'>点击这里</a><br>新版代码获取<a href='https://sct.ftqq.com/' target='_blank'>点击这里</a><br>")
 a.rmempty = true
 
+a=s:taboption("basic", Value,"qywx_token",translate('企业微信凭证'), translate("").."格式必须为：corpid;userid;agentid;corpsecret，获取说明<a href='https://work.weixin.qq.com/api/doc/10013' target='_blank'>点击这里</a><br>注意：使用企业微信推送会导致其他推送的内容排版错乱")
+a.rmempty = true
+
 a=s:taboption("basic",Value,"pushplus_token",translate('pushplus_token'),translate("").."获取pushplus_token <a href='http://www.pushplus.plus/' target='_blank'>点击这里</a><br>")
 a.rmempty = true
 
