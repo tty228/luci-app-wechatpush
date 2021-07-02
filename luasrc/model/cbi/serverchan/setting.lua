@@ -13,7 +13,7 @@ translate("「Server酱」，英文名「ServerChan」，是一款从服务器�
 .. [[</a>]]
 )
 
-m:section(SimpleSection).template  = "serverchan/status"
+m:section(SimpleSection).template  = "serverchan/serverchan_status"
 
 s=m:section(NamedSection,"serverchan","serverchan",translate(""))
 s:tab("basic", translate("基本设置"))

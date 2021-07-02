@@ -18,6 +18,7 @@ define Package/$(PKG_NAME)
   DEPENDS:=+iputils-arping +curl
   TITLE:=LuCI support for serverchan
   PKGARCH:=all
+  MAINTAINER:=tty228
 endef
 
 define Build/Compile
