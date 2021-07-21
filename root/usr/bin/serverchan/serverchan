@@ -66,14 +66,15 @@ qywx_push(){
 	touser=`echo "$qywx_am" | awk -F\; '{print $2}'`
 	agentid=` echo "$qywx_am" | awk -F\; '{print $3}'`
 	corpsecret=` echo "$qywx_am" | awk -F\; '{print $4}'`
-	msg_tpl='{"touser":"%s","msgtype":"mpnews","agentid":"%s","mpnews":{"articles":[{"title":"%s","thumb_media_id":"2W7Z57OyTLucp7vITMX66fcr-Flxd1eXQtfMhmVMuxKFTRB9pED-h8s-GUR1DdDzb","author":"ServerChan","digest":"%s","content":"%s"}]}}\n'
+    mediaid=` echo "$qywx_am" | awk -F\; '{print $5}'`
+	msg_tpl='{"touser":"%s","msgtype":"mpnews","agentid":"%s","mpnews":{"articles":[{"title":"%s","thumb_media_id":"%s","author":"ServerChan","digest":"%s","content":"%s"}]}}\n'
 	qywx_ret=$(curl -ks "https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=${corpid}&corpsecret=${corpsecret}")
 	if [ `echo "${qywx_ret//\"/}" | sed "s/.*errcode:\([^,}]*\).*/\1/"` -ne 0 ]; then
 	echo "`date "+%Y-%m-%d %H:%M:%S"` 【微信推送】获取企业微信推送 token 失败" >> ${logfile}
 	else
 	token=`echo "${qywx_ret//\"/}" | sed "s/.*access_token:\([^,}]*\).*/\1/"`
 	fi
-	printf "$msg_tpl" "$touser" "$agentid" "$title" "$digest" "${nowtime}${content}"|curl -X POST -d@- -H "Content-Type: application/json" "https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=${token}"
+	printf "$msg_tpl" "$touser" "$agentid" "$title" "$mediaid" "$digest" "${nowtime}${content}"|curl -X POST -d@- -H "Content-Type: application/json" "https://qyapi.weixin.qq.com/cgi-bin/message/send?access_token=${token}"
 	digest=''
 }
 
