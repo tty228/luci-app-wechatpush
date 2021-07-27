@@ -28,6 +28,26 @@ a=s:taboption("basic", Flag,"pushbot_enable",translate("启用"))
 a.default=0
 a.rmempty = true
 
+--精简模式
+a=s:taboption("basic", Flag,"lite_enable",translate("精简模式"))
+a.default=0
+a.rmempty = true
+
+a= s:taboption("basic", Flag, "content_current_device", "精简当前设备列表")
+a.default = 0
+a.rmempty = true
+a:depends({lite_enable="1"})
+
+a= s:taboption("basic", Flag, "content_nowtime", "精简当前时间")
+a.default = 0
+a.rmempty = true
+a:depends({lite_enable="1"})
+
+a= s:taboption("basic", Flag, "content_content", "只推送标题")
+a.default = 0
+a.rmempty = true
+a:depends({lite_enable="1"})
+
 a=s:taboption("basic", ListValue,"send_we",translate("推送模式"))
 a.default=""
 a.rmempty = true
@@ -149,11 +169,11 @@ for _, iface in ipairs(ifaces) do
 end
 a.description = translate("<br/>一般选择 wan 接口，多拨环境请自行选择")
 
-a= s:taboption("content", Value, "ipv4_URL", "URL 地址")
+a= s:taboption("content", DynamicList, "ipv4_URL", "URL 地址")
 a.rmempty = true
-a.default = "members.3322.org/dyndns/getip"
+
 a:depends({pushbot_ipv4="2"})
-a.description = translate("<br/>会因服务器稳定性、连接频繁等原因导致获取失败<br/>如接口可以正常获取 IP，不推荐使用")
+a.description = translate("<br/>会因服务器稳定性、连接频繁等原因导致获取失败<br/>从以上列表中随机一个地址，留空使用默认地址")
 
 a=s:taboption("content", ListValue,"pushbot_ipv6",translate("ipv6 变动通知"))
 a.rmempty = true
@@ -178,11 +198,11 @@ for _, iface in ipairs(ifaces) do
 end
 a.description = translate("<br/>一般选择 wan 接口，多拨环境请自行选择")
 
-a= s:taboption("content", Value, "ipv6_URL", "URL 地址")
+a= s:taboption("content", DynamicList, "ipv6_URL", "URL 地址")
 a.rmempty = true
-a.default = "v6.ip.zxinc.org/getip"
+
 a:depends({pushbot_ipv6="2"})
-a.description = translate("<br/>会因服务器稳定性、连接频繁等原因导致获取失败<br/>如接口可以正常获取 IP，不推荐使用")
+a.description = translate("<br/>会因服务器稳定性、连接频繁等原因导致获取失败<br/>从以上列表中随机一个地址，留空使用默认地址")
 
 a=s:taboption("content", Flag,"pushbot_up",translate("设备上线通知"))
 a.default=1
