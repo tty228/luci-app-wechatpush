@@ -282,7 +282,7 @@ a.datatype=uinteger
 a:depends("send_mode","2")
 a.description = translate("<br/>从 00:00 开始，每 * 小时发送一次")
 
-a= s:taboption("crontab", Value, "send_title", translate("钉钉推送标题"))
+a= s:taboption("crontab", Value, "send_title", translate("推送标题"))
 a:depends("send_mode","1")
 a:depends("send_mode","2")
 a.placeholder = "OpenWrt By tty228 路由状态："
