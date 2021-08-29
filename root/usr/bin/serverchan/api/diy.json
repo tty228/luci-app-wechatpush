@@ -1,0 +1,28 @@
+{
+    "_api": "这是 自定义 api 文件,特殊符号请使用斜杠转义",
+    "_api": "【DIY 推送】",
+    "_url": "api 地址",
+    "_str_title_start": "标题粗体字开始符号",
+    "_str_title_end": "标题粗体字结束符号",
+    "_str_linefeed": "换行符号",
+    "_str_splitline": "分隔符",
+    "_str_space": "空格",
+    "_str_tab": "TAB（用于生成区块）",
+    "_//": "参照注释内容，填入相关参数,这里以 telegram 为例",
+    
+    "url": "https://api.telegram.org/bot${tg_token}/sendMessage",
+    "data": "@${tempjsonpath}",
+    "content_type": "Content-Type: application/json",
+    "str_title_start": "<b>",
+    "str_title_end": "</b>",
+    "str_linefeed": "\\n",
+    "str_splitline": "\\n----\\n",
+    "str_space": " ",
+    "str_tab": "    ",
+    "type":
+      {
+		"text":"\"${str_title_start}${1}${str_title_end}${str_splitline}${nowtime}${2}\"",
+		"chat_id":"\"${chat_id}\"",
+        "parse_mode":"\"Markdown\""
+      }
+}
