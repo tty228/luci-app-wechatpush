@@ -241,9 +241,10 @@ function getcpu(){
 
 # 获取SOC温度 （取所有传感器温度最大值）
 function soc_temp(){
-	[ -z "$soc_code" ] && local soctemp="sensors 2>/dev/null|grep °C|sed -nr 's#^.*:.*\+(.*)°C .*#\1#gp'|sort -nr|head -n1"
-	[ -z "$soc_code" ] && [ -z "$soctemp" ] && local soctemp="cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null|sort -nr|head -n1|cut -c-2"
-	echo "$soc_code"|awk '{run=$0;system(run)}' 2>/dev/null
+	[ -z "$soc_code" ] && local soctemp=`sensors 2>/dev/null|grep °C|sed -nr 's#^.*:.*\+(.*)°C .*#\1#gp'|sort -nr|head -n1`
+	[ -z "$soc_code" ] && [ -z "$soctemp" ] && local soctemp=`cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null|sort -nr|head -n1|cut -c-2`
+	[ ! -z "$soctemp" ] && echo "$soctemp" && return
+	[ ! -z "$soc_code" ] && echo "$soc_code"|awk '{run=$0;system(run)}' 2>/dev/null
 }
 
 # 流量数据
