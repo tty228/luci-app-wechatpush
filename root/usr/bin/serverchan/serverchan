@@ -11,7 +11,7 @@ function get_config(){
 # 初始化设置信息
 function read_config(){
 	get_config "serverchan_enable" "lite_enable" "device_name" "sleeptime" "oui_data" "oui_dir" "reset_regularly" "debuglevel" "device_aliases" \
-	"serverchan_ipv4" "ipv4_interface" "serverchan_ipv6" "ipv6_interface" "serverchan_up" "serverchan_down" "cpuload_enable" "cpuload" "temperature_enable" "temperature" "client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" \
+	"serverchan_ipv4" "ipv4_interface" "serverchan_ipv6" "ipv6_interface" "serverchan_up" "serverchan_down" "cpuload_enable" "cpuload" "temperature_enable" "temperature" "client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" "web_logged" "ssh_logged" "web_login_failed" "ssh_login_failed" "login_max_num" "web_login_black" "ip_white_list" \
 	"regular_time" "regular_time_2" "regular_time_3" "interval_time" \
 	"serverchan_sheep" "starttime" "endtime" "serverchan_whitelist" "serverchan_blacklist" "serverchan_interface" "MAC_online_list" "MAC_offline_list" \
 	"up_timeout" "down_timeout" "timeout_retry_count" "thread_num" "soc_code" "err_enable" "err_sheep_enable" "err_device_aliases" "network_err_event" "system_time_event" "autoreboot_time" "network_restart_time" "public_ip_event" "public_ip_retry_count" \
@@ -29,6 +29,7 @@ function read_config(){
 	device_aliases=`echo "$device_aliases"|sed 's/ /\n/g'|sed 's/-/ /'` 2>/dev/null
 	err_device_aliases=`echo "$err_device_aliases"|sed 's/ /\n/g'` 2>/dev/null
 	client_usage_whitelist=`echo "$client_usage_whitelist"|sed 's/ /\n/g'` 2>/dev/null
+	ip_white_list=`echo "$ip_white_list"|sed 's/ /\n/g'` 2>/dev/null
 	mark_mac_list="${MAC_online_list} ${MAC_offline_list}"
 	mark_mac_list=`echo "$mark_mac_list"|sed 's/ /\n/g'|sed 's/-/ /'` 2>/dev/null
 	ipv4_urllist=`cat /usr/bin/serverchan/api/ipv4.list` 2>/dev/null
@@ -58,6 +59,8 @@ function serverchan_init(){
 	fi
 	down_oui &
 	deltemp
+	/usr/bin/serverchan/api/login_remind
+	add_ip_black
 
 	rm -f ${dir}fd1 ${dir}sheep_usage ${dir}old_sheep_usage ${dir}client_usage_aliases ${dir}old_client_usage_aliases /usr/bin/serverchan/errlog >/dev/null 2>&1
 	[ ! -f "/usr/sbin/wrtbwmon" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】未安装 wrtbwmon ，流量统计不可用" >> ${logfile}
@@ -108,7 +111,7 @@ utstarcom\|volans\|xerox\|xiaomi\|zdc\|zhongxing\|smartisan" > ${oui_base} && ec
 # 清理临时文件
 function deltemp(){
 	unset title	content ipAddress_logrow online_list online_mac mac_online_status
-	rm -f ${dir}title ${dir}content ${dir}top ${dir}tmp_downlist ${dir}send_enable.lock ${tempjsonpath} >/dev/null 2>&1
+	rm -f ${dir}title ${dir}content ${dir}tmp_downlist ${dir}send_enable.lock ${tempjsonpath} >/dev/null 2>&1
 	LockFile unlock
 	[ -f ${logfile} ] && local logrow=$(grep -c "" ${logfile}) || local logrow="0"
 	[ $logrow -gt 500 ] && sed -i '1,100d' ${logfile} && echo "`date "+%Y-%m-%d %H:%M:%S"`  【清理】日志超出上限，删除前 100 条" >> ${logfile}
@@ -925,21 +928,135 @@ function cpu_load(){
 
 function cputop(){
 	[ -z "$1" ] && content="${content}${str_splitline}${str_title_start} 当前 CPU 占用前三的进程${str_title_end}"
-	local i=1 && local top_i=5 && `top -bn 1 > ${dir}top` >/dev/null 2>&1
-	while [ $i -le 3 ]; do
-		if ( ! cat ${dir}top|awk 'NR=='${top_i}|grep -q "top -bn 1" ); then
-			local top_name=`cat ${dir}top|awk 'NR=='${top_i}|awk '{print $8}'`;[ "$top_name" == "/bin/sh" ] || [ "$top_name" == "/bin/bash" ] && local top_name=`cat ${dir}top|awk 'NR=='${top_i}|awk '{print $9}'`
-			local top_load=`cat ${dir}top|awk 'NR=='${top_i}|awk '{print $7}'`
-			local temp_top="${top_name} ${top_load}"
-			[ ! -z "$1" ] && local logtop="$logtop  $temp_top"
-			[ -z "$1" ] && content="${content}${str_linefeed}${str_tab}${temp_top}"
-			local i=`expr ${i} + 1`
-		fi
-		local top_i=`expr ${top_i} + 1`
+	local gettop=`top -bn 1|grep -v "top -bn 1"`
+	for i in `seq 5 7`; do
+		local top_name=`echo "${gettop}"|awk 'NR=='${i}|awk '{print ($8 ~ /\/bin\/sh|\/bin\/bash/) ? $9 : $8}'`
+		local top_load=`echo "${gettop}"|awk 'NR=='${i}|awk '{print $7}'`
+		local temp_top="${top_name} ${top_load}"
+		[ ! -z "$1" ] && local logtop="$logtop  $temp_top"
+		[ -z "$1" ] && content="${content}${str_linefeed}${str_tab}${temp_top}"
 	done
+	unset i
 	[ ! -z "$1" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！警报！！】 CPU 占用前三: ${logtop}" >> ${logfile}
-	rm -f ${dir}top >/dev/null 2>&1
 }
+
+# 登陆提醒通知
+function login_send(){
+	[ -z "$web_logged" ] && [ -z "$ssh_logged" ] && return
+	
+	if [ -f ${dir}web_login ] ;then
+		local login_ip_list=`cat ${dir}web_login|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
+		for login_ip in "$login_ip_list"; do
+			[ -z "$login_ip" ] && continue
+			echo "$ip_white_list"|grep -w -q "$login_ip" && echo continue
+			local web_login_time=`cat ${dir}web_login|grep -w ${login_ip}|awk '{print $1}'|grep -v "^$"|sort -u|head -n1`
+			local web_login_mode=`cat ${dir}web_login|grep -w ${login_ip}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
+			if [ -z "$title" ]; then
+				title="${login_ip} 通过 web 登陆了路由器"
+				content="${content}${str_splitline}${str_title_start} web 登陆信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${web_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
+			elif ( echo "$title"|grep -q "登陆了路由器" ); then
+				title="${login_ip} ${title}"
+				content="${content}${str_splitline}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${web_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
+			else
+				title="设备状态变化"
+				content="${content}${str_splitline}${str_title_start} web 登陆信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${web_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
+			fi
+			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}设备 ${login_ip} 通过 web ${web_login_mode} 登陆了路由器 " >> ${logfile}
+		done
+		echo "" > ${dir}web_login
+		unset login_ip login_ip_list
+	fi
+
+	if [ -f ${dir}ssh_login ] ;then
+		local login_ip_list=`cat ${dir}ssh_login|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
+		for login_ip in "$login_ip_list"; do
+			[ -z "$login_ip" ] && continue
+			echo "$ip_white_list"|grep -w -q "$login_ip" && echo continue
+			local ssh_login_time=`cat ${dir}ssh_login|grep -w ${login_ip}|awk '{print $1}'|grep -v "^$"|sort -u|head -n1`
+			local ssh_login_mode=`cat ${dir}ssh_login|grep -w ${login_ip}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
+			[ ! -z "$ssh_login_mode" ] && local content_mode="${str_linefeed}${str_tab}登录方式： ${str_space}${str_space}${str_space}${str_space}${ssh_login_mode}"
+			if [ -z "$title" ]; then
+				title="${login_ip} 通过 ssh 登陆了路由器"
+				content="${content}${str_splitline}${str_title_start} ssh 登陆信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${ssh_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
+			elif ( echo "$title"|grep -q "登陆了路由器" ); then
+				title="${login_ip} ${title}"
+				content="${content}${str_splitline}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${ssh_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
+			else
+				title="设备状态变化"
+				content="${content}${str_splitline}${str_title_start} ssh 登陆信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${ssh_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
+			fi
+			echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】设备 ${login_ip} 通过 ssh ${ssh_login_mode} 登陆了路由器 " >> ${logfile}
+		done
+		echo "" > ${dir}ssh_login
+		unset login_ip login_ip_list
+	fi
+}
+
+# 登陆错误提醒通知
+function login_failed_send(){
+	[ -z "$web_login_failed" ] && [ -z "$ssh_login_failed" ] && return
+	echo "$ip_white_list"|grep -w -q "$1" && echo return
+	
+	if [ -f ${dir}web_failed ] ;then
+		local login_ip_list=`cat ${dir}web_failed|awk '{print $1}'|grep -v "^$"|sort -u|head -n1`
+		for login_ip in "$login_ip_list"; do
+			[ -z "$login_ip" ] && continue
+			echo "$ip_white_list"|grep -w -q "$login_ip" && echo continue
+			local web_login_sum=`cat ${dir}web_failed|grep -w ${login_ip}|wc -l`
+			if [ "$web_login_sum" -ge "$login_max_num" ] ;then
+				if [ -z "$title" ]; then
+					title="${login_ip} 通过 web 频繁尝试登陆"
+					content="${content}${str_splitline}${str_title_start} web 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+					elif ( echo "$title"|grep -q "登陆了路由器" ); then
+						title="${login_ip} ${title}"
+						content="${content}${str_splitline}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+					else
+						title="设备状态变化"
+						content="${content}${str_splitline}${str_title_start} web 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+				fi
+				sed -i "/^${login_ip}$/d" ${dir}web_failed
+				echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】设备 ${login_ip} 通过 web 频繁尝试登陆" >> ${logfile}
+				add_ip_black $1
+			fi
+		done
+		unset login_ip login_ip_list
+	fi
+	
+	if [ -f ${dir}ssh_failed ] ;then
+		local login_ip_list=`cat ${dir}ssh_failed|awk '{print $1}'|grep -v "^$"|sort -u|head -n1`
+		for login_ip in "$login_ip_list"; do
+			[ -z "$login_ip" ] && continue
+			echo "$ip_white_list"|grep -w -q "$login_ip" && echo continue
+			local ssh_login_sum=`cat ${dir}ssh_failed|grep -w ${login_ip}|wc -l`
+			if [ "$ssh_login_sum" -ge "$login_max_num" ] ;then
+				if [ -z "$title" ]; then
+					title="${login_ip} 通过 ssh 频繁尝试登陆"
+					content="${content}${str_splitline}${str_title_start} ssh 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+					elif ( echo "$title"|grep -q "登陆了路由器" ); then
+						title="${login_ip} ${title}"
+						content="${content}${str_splitline}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+					else
+						title="设备状态变化"
+						content="${content}${str_splitline}${str_title_start} ssh 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+				fi
+				sed -i "/^${login_ip}$/d" ${dir}ssh_failed
+				echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】设备 ${login_ip} 通过 ssh 频繁尝试登陆" >> ${logfile}
+				add_ip_black $1
+			fi
+		done
+		unset login_ip login_ip_list
+	fi
+}
+
+# 添加黑名单
+function add_ip_black(){
+	ipset list ip_blacklist >/dev/null 2>&1 || ipset create ip_blacklist hash:ip
+	iptables -C INPUT -m set --match-set ip_blacklist src -j DROP >/dev/null 2>&1 || iptables -I INPUT -m set --match-set ip_blacklist src -j DROP
+	[ -f "/usr/bin/serverchan/api/ip_blacklist" ] && ipset restore -! -f /usr/bin/serverchan/api/ip_blacklist
+	ipset -! add ip_blacklist $1
+	ipset save ip_blacklist -f /usr/bin/serverchan/api/ip_blacklist
+}
+
 
 # 发送定时数据
 function send(){
@@ -1080,6 +1197,12 @@ while [ "$serverchan_enable" -eq "1" ]; do
 
 	# 异常流量检测
 	[ ! -f "${dir}send_enable.lock" ] && get_client_usage
+	
+	# 登陆提醒通知
+	[ ! -f "${dir}send_enable.lock" ] && login_send 
+	[ ! -f "${dir}send_enable.lock" ] && login_failed_send 
+	
+	# 登陆错误提醒通知
 
 	if [ ! -f "${dir}send_enable.lock" ] && [ ! -z "$title" ] && [ ! -z "$content" ]; then
 		[ ! -z "$device_name" ] && title="【$device_name】$title"
