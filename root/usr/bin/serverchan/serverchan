@@ -60,6 +60,7 @@ function serverchan_init(){
 	down_oui &
 	deltemp
 	/usr/bin/serverchan/api/login_remind
+	ipset flush ip_blacklist
 	add_ip_black
 
 	rm -f ${dir}fd1 ${dir}sheep_usage ${dir}old_sheep_usage ${dir}client_usage_aliases ${dir}old_client_usage_aliases /usr/bin/serverchan/errlog >/dev/null 2>&1
@@ -948,7 +949,7 @@ function login_send(){
 		local login_ip_list=`cat ${dir}web_login|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
 		for login_ip in "$login_ip_list"; do
 			[ -z "$login_ip" ] && continue
-			echo "$ip_white_list"|grep -w -q "$login_ip" && echo continue
+			echo "$ip_white_list"|grep -w -q "$login_ip" && continue
 			local web_login_time=`cat ${dir}web_login|grep -w ${login_ip}|awk '{print $1}'|grep -v "^$"|sort -u|head -n1`
 			local web_login_mode=`cat ${dir}web_login|grep -w ${login_ip}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
 			if [ -z "$title" ]; then
@@ -971,7 +972,7 @@ function login_send(){
 		local login_ip_list=`cat ${dir}ssh_login|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
 		for login_ip in "$login_ip_list"; do
 			[ -z "$login_ip" ] && continue
-			echo "$ip_white_list"|grep -w -q "$login_ip" && echo continue
+			echo "$ip_white_list"|grep -w -q "$login_ip" && continue
 			local ssh_login_time=`cat ${dir}ssh_login|grep -w ${login_ip}|awk '{print $1}'|grep -v "^$"|sort -u|head -n1`
 			local ssh_login_mode=`cat ${dir}ssh_login|grep -w ${login_ip}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
 			[ ! -z "$ssh_login_mode" ] && local content_mode="${str_linefeed}${str_tab}登录方式： ${str_space}${str_space}${str_space}${str_space}${ssh_login_mode}"
@@ -1001,7 +1002,7 @@ function login_failed_send(){
 		local login_ip_list=`cat ${dir}web_failed|awk '{print $1}'|grep -v "^$"|sort -u|head -n1`
 		for login_ip in "$login_ip_list"; do
 			[ -z "$login_ip" ] && continue
-			echo "$ip_white_list"|grep -w -q "$login_ip" && echo continue
+			echo "$ip_white_list"|grep -w -q "$login_ip" && continue
 			local web_login_sum=`cat ${dir}web_failed|grep -w ${login_ip}|wc -l`
 			if [ "$web_login_sum" -ge "$login_max_num" ] ;then
 				if [ -z "$title" ]; then
@@ -1026,7 +1027,7 @@ function login_failed_send(){
 		local login_ip_list=`cat ${dir}ssh_failed|awk '{print $1}'|grep -v "^$"|sort -u|head -n1`
 		for login_ip in "$login_ip_list"; do
 			[ -z "$login_ip" ] && continue
-			echo "$ip_white_list"|grep -w -q "$login_ip" && echo continue
+			echo "$ip_white_list"|grep -w -q "$login_ip" && continue
 			local ssh_login_sum=`cat ${dir}ssh_failed|grep -w ${login_ip}|wc -l`
 			if [ "$ssh_login_sum" -ge "$login_max_num" ] ;then
 				if [ -z "$title" ]; then
@@ -1050,10 +1051,10 @@ function login_failed_send(){
 
 # 添加黑名单
 function add_ip_black(){
-	ipset list ip_blacklist >/dev/null 2>&1 || ipset create ip_blacklist hash:ip
-	iptables -C INPUT -m set --match-set ip_blacklist src -j DROP >/dev/null 2>&1 || iptables -I INPUT -m set --match-set ip_blacklist src -j DROP
-	[ -f "/usr/bin/serverchan/api/ip_blacklist" ] && ipset restore -! -f /usr/bin/serverchan/api/ip_blacklist
-	ipset -! add ip_blacklist $1
+	ipset list ip_blacklist >/dev/null 2>&1 || ipset create ip_blacklist hash:ip >/dev/null 2>&1
+	iptables -C INPUT -m set --match-set ip_blacklist src -j DROP >/dev/null 2>&1 || iptables -I INPUT -m set --match-set ip_blacklist src -j DROP >/dev/null 2>&1
+	[ -f "/usr/bin/serverchan/api/ip_blacklist" ] && ipset restore -! -f /usr/bin/serverchan/api/ip_blacklist >/dev/null 2>&1
+	ipset -! add ip_blacklist $1 >/dev/null 2>&1
 	ipset save ip_blacklist -f /usr/bin/serverchan/api/ip_blacklist
 }
 
