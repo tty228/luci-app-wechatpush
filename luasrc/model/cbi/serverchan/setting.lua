@@ -291,7 +291,7 @@ a.default=0
 a.rmempty = true
 
 a= s:taboption("content", Value, "login_max_num", "错误尝试次数")
-a.default = "5"
+a.default = "3"
 a.datatype="and(uinteger,min(1))"
 a:depends("web_login_failed","1")
 a:depends("ssh_login_failed","1")
@@ -303,11 +303,27 @@ a.rmempty = true
 a:depends("web_login_failed","1")
 a:depends("ssh_login_failed","1")
 
-a=s:taboption("content", DynamicList, "ip_white_list", translate("白名单 IP 列表"))
-a.rmempty = true
-a.description = translate("忽略白名单登陆提醒和拉黑操作")
+a= s:taboption("content", Value, "ip_black_timeout", "拉黑时间(秒)")
+a.default = "86400"
+a.datatype="and(uinteger,min(0))"
+a:depends("web_login_black","1")
+a.description = translate("0 为永久拉黑，慎用<br>如不幸误操作，请用另一台设备进入界面清空规则")
 
-a=s:taboption("content", TextValue, "ip_black_list", translate("IP 黑名单规则列表"))
+a=s:taboption("content", DynamicList, "ip_white_list", translate("白名单 IP 列表"))
+a.datatype = "ipaddr"
+a.rmempty = true
+luci.ip.neighbors({family = 4}, function(entry)
+	if entry.reachable then
+		a:value(entry.dest:string())
+	end
+end)
+a:depends("web_logged","1")
+a:depends("ssh_logged","1")
+a:depends("web_login_failed","1")
+a:depends("ssh_login_failed","1")
+a.description = translate("忽略白名单登陆提醒和拉黑操作，暂不支持掩码位表示")
+
+a=s:taboption("content", TextValue, "ip_black_list", translate("IP 黑名单列表"))
 a.optional = false
 a.rows = 8
 a.wrap = "soft"
@@ -317,8 +333,7 @@ end
 a.write = function(self, section, value)
     fs.writefile("/usr/bin/serverchan/api/ip_blacklist", value:gsub("\r\n", "\n"))
 end
-a:depends("web_login_failed","1")
-a:depends("ssh_login_failed","1")
+a:depends("web_login_black","1")
 
 --定时推送
 a=s:taboption("crontab", ListValue,"crontab",translate("定时任务设定"))
