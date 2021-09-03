@@ -63,7 +63,7 @@ a=s:taboption("basic", Value,"agentid",translate('应用id(agentid)'))
 a.rmempty = true
 a:depends("jsonpath","/usr/bin/serverchan/api/qywx_mpnews.json")
 a:depends("jsonpath","/usr/bin/serverchan/api/qywx_markdown.json")
-a=s:taboption("basic", Value,"corpsecret",translate('应用密钥{Secret}'))
+a=s:taboption("basic", Value,"corpsecret",translate('应用密钥(Secret)'))
 a.rmempty = true
 a:depends("jsonpath","/usr/bin/serverchan/api/qywx_mpnews.json")
 a:depends("jsonpath","/usr/bin/serverchan/api/qywx_markdown.json")
@@ -302,12 +302,13 @@ a.default=0
 a.rmempty = true
 a:depends("web_login_failed","1")
 a:depends("ssh_login_failed","1")
+a.description = translate("直到重启前都不会重置次数，请先添加白名单")
 
 a= s:taboption("content", Value, "ip_black_timeout", "拉黑时间(秒)")
 a.default = "86400"
 a.datatype="and(uinteger,min(0))"
 a:depends("web_login_black","1")
-a.description = translate("0 为永久拉黑，慎用<br>如不幸误操作，请用另一台设备进入界面清空规则")
+a.description = translate("0 为永久拉黑，慎用<br>如不幸误操作，请更改设备 IP 进入 LUCI 界面清空规则")
 
 a=s:taboption("content", DynamicList, "ip_white_list", translate("白名单 IP 列表"))
 a.datatype = "ipaddr"
