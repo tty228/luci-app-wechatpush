@@ -417,7 +417,7 @@ function serverchan_cron(){
 		/etc/init.d/cron start
 	}
 	del_cron
-	if [ -z "$serverchan_enable" ] || [ -z "$reset_regularly" ]; then
+	if [ -z "$serverchan_enable" ]; then
 		re_cron
 		return
 	fi
