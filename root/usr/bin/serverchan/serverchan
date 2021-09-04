@@ -417,7 +417,7 @@ function serverchan_cron(){
 		/etc/init.d/cron start
 	}
 	del_cron
-	if [ -z "$serverchan_enable" ] || [ -z "$reset_regularly" ]; then
+	if [ -z "$serverchan_enable" ]; then
 		re_cron
 		return
 	fi
@@ -972,15 +972,17 @@ function login_send(){
 		echo "$ip_white_list"|grep -w -q "$login_ip" && continue
 		local web_login_time=`cat ${dir}web_login|grep -w ${login_ip}|awk '{print $1}'|grep -v "^$"|sort -u|head -n1`
 		local web_login_mode=`cat ${dir}web_login|grep -w ${login_ip}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
-		if [ -z "$title" ]; then
-			title="${login_ip} 通过 web 登陆了路由器"
-			content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${web_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
-		elif ( echo "$title"|grep -q "登陆了路由器" ); then
-			title="${login_ip} ${title}"
-			content="${content}${str_splitline}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${web_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
-		else
-			title="设备状态变化"
-			content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${web_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
+		if [ ! -z "$web_logged" ] && [ "$web_logged" -eq "1" ]; then
+			if [ -z "$title" ]; then
+				title="${login_ip} 通过 web 登陆了路由器"
+				content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${web_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
+			elif ( echo "$title"|grep -q "登陆了路由器" ); then
+				title="${login_ip} ${title}"
+				content="${content}${str_splitline}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${web_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
+			else
+				title="设备状态变化"
+				content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${web_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
+			fi
 		fi
 		echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}设备 ${login_ip} 通过 web ${web_login_mode} 登陆了路由器 " >> ${logfile}
 	done
@@ -994,15 +996,17 @@ function login_send(){
 		local ssh_login_time=`cat ${dir}ssh_login|grep -w ${login_ip}|awk '{print $1}'|grep -v "^$"|sort -u|head -n1`
 		local ssh_login_mode=`cat ${dir}ssh_login|grep -w ${login_ip}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
 		[ ! -z "$ssh_login_mode" ] && local content_mode="${str_linefeed}${str_tab}登录方式： ${str_space}${str_space}${str_space}${str_space}${ssh_login_mode}"
-		if [ -z "$title" ]; then
-			title="${login_ip} 通过 ssh 登陆了路由器"
-			content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${ssh_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
-		elif ( echo "$title"|grep -q "登陆了路由器" ); then
-			title="${login_ip} ${title}"
-			content="${content}${str_splitline}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${ssh_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
-		else
-			title="设备状态变化"
-			content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${ssh_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
+		if [ ! -z "$ssh_logged" ] && [ "$ssh_logged" -eq "1" ]; then
+			if [ -z "$title" ]; then
+				title="${login_ip} 通过 ssh 登陆了路由器"
+				content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${ssh_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
+			elif ( echo "$title"|grep -q "登陆了路由器" ); then
+				title="${login_ip} ${title}"
+				content="${content}${str_splitline}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${ssh_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
+			else
+				title="设备状态变化"
+				content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${ssh_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
+			fi
 		fi
 		echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】设备 ${login_ip} 通过 ssh ${ssh_login_mode} 登陆了路由器 " >> ${logfile}
 	done
@@ -1015,15 +1019,17 @@ function login_send(){
 		echo "$ip_white_list"|grep -w -q "$login_ip" && continue
 		local web_login_sum=`cat ${dir}web_failed|grep -w "${login_ip}"|wc -l`
 		if [ "$web_login_sum" -ge "$login_max_num" ] ;then
-			if [ -z "$title" ]; then
-				title="${login_ip} 通过 web 频繁尝试登陆"
-				content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
-				elif ( echo "$title"|grep -q "频繁尝试登陆" ); then
-					title="${login_ip} ${title}"
-					content="${content}${str_splitline}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
-				else
-					title="设备状态变化"
+			if [ ! -z "$web_login_failed" ] && [ "$web_login_failed" -eq "1" ]; then
+				if [ -z "$title" ]; then
+					title="${login_ip} 通过 web 频繁尝试登陆"
 					content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+					elif ( echo "$title"|grep -q "频繁尝试登陆" ); then
+						title="${login_ip} ${title}"
+						content="${content}${str_splitline}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+					else
+						title="设备状态变化"
+						content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+				fi
 			fi
 			sed -i "/^${login_ip}$/d" ${dir}web_failed
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】设备 ${login_ip} 通过 web 频繁尝试登陆" >> ${logfile}
@@ -1038,15 +1044,17 @@ function login_send(){
 		echo "$ip_white_list"|grep -w -q "$login_ip" && continue
 		local ssh_login_sum=`cat ${dir}ssh_failed|grep -w "${login_ip}"|wc -l`
 		if [ "$ssh_login_sum" -ge "$login_max_num" ] ;then
-			if [ -z "$title" ]; then
-				title="${login_ip} 通过 ssh 频繁尝试登陆"
-				content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
-				elif ( echo "$title"|grep -q "频繁尝试登陆" ); then
-					title="${login_ip} ${title}"
-					content="${content}${str_splitline}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
-				else
-					title="设备状态变化"
+			if [ ! -z "$ssh_login_failed" ] && [ "$ssh_login_failed" -eq "1" ]; then
+				if [ -z "$title" ]; then
+					title="${login_ip} 通过 ssh 频繁尝试登陆"
 					content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+					elif ( echo "$title"|grep -q "频繁尝试登陆" ); then
+						title="${login_ip} ${title}"
+						content="${content}${str_splitline}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+					else
+						title="设备状态变化"
+						content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+				fi
 			fi
 			sed -i "/^${login_ip}$/d" ${dir}ssh_failed
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】设备 ${login_ip} 通过 ssh 频繁尝试登陆" >> ${logfile}
