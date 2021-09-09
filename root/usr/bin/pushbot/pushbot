@@ -1151,7 +1151,7 @@ function send(){
 			local time1=`date +%s`
 			local time1=$(time_for_humans `expr ${time1} - ${time_up}`)
 			local ip_mac=`getmac ${ip}`
-			local ip_name=`getname ${ip}${ip_mac}`
+			local ip_name=`getname ${ip} ${ip_mac}`
 			local ip_total=`usage get ${ip_mac}`;[ ! -z "$ip_total" ] && local ip_total="总计流量：${ip_total}  "
 			local ip_name=`cut_str $ip_name 18`
 			local send_content="${send_content}${str_linefeed}${str_tab}${font_green}【${ip_name}】${font_end2}  ${ip}${str_linefeed}${str_tab}${ip_total}在线 ${time1}"
