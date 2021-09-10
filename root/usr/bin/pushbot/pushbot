@@ -44,7 +44,7 @@ function read_config(){
 	[ -z "$up_timeout" ] || [ "$up_timeout" -eq "0" ] && up_timeout="2"
 	[ -z "$down_timeout" ] || [ "$down_timeout" -eq "0" ] && down_timeout="20";down_timeout=`expr ${down_timeout} / 2 + 1`
 	[ -z "$timeout_retry_count" ] && timeout_retry_count="2";[ "$timeout_retry_count" -eq "0" ] && timeout_retry_count="1"
-	[ -z "$bark_srv" ] && bark_srv="https://api.day.app"
+	[ ! -z "$bark_token" ] && [ -z "$bark_srv" ] && bark_srv="https://api.day.app"
 	
 # 字符串读取
 	str_title_start=`/usr/bin/jq -r '.str_title_start' ${jsonpath}`
@@ -102,7 +102,11 @@ function diy_send(){
 	[ $logrow -eq "0" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】json 文件生成失败，请检查文件格式" >> ${logfile} && return 1
 	/usr/bin/jq -r '.[]' ${tempjsonpath}|grep "null" && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】参数变量生成失败，请检查设置项 `/usr/bin/jq -r '.' ${tempjsonpath}|grep "null"`" >> ${logfile}
 	
-	curl -X POST -H "$content_type" -d "${data}" "${diyurl}"
+	if [ ! -z "$bark_token" ]; then
+		local bark_text=`/usr/bin/jq -r '.bark_text' ${tempjsonpath}` && local bark_text=`echo $bark_text|sed 's/ /%20/g'` && curl -s $bark_text
+		else
+		curl -X POST -H "$content_type" -d "${data}" "${diyurl}"
+	fi
 }
 
 # 下载设备MAC厂商信息
