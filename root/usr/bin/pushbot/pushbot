@@ -885,7 +885,7 @@ function current_device(){
 				local ip_total="${ip_total}${str_space}"
 			done
 		fi
-		content="${content}${str_linefeed}${str_tab}${ip}${ip_total}${boldstar}${font_green}${ip_name}${font_end}${boldstar}"
+		content="${content}${str_linefeed}${str_tab}${ip}${ip_total}${boldstar}${font_green}${ip_name}${font_end2}${boldstar}"
 		unset i n ip_total ip_mac ip_name
 	done
 }
