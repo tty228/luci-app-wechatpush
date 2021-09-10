@@ -28,6 +28,8 @@
 - 故由  然后七年  @zzsj0928 重新修改为本插件，为钉钉机器人API使用。
 - 本插件工作在：openwrt
 - 本插件支持：钉钉推送,企业微信推送,PushPlus推送,微信推送,企业微信应用推送,飞书推送,钉钉机器人推送,企业微信机器人推送,飞书机器人推送,一对多推送,Bark推送(仅iOS)
+- 自20210901之后的版本，暂时停止对Bark的支持。主项目 tty228/luci-app-serverchan 目前采用POST json的方式非常易于管理，像Bark这类使用GET的api，我考虑一段时间要不要去支持。
+
 # 显示效果
 ## 通知栏：直接显示推送主题，一目了然，按设备不同，分组显示
 <img src="https://raw.githubusercontent.com/zzsj0928/ReadmeContents/main/Serverchand/Msg.Notification.jpg" width="500">
