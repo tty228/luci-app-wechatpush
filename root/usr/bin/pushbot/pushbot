@@ -970,7 +970,7 @@ EOF
 	rm -f ${dir}get_syslog >/dev/null 2>&1
 }
 
-# 登陆提醒通知
+# 登录提醒通知
 function login_send(){
 	[ -z "$web_logged" ] && [ -z "$ssh_logged" ] && [ -z "$web_login_failed" ] && [ -z "$ssh_login_failed" ] && return
 	[ ! -f ${dir}login_monitor ] && return
@@ -989,17 +989,17 @@ function login_send(){
 		local web_login_mode=`cat ${dir}web_login|grep -w ${login_ip}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
 		if [ ! -z "$web_logged" ] && [ "$web_logged" -eq "1" ]; then
 			if [ -z "$title" ]; then
-				title="${login_ip} 通过 web 登陆了路由器"
-				content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${web_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
-			elif ( echo "$title"|grep -q "登陆了路由器" ); then
+				title="${login_ip} 通过 Web 登录了路由器"
+				content="${content}${str_splitline}${str_title_start}${font_green} 登录信息${font_end}${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${web_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
+			elif ( echo "$title"|grep -q "登录了路由器" ); then
 				title="${login_ip} ${title}"
 				content="${content}${str_splitline}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${web_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
 			else
 				title="设备状态变化"
-				content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${web_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
+				content="${content}${str_splitline}${str_title_start}${font_green} 登录信息${font_end}${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${web_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
 			fi
 		fi
-		echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}设备 ${login_ip} 通过 web ${web_login_mode} 登陆了路由器 " >> ${logfile}
+		echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}设备 ${login_ip} 通过 web ${web_login_mode} 登录了路由器 " >> ${logfile}
 	done
 	echo "" > ${dir}web_login
 	unset login_ip login_ip_list
@@ -1013,17 +1013,17 @@ function login_send(){
 		[ ! -z "$ssh_login_mode" ] && local content_mode="${str_linefeed}${str_tab}登录方式： ${str_space}${str_space}${str_space}${str_space}${ssh_login_mode}"
 		if [ ! -z "$ssh_logged" ] && [ "$ssh_logged" -eq "1" ]; then
 			if [ -z "$title" ]; then
-				title="${login_ip} 通过 ssh 登陆了路由器"
-				content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${ssh_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
-			elif ( echo "$title"|grep -q "登陆了路由器" ); then
+				title="${login_ip} 通过 SSH 登录了路由器"
+				content="${content}${str_splitline}${str_title_start}${font_green} 登录信息${font_end}${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${ssh_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
+			elif ( echo "$title"|grep -q "登录了路由器" ); then
 				title="${login_ip} ${title}"
 				content="${content}${str_splitline}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${ssh_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
 			else
 				title="设备状态变化"
-				content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${ssh_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
+				content="${content}${str_splitline}${str_title_start}${font_green} 登录信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${ssh_login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
 			fi
 		fi
-		echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】设备 ${login_ip} 通过 ssh ${ssh_login_mode} 登陆了路由器 " >> ${logfile}
+		echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】设备 ${login_ip} 通过 SSH ${ssh_login_mode} 登录了路由器 " >> ${logfile}
 	done
 	echo "" > ${dir}ssh_login
 	unset login_ip login_ip_list
@@ -1036,18 +1036,18 @@ function login_send(){
 		if [ "$web_login_sum" -ge "$login_max_num" ] ;then
 			if [ ! -z "$web_login_failed" ] && [ "$web_login_failed" -eq "1" ]; then
 				if [ -z "$title" ]; then
-					title="${login_ip} 通过 web 频繁尝试登陆"
-					content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
-					elif ( echo "$title"|grep -q "频繁尝试登陆" ); then
+					title="${login_ip} 通过 Web 频繁尝试登录"
+					content="${content}${str_splitline}${str_title_start}${font_red} 登录信息${font_end}${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+					elif ( echo "$title"|grep -q "频繁尝试登录" ); then
 						title="${login_ip} ${title}"
 						content="${content}${str_splitline}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
 					else
 						title="设备状态变化"
-						content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+						content="${content}${str_splitline}${str_title_start}${font_red} 登录信息${font_end}${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
 				fi
 			fi
 			sed -i "/^${login_ip}$/d" ${dir}web_failed
-			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】设备 ${login_ip} 通过 web 频繁尝试登陆" >> ${logfile}
+			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】设备 ${login_ip} 通过 Web 频繁尝试登录" >> ${logfile}
 			add_ip_black $login_ip
 		fi
 	done
@@ -1061,18 +1061,18 @@ function login_send(){
 		if [ "$ssh_login_sum" -ge "$login_max_num" ] ;then
 			if [ ! -z "$ssh_login_failed" ] && [ "$ssh_login_failed" -eq "1" ]; then
 				if [ -z "$title" ]; then
-					title="${login_ip} 通过 ssh 频繁尝试登陆"
-					content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
-					elif ( echo "$title"|grep -q "频繁尝试登陆" ); then
+					title="${login_ip} 通过 SSH 频繁尝试登录"
+					content="${content}${str_splitline}${str_title_start}${font_red} 登录信息${font_end}${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+					elif ( echo "$title"|grep -q "频繁尝试登录" ); then
 						title="${login_ip} ${title}"
 						content="${content}${str_splitline}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
 					else
 						title="设备状态变化"
-						content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+						content="${content}${str_splitline}${str_title_start}${font_red} 登录信息${font_end}${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
 				fi
 			fi
 			sed -i "/^${login_ip}$/d" ${dir}ssh_failed
-			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】设备 ${login_ip} 通过 ssh 频繁尝试登陆" >> ${logfile}
+			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】设备 ${login_ip} 通过 SSH 频繁尝试登录" >> ${logfile}
 			add_ip_black $login_ip
 		fi
 	done
@@ -1245,7 +1245,7 @@ while [ "$pushbot_enable" -eq "1" ]; do
 	# 异常流量检测
 	[ ! -f "${dir}send_enable.lock" ] && get_client_usage
 
-	# 登陆提醒通知
+	# 登录提醒通知
 	[ ! -f "${dir}send_enable.lock" ] && login_send
 
 	# 通知
