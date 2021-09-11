@@ -25,7 +25,7 @@
 	      "msgtype": "\"markdown\"",
 	      "markdown": {
 		      	"title": "\"${1}\"",
-			"text": "\"${font_purple}${1}${font_end}${str_linefeed}${nowtime}${str_linefeed}${2}\""
+			"text": "\"${str_title_start}${font_purple}${1}${font_end}${str_title_end}${str_linefeed}${nowtime}${str_linefeed}${2}${str_linefeed}${1}\""
 	      }
       }
 }
