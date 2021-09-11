@@ -27,7 +27,7 @@
 	      	"webhook": "\"${pp_webhook}\"",
 	      	"topic": "\"${pp_topic}\"",
 		"title": "\"${1}\"",
-		"content": "\"${font_purple}${1}${font_end}${str_linefeed}${nowtime}${str_linefeed}${2}\"",
+		"content": "\"${str_title_start}${font_purple}${1}${font_end}${str_title_end}${str_linefeed}${nowtime}${str_linefeed}${2}\"",
 		"template": "\"markdown\""
       }
 }
