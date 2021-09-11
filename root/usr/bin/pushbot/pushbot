@@ -103,11 +103,7 @@ function diy_send(){
 	[ $logrow -eq "0" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】json 文件生成失败，请检查文件格式" >> ${logfile} && return 1
 	/usr/bin/jq -r '.[]' ${tempjsonpath}|grep "null" && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】参数变量生成失败，请检查设置项 `/usr/bin/jq -r '.' ${tempjsonpath}|grep "null"`" >> ${logfile}
 	
-	if [ ! -z "$bark_token" ]; then
-		local bark_text=`/usr/bin/jq -r '.bark_text' ${tempjsonpath}` && local bark_text=`echo $bark_text|sed 's/ /%20/g'` && curl -s $bark_text
-		else
-		curl -X POST -H "$content_type" -d "${data}" "${diyurl}"
-	fi
+	curl -X POST -H "$content_type" -d "${data}" "${diyurl}"
 }
 
 # 下载设备MAC厂商信息
