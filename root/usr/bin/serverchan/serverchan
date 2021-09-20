@@ -1104,11 +1104,18 @@ function send(){
 		local systemload=`cat /proc/loadavg|awk '{print $1" "$2" "$3}'`
 		local cpuload=`getcpu`
 		local ramload=`free -m|sed -n '2p'|awk '{printf "%.2f%%\n",($3/$2)*100}'`
+		local Qwai=`curl -o /dev/null --connect-timeout 5 -s -w %{http_code} www.google.com`
+		if [[ "$Qwai" -eq "200" ]] || [[ "$Qwai" -eq "301" ]] || [[ "$Qwai" -eq "302" ]]; then
+			local Qwai_status="已连通！"
+		else
+			local Qwai_status="已断开！"
+		fi
 		local systemstatustime=`cat /proc/uptime|awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("运行时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}'`;unset run_days run_hour run_minute run_second
 		local send_content="${send_content}${str_splitline}${str_title_start} 系统运行状态${str_title_end}"
 		local send_content="${send_content}${str_linefeed}${str_tab}平均负载：${systemload}"
 		local send_content="${send_content}${str_linefeed}${str_tab}CPU占用：${cpuload}"
 		local send_content="${send_content}${str_linefeed}${str_tab}内存占用：${ramload}"
+		local send_content="${send_content}${str_linefeed}${str_tab}全球互联：${Qwai_status}"
 		local send_content="${send_content}${str_linefeed}${str_tab}${systemstatustime}"
 	fi
 
