@@ -1135,7 +1135,7 @@ function send(){
 			local send_content="${send_content}${str_linefeed}${str_tab}接口 IPv6:${send_wanIPv6}"
 			local send_content="${send_content}${str_linefeed}${str_tab}外网 IPv6:${send_hostIPv6}"
 		fi
-		( ! echo "$send_wanIP"|grep -q -w ${send_hostIP} ) && local send_content="${send_content}${str_linefeed}${str_tab}外网 IP 与接口 IP 不一致，你的 IP 不是公网 IP"
+		( ! echo "$send_wanIP"|grep -q -w ${send_hostIP} ) && local send_content="${send_content}${str_linefeed}${str_tab}外网 IP 与接口 IP 不一致，你的 IP 可能不是公网 IP"
 		local interfaceuptime=`getinterfaceuptime`
 		[ ! -z "$interfaceuptime" ] && local wanstatustime=`getinterfaceuptime|awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("在线时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}'` && unset run_days run_hour run_minute run_second
 		local send_content="${send_content}${str_linefeed}${str_tab}${wanstatustime}"
