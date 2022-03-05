@@ -25,7 +25,7 @@
 
 #### 已知问题
 - 直接关闭接口时，该接口的离线设备会忽略检测
-- 部分设备无法读取到设备名，脚本使用 `cat /var/dhcp.leases` 命令读取设备名，如果 dhcp 中不存在设备名，则无法读取设备名（如二级路由设备、静态ip设备），请使用设备名备注.
+- 部分设备无法读取到设备名，脚本使用 `cat /var/dhcp.leases` 命令读取设备名，如果 DHCP 中不存在设备名，则无法读取设备名（如二级路由设备、静态IP设备），请使用设备名备注.
 - 基于X86 OpenWrt 19.07.8 制作，不同系统不同设备，可能会遇到各种问题
 - 潘多拉系统、或不支持 sh 的系统，请将脚本开头 `#!/bin/sh` 改为 `#!/bin/bash`，或手动安装 `sh`
 
@@ -33,7 +33,7 @@
 - [luci-app-serverchan](https://github.com/tty228/luci-app-serverchan/releases)
 - [wrtbwmon](https://github.com/brvphoenix/wrtbwmon)
 - [luci-app-wrtbwmon](https://github.com/brvphoenix/luci-app-wrtbwmon) 
-- **L大版本直接编译 luci-app-wrtbwmon ，非原版 luci 如使用以上 wrtbwmon，请注意安装版本号**
+- **L大版本直接编译 luci-app-wrtbwmon ，非原版 LuCI 如使用以上 wrtbwmon，请注意安装版本号**
 
 #### ps
 - 新功能看情况开发，忙得头晕眼花
