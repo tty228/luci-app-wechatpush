@@ -176,12 +176,12 @@ function getinterfaceuptime(){
 	getinterfacelist|grep \"uptime\"|sed $'s/\"uptime": //g'|sed $'s/\,//g'
 }
 
-# 查询 mac 地址
+# 查询 MAC 地址
 function getmac(){
 	( echo "$tmp_mac"|grep -q "unknown" ) && unset tmp_mac # 为unknown时重新读取
 	[ -f "${dir}ipAddress" ] && [ -z "$tmp_mac" ] && local tmp_mac=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
 	[ -f "${dir}tmp_downlist" ] && [ -z "$tmp_mac" ] && local tmp_mac=`cat ${dir}tmp_downlist|grep -w ${1}|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
-	[ -f "/var/dhcp.leases" ] && [ -z "$tmp_mac" ] && local tmp_mac=`cat /var/dhcp.leases|grep -w ${1}|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
+	[ -f "/tmp/dhcp.leases" ] && [ -z "$tmp_mac" ] && local tmp_mac=`cat /tmp/dhcp.leases|grep -w ${1}|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
 	[ -z "$tmp_mac" ] && local tmp_mac=`cat /proc/net/arp|grep "0x2\|0x6"|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`
 	[ -z "$tmp_mac" ] && local tmp_mac="unknown"
 	echo "$tmp_mac"
@@ -193,7 +193,7 @@ function getname(){
 	[ -f "${dir}ipAddress" ] && [ -z "$tmp_name" ] && local tmp_name=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
 	[ -f "${dir}tmp_downlist" ] && [ -z "$tmp_name" ] && local tmp_name=`cat ${dir}tmp_downlist|grep -w ${1}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
 	( ! echo "$tmp_name"|grep -q -w "unknown\|*" ) && [ ! -z "$tmp_name" ] && echo "$tmp_name" && return || unset tmp_name # 为unknown时重新读取
-	[ -f "/var/dhcp.leases" ] && [ -z "$tmp_name" ] && local tmp_name=`cat /var/dhcp.leases|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`
+	[ -f "/tmp/dhcp.leases" ] && [ -z "$tmp_name" ] && local tmp_name=`cat /tmp/dhcp.leases|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`
 	( ! echo "$tmp_name"|grep -q -w "unknown\|*" ) && [ ! -z "$tmp_name" ] && echo "$tmp_name" && return || unset tmp_name # 为unknown时重新读取
 	[ -z "$dhcp_config" ] && dhcp_config=`uci show dhcp|grep "ip\|mac\|name"`
 	for dhcp_config_str in "host" "domain"; do
