@@ -187,7 +187,7 @@ end
 a.description = translate("<br/>会因服务器稳定性、连接频繁等原因导致获取失败<br/>如接口可以正常获取 IP，不推荐使用<br/>从以上列表中随机地址访问")
 a:depends({serverchan_ipv4="2"})
 
-a=s:taboption("content", ListValue,"serverchan_ipv6",translate("ipv6 变动通知"))
+a=s:taboption("content", ListValue,"serverchan_ipv6",translate("IPv6 变动通知"))
 a.rmempty = true
 a.default="disable"
 a:value("0",translate("关闭"))
