@@ -35,7 +35,7 @@
 - [luci-app-wrtbwmon](https://github.com/brvphoenix/luci-app-wrtbwmon) 
 - **L大版本直接编译 luci-app-wrtbwmon ，非原版 LuCI 如使用以上 wrtbwmon，请注意安装版本号**
 
-#### ps
+#### PS
 - 新功能看情况开发，忙得头晕眼花
 - 欢迎各种代码提交
 - 提交bug时请尽量带上设备信息，日志与描述
