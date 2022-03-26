@@ -1025,12 +1025,12 @@ function login_send(){
 				if [ -z "$title" ]; then
 					title="${login_ip} 通过 web 频繁尝试登陆"
 					content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
-					elif ( echo "$title"|grep -q "频繁尝试登陆" ); then
-						title="${login_ip} ${title}"
-						content="${content}${str_splitline}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
-					else
-						title="设备状态变化"
-						content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+				elif ( echo "$title"|grep -q "频繁尝试登陆" ); then
+					title="${login_ip} ${title}"
+					content="${content}${str_splitline}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+				else
+					title="设备状态变化"
+					content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
 				fi
 			fi
 			sed -i "/^${login_ip}$/d" ${dir}web_failed
@@ -1050,12 +1050,12 @@ function login_send(){
 				if [ -z "$title" ]; then
 					title="${login_ip} 通过 ssh 频繁尝试登陆"
 					content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
-					elif ( echo "$title"|grep -q "频繁尝试登陆" ); then
-						title="${login_ip} ${title}"
-						content="${content}${str_splitline}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
-					else
-						title="设备状态变化"
-						content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+				elif ( echo "$title"|grep -q "频繁尝试登陆" ); then
+					title="${login_ip} ${title}"
+					content="${content}${str_splitline}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
+				else
+					title="设备状态变化"
+					content="${content}${str_splitline}${str_title_start} 登陆信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
 				fi
 			fi
 			sed -i "/^${login_ip}$/d" ${dir}ssh_failed
@@ -1069,9 +1069,10 @@ function login_send(){
 
 # 添加黑名单
 function add_ip_black(){
-	[ -f "${ip_blacklist_path}" ] && local logrow=$(grep -c "" ${ip_blacklist_path}) || local logrow="0"
-	[ ! -f "${ip_blacklist_path}" ] && local logrow="0"
-	[ ! -z "$web_login_black" ] && [ "$web_login_black" -eq "0" ] || [ -z "$web_login_black" ] && local logrow="0"
+	[ ! -f "${ip_blacklist_path}" ] && touch ${ip_blacklist_path}
+	local logrow=$(grep -c "" ${ip_blacklist_path})
+	[ ! -z "$web_login_black" ] && [ "$web_login_black" -eq "0" ] || [ -z "$web_login_black" ] && logrow=0
+	[ ! -z "$1" ] && logrow=logrow+1
 	ipset flush ip_blacklist >/dev/null 2>&1
 
 	if [ $logrow -le "0" ]; then
