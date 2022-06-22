@@ -4,7 +4,7 @@ function index()
 	if not nixio.fs.access("/etc/config/serverchan") then
 		return
 	end
-	
+
 	local page = entry({"admin", "services", "serverchan"}, alias("admin", "services", "serverchan", "setting"), _("微信推送"), 30)
 	page.dependent = true
 	page.acl_depends = { "luci-app-serverchan" }
