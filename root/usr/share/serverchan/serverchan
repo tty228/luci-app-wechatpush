@@ -194,7 +194,7 @@ function getip(){
 # 获取接口信息
 function getinterfacelist(){
 	[ `ubus list|grep -w -i "network.interface.wan"|wc -l` -ge "1" ] && ubus call network.interface.wan status && return
-	local ubuslist=`ubus list|grep -i "network.interface."|grep -v "loopback"|grep -v -i "wan6"|grep -v -i "lan6"|grep -v -i "ipsec_server"`
+	local ubuslist=`ubus list|grep -i "network.interface."|grep -v "loopback"|grep -v -i "wan6"|grep -v -i "lan6"|grep -v -i "ipsec_server*"|grep -v -i "VPN*"|grep -v -i "DOCKER*"`
 	[ `echo "${ubuslist}" |wc -l` -eq "1" ] && ubus call ${ubuslist} status && return
 }
 
