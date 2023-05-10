@@ -1,0 +1,9 @@
+#!/bin/sh
+if [ "$1" = "get_client" ]; then
+    devices=$(find /tmp/serverchan/client -type f -print0 | xargs -0 cat | sed "s/'/\"/g" | tr '\n' ',')
+    echo "{\"devices\": [${devices%,}]}"
+elif [ "$1" = "clear_log" ]; then
+    # 清空 /tmp/serverchan/serverchan.log 文件
+    > /tmp/serverchan/serverchan.log
+fi
+

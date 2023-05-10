@@ -1,26 +1,26 @@
 #!/bin/sh /etc/rc.common
 
+USE_PROCD=1
 START=99
-STOP=10
 
-start() {
-	state=`pgrep -f "/usr/share/serverchan/serverchan"`
-	if [ ! -z "$state" ]; then
-		restart
-	else
-		/usr/share/serverchan/serverchan &
-	fi
-	echo "serverchan is starting now ..."
+start_service() {
+        procd_open_instance
+        procd_set_param command /usr/share/serverchan/serverchan
+        procd_close_instance
+        echo "ServerChan is starting now ..."
 }
 
-stop() {
-	kill -9 `pgrep -f "/usr/share/serverchan/serverchan"` 2>/dev/null
-	echo "serverchan exit ..."
+stop_service() {
+        echo "Terminating serverchan process..."
 }
 
-restart(){
+service_triggers() {
+    procd_add_reload_trigger serverchan
+}
+
+restart_service() {
 	stop
-	sleep 1
-	start
-	echo "restarted."
+        sleep 1
+        start
 }
+

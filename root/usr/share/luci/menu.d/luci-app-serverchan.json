@@ -1,0 +1,49 @@
+{
+	"admin/services/serverchan": {
+		"title": "微信推送",
+		"order": 30,
+		"action": {
+			"type": "firstchild"
+		},
+		"depends": {
+			"acl": [ "luci-app-serverchan" ],
+			"uci": { "serverchan": true }
+		}
+	},
+
+	"admin/services/serverchan/config": {
+		"title": "基本设置",
+		"order": 10,
+		"action": {
+			"type": "view",
+			"path": "serverchan/config"
+		}
+	},
+
+	"admin/services/serverchan/advanced": {
+		"title": "高级设置",
+		"order": 20,
+		"action": {
+			"type": "view",
+			"path": "serverchan/advanced"
+		}
+	},
+
+	"admin/services/serverchan/client": {
+		"title": "在线设备",
+		"order": 30,
+		"action": {
+			"type": "view",
+			"path": "serverchan/client"
+		}
+	},
+	"admin/services/serverchan/log": {
+		"title": "日志",
+		"order": 40,
+		"action": {
+			"type": "view",
+			"path": "serverchan/log"
+		}
+	}
+
+}
