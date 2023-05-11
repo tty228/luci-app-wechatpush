@@ -5,7 +5,6 @@
 'require uci';
 'require rpc';
 'require form';
-
 'require tools.widgets as widgets';
 'require tools.firewall as fwtool';
 
@@ -46,7 +45,7 @@ return view.extend({
 		o.rmempty = true
 		o.value("", ("默认"))
 		o.value("pve", ("PVE 虚拟机"))
-		o.description = ("自定义命令如需使用特殊符号，如引号、$、!等，则需要自行转义，并在保存后查看 /etc/config/serverchan 文件 soc_code 设置项是否保存正确<br/>可以使用 eval `echo $(uci get serverchan.serverchan.soc_code)` 命令查看命令输出及错误信息<br/>执行结果需为纯数字（可带小数），用于温度对比")
+		o.description = ("自定义命令如需使用特殊符号，如引号、$、!等，则需要自行转义<br/>可以使用 eval `echo $(uci get serverchan.serverchan.soc_code)` 命令查看命令输出及错误信息<br/>执行结果需为纯数字（可带小数），用于温度对比<br/>一个无需转义的例子：<br/>cat /sys/class/thermal/thermal_zone0/temp|sort -nr|head -n1|cut -c-2")
 
 		o = s.option(form.Value, "server_host", ("宿主机地址"))
 		o.rmempty = true

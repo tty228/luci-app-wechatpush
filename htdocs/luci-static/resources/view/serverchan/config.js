@@ -69,17 +69,22 @@ return view.extend({
 		s = m.section(form.TypedSection);
 		s.anonymous = true;
 		s.render = function () {
+			var statusView = E('p', { id: 'service_status' }, _('Collecting data ...'));
 			poll.add(function () {
 				return L.resolveDefault(getServiceStatus()).then(function (res) {
-					var view = document.getElementById("service_status");
-					view.innerHTML = renderStatus(res);
+					statusView.innerHTML = renderStatus(res);
 				});
 			});
 
+			setTimeout(function () {
+				poll.start();
+			}, 100);
+
 			return E('div', { class: 'cbi-section', id: 'status_bar' }, [
-				E('p', { id: 'service_status' }, _('Collecting data ...'))
+				statusView
 			]);
 		}
+
 		s = m.section(form.NamedSection, 'serverchan', 'serverchan', _(''));
 		s.tab('basic', _('基本设置'));
 		s.tab('content', _('推送内容'));
@@ -305,9 +310,16 @@ return view.extend({
 		o.default = '1';
 
 		o = s.taboption('content', form.Value, 'cpuload', '负载报警阈值');
-		o.default = '2';
 		o.rmempty = false;
+		o.placeholder = '2';
 		o.depends('cpuload_enable', '1');
+		o.validate = function (section_id, value) {
+			var floatValue = parseFloat(value);
+			if (!isNaN(floatValue) && floatValue.toString() === value) {
+				return true;
+			}
+			return '请输入纯数字';
+		};
 
 		o = s.taboption('content', form.Flag, 'temperature_enable', _('CPU 温度报警'));
 		o.default = '1';
@@ -330,7 +342,7 @@ return view.extend({
 		o.description = _('设备异常流量警报（byte），你可以追加 K 或者 M');
 
 		o = s.taboption('content', form.Flag, 'client_usage_disturb', _('异常流量免打扰'));
-		o.default = '1';
+		o.default = '0';
 		o.depends('client_usage', '1');
 
 		o = fwtool.addMACOption(s, 'content', 'client_usage_whitelist', _('异常流量关注列表'),
@@ -384,6 +396,8 @@ return view.extend({
 		o.default = '0';
 		o.description = _('登录成功后开放端口');
 		o.description = _('如在 防火墙 - 区域设置 中禁用了 LAN 口入站和转发，将不起作用<br/>写起来太鸡儿麻烦了，告辞');
+		o.depends('web_login_failed', '1');
+		o.depends('ssh_login_failed', '1');
 
 		o = s.taboption('ipset', form.Value, 'ip_port_white', '端口');
 		o.default = '';
