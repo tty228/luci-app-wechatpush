@@ -484,22 +484,22 @@ return view.extend({
 		o.description = _('<br/>使用特殊符号可能会造成发送失败');
 
 		o = s.taboption('crontab', form.Flag, 'router_status', _('系统运行情况'));
-		o.default = '1';
+		o.default = '0';
 		o.depends('crontab', '1');
 		o.depends('crontab', '2');
 
 		o = s.taboption('crontab', form.Flag, 'router_temp', _('设备温度'));
-		o.default = '1';
+		o.default = '0';
 		o.depends('crontab', '1');
 		o.depends('crontab', '2');
 
 		o = s.taboption('crontab', form.Flag, 'router_wan', _('WAN信息'));
-		o.default = '1';
+		o.default = '0';
 		o.depends('crontab', '1');
 		o.depends('crontab', '2');
 
 		o = s.taboption('crontab', form.Flag, 'client_list', _('客户端列表'));
-		o.default = '1';
+		o.default = '0';
 		o.depends('crontab', '1');
 		o.depends('crontab', '2');
 
