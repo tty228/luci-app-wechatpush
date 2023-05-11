@@ -8,6 +8,25 @@ function get_config(){
 	done
 }
 
+# 后台读取 json 中的变量
+read_json() {
+	local json_key="$1"
+	local json_path="$2"
+	local output_file="$output_dir/${json_key}"
+	jq -r ."$json_key" "$json_path" > "$output_file" &
+}
+
+# 遍历输出目录，将文件内容保存到对应的变量
+wait_and_cat() {
+	wait
+	for file in "$output_dir"/*; do
+		local variable_name=$(basename "$file")
+		local variable_value=$(cat "$file")
+		eval "${variable_name}='${variable_value}'"
+	done
+	rm "$output_dir"/*
+}
+
 # 初始化设置信息
 function read_config(){
 	get_config "serverchan_enable" "lite_enable" "device_name" "sleeptime" "oui_data" "oui_dir" "reset_regularly" "debuglevel" "device_aliases" \
@@ -46,14 +65,21 @@ function read_config(){
 	[ -z "$down_timeout" ] || [ "$down_timeout" -eq "0" ] && down_timeout="20";down_timeout=`expr ${down_timeout} / 2 + 1`
 	[ -z "$timeout_retry_count" ] && timeout_retry_count="2";[ "$timeout_retry_count" -eq "0" ] && timeout_retry_count="1"
 	[ -z "$server_port" ] && server_port="22"
-	str_title_start=`jq -r '.str_title_start' ${jsonpath}`
-	str_title_end=`jq -r '.str_title_end' ${jsonpath}`
-	str_linefeed=`jq -r '.str_linefeed' ${jsonpath}`
-	str_splitline=`jq -r '.str_splitline' ${jsonpath}`
-	str_space=`jq -r '.str_space' ${jsonpath}`
-	str_tab=`jq -r '.str_tab' ${jsonpath}`
-	disturb_text=`jq -r '._api' ${jsonpath}`
-	( echo "$lite_enable"|grep -q "content" ) && str_title_start="" && str_title_end="" && str_splitline="" && str_linefeed="" && str_tab=""
+	output_dir="/tmp/serverchan/json_output"
+	mkdir -p "$output_dir"
+	if ( echo "$lite_enable"|grep -q "content" ); then
+		str_title_start="" && str_title_end="" && str_splitline="" && str_linefeed="" && str_tab=""
+	else
+		read_json "str_title_start" "$jsonpath"
+		read_json "str_title_end" "$jsonpath"
+		read_json "str_linefeed" "$jsonpath"
+		read_json "str_splitline" "$jsonpath"
+		read_json "str_space" "$jsonpath"
+		read_json "str_tab" "$jsonpath"
+		read_json "_api" "$jsonpath"
+	fi
+	wait_and_cat
+	disturb_text=$_api
 }
 
 # 初始化
@@ -104,7 +130,7 @@ function diy_send(){
 	[ $4 ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【debug】如果收不到信息，请检查 ${dir}debug_send_data 文件，或使用下列命令手动测试返回值 (可能需要关闭日志自动刷新方便选中)" >> ${logfile}
 	[ $4 ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【debug】"'curl -X POST -H "'$content_type'" -d "@'${dir}debug_send_data'" "'${diyurl}'"  ' >> ${logfile}
 
-	curl --connect-timeout 10 -m 20 -X POST -H "$content_type" -d "$data" "${diyurl}"
+	curl --connect-timeout 30 -m 60 -X POST -H "$content_type" -d "$data" "${diyurl}"
 	local RETVAL=$?
 	[ $RETVAL -ne "0" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】网络错误或 URL 错误，推送失败，curl 返回值为 ${RETVAL}" >> ${logfile} && return 1 || return 0
 }
@@ -210,7 +236,7 @@ function getinterfacelist(){
 
 # 获取接口在线时间
 function getinterfaceuptime(){
-	getinterfacelist|grep \"uptime\"|sed $'s/\"uptime": //g'|sed $'s/\,//g'
+	getinterfacelist|awk -F'\"uptime\": ' '/uptime/ { gsub(/,/, "", $2); print $2 }'
 }
 
 # 查询 MAC 地址
@@ -311,36 +337,41 @@ function getping(){
 # CPU 占用率
 function getcpu(){
 	local AT=$(cat /proc/stat|grep "^cpu "|awk '{print $2+$3+$4+$5+$6+$7+$8 " " $2+$3+$4+$7+$8}')
-	sleep 3
+	sleep 1
 	local BT=$(cat /proc/stat|grep "^cpu "|awk '{print $2+$3+$4+$5+$6+$7+$8 " " $2+$3+$4+$7+$8}')
 	printf "%.01f%%" $(echo ${AT} ${BT}|awk '{print (($4-$2)/($3-$1))*100}')
 }
 
 # 获取SOC温度 （取所有传感器温度最大值）
 function soc_temp(){
-	# Intel
-	[ -z "$soc_code" ] && local soctemp=`sensors -j 2>/dev/null|jq -r '."coretemp-isa-0000"."Package id 0"."temp1_input"'`
-	# AMD
-	[ -z "$soc_code" ] && [ -z "$soctemp" ] || [ "$soctemp" == "null" ] && local soctemp=`sensors -j 2>/dev/null|jq '."k10temp-pci-00c3"."Tctl"."temp1_input"'`
-	[ -z "$soc_code" ] && [ -z "$soctemp" ] || [ "$soctemp" == "null" ] && local soctemp=`sensors -j 2>/dev/null|jq '."zenpower-pci-00c3"."Tctl"."temp1_input"'`
+	[ ! -z "$soc_code" ] && eval `echo "$soc_code"` 2>/dev/null && return 0
+	getsensors() {
+		# Intel
+		local sensor_field1='["coretemp-isa-0000"]["Package id 0"]["temp1_input"]'
+		# AMD
+		local sensor_field2='["zenpower-pci-00c3"]["Tctl"]["temp1_input"]'
+		local sensor_field3='["k10temp-pci-00c3"]["Tctl"]["temp1_input"]'
+		eval "${1}sensors -j 2>/dev/null" | jq -r "
+		if .${sensor_field3} != null then
+		  .${sensor_field3}
+		elif .${sensor_field2} != null then
+		  .${sensor_field2}
+		elif .${sensor_field1} != null then
+		  .${sensor_field1}
+		else
+		  null
+		end // \"\"
+		"
+	}
 
+	[ ! -z "$server_host" ] && ssh_command="ssh -i /root/.ssh/id_rsa root@${server_host} -p ${server_port} "
+	getsensors "$ssh_command" 2>/dev/null || return 0
 	# 通用（只能取最高温度，不一定是 CPU，特殊设备自行修改）
 	# 将 grep °C 改为温度所在行的特别字符串，如 grep Core 0 等，就可以指定设备了
-	[ -z "$soc_code" ] && [ -z "$soctemp" ] || [ "$soctemp" == "null" ] && local soctemp=`sensors 2>/dev/null|grep °C|sed -nr 's#^.*:.*\+(.*)°C .*#\1#gp'|sort -nr|head -n1`
+	temperature=$(sensors 2>/dev/null|grep °C|sed -nr 's#^.*:.*\+(.*)°C .*#\1#gp'|sort -nr|head -n1)
 	# 将 thermal_zone* 改为 thermal_zone0 thermal_zone1 等，就可以指定设备了
-	[ -z "$soc_code" ] && [ -z "$soctemp" ] || [ "$soctemp" == "null" ] && local soctemp=`cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null|sort -nr|head -n1|cut -c-2`
-
-	# Intel
-	[ "$soc_code" == "pve" ] && [ ! -z "$server_host" ] || [ "$soctemp" == "null" ] && local soctemp=`ssh -i /root/.ssh/id_rsa root@${server_host} -p ${server_port} sensors -j 2>/dev/null|jq -r '."coretemp-isa-0000"."Package id 0"."temp1_input"'`
-	# AMD
-	[ "$soc_code" == "pve" ] && [ ! -z "$server_host" ] && [ -z "$soctemp" ] || [ "$soctemp" == "null" ] && local soctemp=`ssh -i /root/.ssh/id_rsa root@${server_host} -p ${server_port} sensors -j 2>/dev/null|jq '."k10temp-pci-00c3"."Tctl"."temp1_input"'`
-	[ "$soc_code" == "pve" ] && [ ! -z "$server_host" ] && [ -z "$soctemp" ] || [ "$soctemp" == "null" ] && local soctemp=`ssh -i /root/.ssh/id_rsa root@${server_host} -p ${server_port} sensors -j 2>/dev/null|jq '."zenpower-pci-00c3"."Tctl"."temp1_input"'`
-	# PVE 应该没啥特殊设备了，懒得写了
-
-	[ ! -z "$soctemp" ] && echo "$soctemp" && return 0
-	[ ! -z "$soc_code" ] && eval `echo "$soc_code"` 2>/dev/null
+	[ -z "$temperature" ] && cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null|sort -nr|head -n1|cut -c-2
 }
-
 # 流量数据
 function usage(){
 	[ ! -f "/usr/sbin/wrtbwmon" ] || [ ! "$1" ] && return
@@ -1325,72 +1356,83 @@ function send(){
 	echo "`date "+%Y-%m-%d %H:%M:%S"` 【定时数据】创建定时任务" >> ${logfile}
 	serverchan_disturb;local send_disturb=$?
 	get_config "send_title" "router_status" "router_temp" "router_wan" "client_list"
-
-	[ -z "$send_title" ] && local send_title="路由状态："
-	[ ! -z "$1" ] && local send_title="发送测试：" && local send_content="${str_splitline}${str_title_start}内容1${str_title_end}${str_linefeed}${str_tab}设备1${str_linefeed}${str_tab}设备2${str_splitline}${str_title_start}内容2${str_title_end}${str_linefeed}${str_tab}设备3${str_linefeed}${str_tab}设备4"
-	[ -z "$1" ] && [ ! -z "$client_list" ] && [ "$client_list" -eq "1" ] && > ${dir}send_enable.lock && serverchan_first &
-
+	
+	cpuload=`getcpu`
+	service_status=$(ubus call service list '{"name": "serverchan"}' | grep -o '"running": true')
+	[ -z "$1" ] && [ ! -z "$client_list" ] && [ "$client_list" -eq "1" ] && > ${dir}send_enable.lock && [ -z "$service_status" ] && serverchan_first &
 	if [ -z "$1" ] && [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ]; then
-		local systemload=`cat /proc/loadavg|awk '{print $1" "$2" "$3}'`
-		local cpuload=`getcpu`
-		local ramload=`free -m|sed -n '2p'|awk '{printf "%.2f%%\n",($3/$2)*100}'`
-		local Qwai=`curl -o /dev/null --connect-timeout 5 -s -w %{http_code} www.google.com`
-		if [[ $Qwai -eq 200 || $Qwai -eq 301 || $Qwai -eq 302 ]]; then
-			local Qwai_status="已连通！"
-		else
-			local Qwai_status="已断开！"
+		cat /proc/loadavg|awk '{print $1" "$2" "$3}' > "$output_dir/systemload" &
+		free -m|sed -n '2p'|awk '{printf "%.2f%%\n",($3/$2)*100}' > "$output_dir/ramload" &
+		curl -o /dev/null --connect-timeout 5 -s -w %{http_code} www.google.com > "$output_dir/Qwai" &
+		cat /proc/uptime|awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("运行时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}' > "$output_dir/systemstatustime" &
+		systeminfo_enable="1"
+	fi
+	[ -z "$1" ] && [ ! -z "$router_temp" ] && [ "$router_temp" -eq "1" ] && soc_temp > "$output_dir/cputemp" &
+	
+	if [ -z "$1" ] && [ ! -z "$router_wan" ] && [ "$router_wan" -eq "1" ]; then
+		getip wanipv4 > "$output_dir/send_wanIP" &
+		getip hostipv4|jq -r '.IP' > "$output_dir/send_hostIP" &
+		waninfo_enable="1"
+		if [ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -ne "0" ]; then
+			getip wanipv6 > "$output_dir/send_wanIPv6" &
+			getip hostipv6|jq -r '.IP' > "$output_dir/send_hostIPv6" &
+			ipv6_enable="1"
 		fi
-		local systemstatustime=`cat /proc/uptime|awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("运行时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}'`;unset run_days run_hour run_minute run_second
-		local send_content="${send_content}${str_splitline}${str_title_start} 系统运行状态${str_title_end}"
-		local send_content="${send_content}${str_linefeed}${str_tab}平均负载：${systemload}"
-		local send_content="${send_content}${str_linefeed}${str_tab}CPU占用：${cpuload}"
-		local send_content="${send_content}${str_linefeed}${str_tab}内存占用：${ramload}"
-		local send_content="${send_content}${str_linefeed}${str_tab}全球互联：${Qwai_status}"
-		local send_content="${send_content}${str_linefeed}${str_tab}${systemstatustime}"
+		getinterfaceuptime > "$output_dir/interfaceuptime" &
+	fi
+
+	[ -z "$send_title" ] && send_title="路由状态："
+	[ ! -z "$1" ] && send_title="发送测试：" && send_content="${str_splitline}${str_title_start}内容1${str_title_end}${str_linefeed}${str_tab}设备1${str_linefeed}${str_tab}设备2${str_splitline}${str_title_start}内容2${str_title_end}${str_linefeed}${str_tab}设备3${str_linefeed}${str_tab}设备4"
+	
+	wait_and_cat
+	if [ -n "$systeminfo_enable" ]; then
+		[[ $Qwai -eq 200 || $Qwai -eq 301 || $Qwai -eq 302 ]] && Qwai_status="已连通！" || Qwai_status="已断开！"
+		send_content="${send_content}${str_splitline}${str_title_start} 系统运行状态${str_title_end}"
+		send_content="${send_content}${str_linefeed}${str_tab}平均负载：${systemload}"
+		send_content="${send_content}${str_linefeed}${str_tab}CPU占用：${cpuload}"
+		send_content="${send_content}${str_linefeed}${str_tab}内存占用：${ramload}"
+		send_content="${send_content}${str_linefeed}${str_tab}全球互联：${Qwai_status}"
+		send_content="${send_content}${str_linefeed}${str_tab}${systemstatustime}"
 	fi
 
 	if [ -z "$1" ] && [ ! -z "$router_temp" ] && [ "$router_temp" -eq "1" ]; then
-		local cputemp=`soc_temp`
-		[ ! -z "$cputemp" ] && local send_content="${send_content}${str_splitline}${str_title_start} 设备温度${str_title_end}${str_linefeed}${str_tab}CPU：${cputemp}℃"
-		[ -z "$cputemp" ] && local send_content="${send_content}${str_splitline}${str_title_start} 设备温度${str_title_end}${str_linefeed}${str_tab}无法获取设备温度"
+		[ ! -z "$cputemp" ] && send_content="${send_content}${str_splitline}${str_title_start} 设备温度${str_title_end}${str_linefeed}${str_tab}CPU：${cputemp}℃"
+		[ -z "$cputemp" ] && send_content="${send_content}${str_splitline}${str_title_start} 设备温度${str_title_end}${str_linefeed}${str_tab}无法获取设备温度"
 	fi
 
-	if [ -z "$1" ] && [ ! -z "$router_wan" ] && [ "$router_wan" -eq "1" ]; then
-		local send_wanIP=`getip wanipv4`;local send_hostIP=`getip hostipv4|jq -r '.IP'`
-		local send_content="${send_content}${str_splitline}${str_title_start} WAN 口信息${str_title_end}${str_linefeed}${str_tab}接口 IPv4:${send_wanIP}"
-		local send_content="${send_content}${str_linefeed}${str_tab}外网 IPv4:${send_hostIP}"
-		if [ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -ne "0" ]; then
-			local send_wanIPv6=`getip wanipv6`;local send_hostIPv6=`getip hostipv6|jq -r '.IP'`
-			local send_content="${send_content}${str_linefeed}${str_tab}接口 IPv6:${send_wanIPv6}"
-			local send_content="${send_content}${str_linefeed}${str_tab}外网 IPv6:${send_hostIPv6}"
+	if [ -n "$waninfo_enable" ]; then
+		send_content="${send_content}${str_splitline}${str_title_start} WAN 口信息${str_title_end}${str_linefeed}${str_tab}接口 IPv4:${send_wanIP}"
+		send_content="${send_content}${str_linefeed}${str_tab}外网 IPv4:${send_hostIP}"
+		if [ -n "$ipv6_enable" ]; then
+			send_content="${send_content}${str_linefeed}${str_tab}接口 IPv6:${send_wanIPv6}"
+			send_content="${send_content}${str_linefeed}${str_tab}外网 IPv6:${send_hostIPv6}"
 		fi
-		( ! echo "$send_wanIP"|grep -q -w ${send_hostIP} ) && local send_content="${send_content}${str_linefeed}${str_tab}外网 IP 与接口 IP 不一致，你的 IP 可能不是公网 IP"
-		local interfaceuptime=`getinterfaceuptime`
-		[ ! -z "$interfaceuptime" ] && local wanstatustime=`getinterfaceuptime|awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("在线时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}'` && unset run_days run_hour run_minute run_second
-		local send_content="${send_content}${str_linefeed}${str_tab}${wanstatustime}"
+		interfaceuptime=`getinterfaceuptime`
+		[ ! -z "$interfaceuptime" ] && wanstatustime=$(printf "在线时间：%d天%d时%d分%d秒" $((interfaceuptime / 86400)) $(((interfaceuptime % 86400) / 3600)) $(((interfaceuptime % 3600) / 60)) $((interfaceuptime % 60)))
+		( ! echo "$send_wanIP"|grep -q -w ${send_hostIP} ) && send_content="${send_content}${str_linefeed}${str_tab}外网 IP 与接口 IP 不一致，你的 IP 可能不是公网 IP"
+		send_content="${send_content}${str_linefeed}${str_tab}${wanstatustime}"
 	fi
 
 	if [ -z "$1" ] && [ ! -z "$client_list" ] && [ "$client_list" -eq "1" ]; then
 		wait
-		local IPLIST=`cat ${dir}ipAddress 2>/dev/null|awk '{print $1}'`
-		[ -f ${dir}ipAddress ] && local logrow=$(grep -c "" ${dir}ipAddress) || local logrow="0"
-		[ "$logrow" -eq "0" ] && local send_content="${send_content}${str_splitline}${str_title_start} 当前无在线设备${str_title_end}" || local send_content="${send_content}${str_splitline}${str_title_start} 现有在线设备 ${logrow} 台${str_title_end}"
-		for ip in $IPLIST; do
-			local time_up=`cat ${dir}ipAddress|grep -w ${ip}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`
-			local time1=`date +%s`
-			local time1=$(time_for_humans `expr ${time1} - ${time_up}`)
-			local ip_mac=`getmac ${ip}`
-			local ip_name=`getname ${ip} ${ip_mac}`
-			local ip_total=`usage get ${ip_mac}`;[ ! -z "$ip_total" ] && local ip_total="总计流量：${ip_total}  "
-			local ip_name=`cut_str $ip_name 18`
-			local send_content="${send_content}${str_linefeed}${str_tab}【${ip_name}】  ${ip}${str_linefeed}${str_tab}${ip_total}在线 ${time1}"
-			unset ip_total time_down time_up time1 ip_mac ip_name
-		done
+		ipAddress_file="${dir}ipAddress"
+		logrow=$(awk 'END {print NR}' "$ipAddress_file")
+		send_content="${send_content}${str_splitline}${str_title_start} 现有在线设备 ${logrow} 台${str_title_end}"
+		[ "$logrow" -eq "0" ] && send_content="${send_content}${str_splitline}${str_title_start} 当前无在线设备${str_title_end}"
+		time_now=$(date +%s)
+		while read -r tmp_ip tmp_mac tmp_name time_up _; do
+			tmp_name=$(cut_str "$tmp_name" 18)
+			time_online=$(time_for_humans $((time_now - time_up)))
+			ip_total=$(usage get "$tmp_mac")
+			[ -n "$ip_total" ] && ip_total="总计流量：${ip_total}  "
+			send_content="${send_content}${str_linefeed}${str_tab}【${tmp_name}】  ${tmp_ip}${str_linefeed}${str_tab}${ip_total}在线 ${time_online}"
+		done < "$ipAddress_file"
 	fi
-	[ ! -z "$device_name" ] && local send_title="【$device_name】${send_title}"
-	[ -z "$send_content" ] && local send_content="${str_splitline}${str_title_start} 我遇到了一个难题${str_title_end}${str_linefeed}${str_tab}定时发送选项错误，你没有选择需要发送的项目，该怎 么办呢${str_splitline}"
+	
+	[ ! -z "$device_name" ] && send_title="【$device_name】${send_title}"
+	[ -z "$send_content" ] && send_content="${str_splitline}${str_title_start} 我遇到了一个难题${str_title_end}${str_linefeed}${str_tab}定时发送选项错误，你没有选择需要发送的项目，该怎 么办呢${str_splitline}"
 	[ "$send_disturb" -eq "0" ] && diy_send "${send_title}" "${send_content}" "${jsonpath}" "$1" >/dev/null 2>&1
-	local RETVAL=$?
+	RETVAL=$?
 	[ $RETVAL -eq 1 ] && [ "$send_disturb" -eq "0" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】定时推送失败，请检查网络或设置信息" >> ${logfile} || echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}定时推送任务完成" >> ${logfile}
 	deltemp
 	return $RETVAL

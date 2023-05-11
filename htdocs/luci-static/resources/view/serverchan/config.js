@@ -481,7 +481,7 @@ return view.extend({
 		o.depends('crontab', '1');
 		o.depends('crontab', '2');
 		o.placeholder = 'OpenWrt 路由状态：';
-		o.description = _('<br/>使用特殊符号可能会造成发送失败');
+		o.description = _('使用特殊符号可能会造成发送失败');
 
 		o = s.taboption('crontab', form.Flag, 'router_status', _('系统运行情况'));
 		o.default = '0';
@@ -503,7 +503,7 @@ return view.extend({
 		o.depends('crontab', '1');
 		o.depends('crontab', '2');
 
-		o = s.taboption('crontab', form.Button, '_send', _('手动发送'), _('你可能需要先保存配置再进行发送'));
+		o = s.taboption('crontab', form.Button, '_send', _('手动发送'), _('你可能需要先保存配置再进行发送<br/>由于浏览器超时限制，若程序未在运行，可能会因初始化设备列表超时退出'));
 		o.inputstyle = 'add';
 		o.onclick = function () {
 			var _this = this;
