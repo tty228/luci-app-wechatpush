@@ -1,9 +1,14 @@
 #!/bin/sh
-if [ "$1" = "get_client" ]; then
+
+if [ "$1" == "get_client" ]; then
     devices=$(find /tmp/serverchan/client -type f -print0 | xargs -0 cat | sed "s/'/\"/g" | tr '\n' ',')
     echo "{\"devices\": [${devices%,}]}"
-elif [ "$1" = "clear_log" ]; then
+elif [ "$1" == "clear_log" ]; then
     # 清空 /tmp/serverchan/serverchan.log 文件
     > /tmp/serverchan/serverchan.log
+elif [ "$1" == "update_list" ]; then
+	datetime=$(date -r /usr/share/serverchan/api/${2}.list +%s 2>/dev/null) || datetime=0
+	[ `expr $(date +%s) - $datetime` -lt "86400" ] && return 2
+	wget --no-check-certificate -t 3 -T 15 -O "/tmp/serverchan/${2}.list" "https://raw.githubusercontent.com/tty228/luci-app-serverchan/master/root/usr/share/serverchan/api/${2}.list" >/dev/null 2>&1
+    [ "$?" -eq "0" ] && mv -f "/tmp/serverchan/${2}.list" "/usr/share/serverchan/api/${2}.list"
 fi
-

@@ -253,7 +253,7 @@ return view.extend({
 		o.depends('serverchan_ipv4', '1');
 
 		o = s.taboption('content', form.TextValue, 'ipv4_list', _('IPv4 API列表'));
-		o.description = _('<br/>会因服务器稳定性、连接频繁等原因导致获取失败<br/>如接口可以正常获取 IP，不推荐使用<br/>从以上列表中随机地址访问');
+		o.description = _('会因服务器稳定性、连接频繁等原因导致获取失败<br/>如接口可以正常获取 IP，不推荐使用<br/>从以上列表中随机地址访问');
 		o.depends('serverchan_ipv4', '2');
 		o.optional = false;
 		o.rows = 8;
@@ -269,6 +269,26 @@ return view.extend({
 				return fs.write('/usr/share/serverchan/api/ipv4.list', formvalue.trim().replace(/\r\n/g, '\n') + '\n');
 			});
 		};
+		
+		o = s.taboption('content', form.Button, '_update_ipv4_list', _('手动更新 ipv4_list'));
+		o.inputstyle = 'add';
+		o.onclick = function () {
+			var _this = this;
+			return fs.exec(programPath, ['update_list ipv4']).then(function (res) {
+				if (res.code === 0)
+					_this.description = _('更新成功');
+				else if (res.code === 1)
+					_this.description = _('更新失败');
+				else if (res.code === 2)
+					_this.description = _('已是最新');
+				return _this.map.reset();
+			}).catch(function (err) {
+				ui.addNotification(null, E('p', [_('未知错误：%s。').format(err)]));
+				_this.description = _('更新失败。');
+				return _this.map.reset();
+			});
+		}
+		o.depends('serverchan_ipv4', '2');
 
 		o = s.taboption('content', form.ListValue, 'serverchan_ipv6', _('IPv6 变动通知'));
 		o.default = 'disable';
@@ -284,7 +304,7 @@ return view.extend({
 		o.depends('serverchan_ipv6', '1');
 
 		o = s.taboption('content', form.TextValue, 'ipv6_list', _('IPv6 API列表'));
-		o.description = _('<br/>会因服务器稳定性、连接频繁等原因导致获取失败<br/>如接口可以正常获取 IP，不推荐使用<br/>从以上列表中随机地址访问');
+		o.description = _('会因服务器稳定性、连接频繁等原因导致获取失败<br/>如接口可以正常获取 IP，不推荐使用<br/>从以上列表中随机地址访问');
 		o.depends('serverchan_ipv6', '2')
 		o.rows = 8;
 		o.wrap = 'oft';
@@ -299,15 +319,44 @@ return view.extend({
 				return fs.write('/usr/share/serverchan/api/ipv6.list', formvalue.trim().replace(/\r\n/g, '\n') + '\n');
 			});
 		};
+				
+		o = s.taboption('content', form.Button, '_update_ipv6_list', _('手动更新 ipv6_list'));
+		o.inputstyle = 'add';
+		o.onclick = function () {
+			var _this = this;
+			return fs.exec(programPath, ['update_list ipv6']).then(function (res) {
+				if (res.code === 0)
+					_this.description = _('更新成功');
+				else if (res.code === 1)
+					_this.description = _('更新失败');
+				else if (res.code === 2)
+					_this.description = _('已是最新，跳过更新');
+				return _this.map.reset();
+			}).catch(function (err) {
+				ui.addNotification(null, E('p', [_('未知错误：%s。').format(err)]));
+				_this.description = _('更新失败。');
+				return _this.map.reset();
+			});
+		}
+		o.depends('serverchan_ipv6', '2');
+		
+		o = s.taboption('content', form.Flag, 'update_list', _('API列表自动更新'));
+		o.description = _('当多次获取 IP 失败时，尝试自动更新列表文件<br/>因为懒得做外链，所以请确保你可以链接 raw.githubusercontent.com');
+		o.depends('serverchan_ipv4', '2');
+		o.depends('serverchan_ipv6', '2');
+
+		o = s.taboption('content', form.Flag, 'zerotier_helper', _('IP 变化后重启 zerotier'));
+		o.description = _('zerotier 的陈年老问题<br/>断网后不能重新打洞，我也不知道修了没有 emmm');
+		o.depends('serverchan_ipv4', '1');
+		o.depends('serverchan_ipv4', '2');
+		o.depends('serverchan_ipv6', '1');
+		o.depends('serverchan_ipv6', '2');
 
 		o = s.taboption('content', form.Flag, 'serverchan_up', _('设备上线通知'));
-		o.default = '1';
 
 		o = s.taboption('content', form.Flag, 'serverchan_down', _('设备下线通知'));
-		o.default = '1';
 
 		o = s.taboption('content', form.Flag, 'cpuload_enable', _('CPU 负载报警'));
-		o.default = '1';
 
 		o = s.taboption('content', form.Value, 'cpuload', '负载报警阈值');
 		o.rmempty = false;
@@ -330,7 +379,7 @@ return view.extend({
 		o.placeholder = '80';
 		o.datatype = 'and(uinteger,min(1))';
 		o.depends('temperature_enable', '1');
-		o.description = _('<br/>设备报警只会在连续五分钟超过设定值时才会推送<br/>而且一个小时内不会再提醒第二次');
+		o.description = _('设备报警只会在连续五分钟超过设定值时才会推送<br/>而且一个小时内不会再提醒第二次');
 
 		o = s.taboption('content', form.Flag, 'client_usage', _('设备异常流量'));
 		o.default = '0';
