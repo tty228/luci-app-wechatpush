@@ -18,6 +18,7 @@ read_json() {
 
 # 遍历输出目录，将文件内容保存到对应的变量
 wait_and_cat() {
+	[ $(ls -A "$output_dir" | wc -l) -eq 0 ] && return
 	wait
 	for file in "$output_dir"/*; do
 		local variable_name=$(basename "$file")
@@ -1415,8 +1416,8 @@ function send(){
 
 	if [ -z "$1" ] && [ ! -z "$client_list" ] && [ "$client_list" -eq "1" ]; then
 		wait
-		ipAddress_file="${dir}ipAddress"
-		logrow=$(awk 'END {print NR}' "$ipAddress_file")
+		awk '{ lines[i++] = $0 } END { for (j = i-1; j >= 0; j--) print lines[j] }' "${dir}ipAddress" > "${dir}tmp_sort_file"
+		logrow=$(awk 'END {print NR}' ${dir}ipAddress)
 		send_content="${send_content}${str_splitline}${str_title_start} 现有在线设备 ${logrow} 台${str_title_end}"
 		[ "$logrow" -eq "0" ] && send_content="${send_content}${str_splitline}${str_title_start} 当前无在线设备${str_title_end}"
 		time_now=$(date +%s)
@@ -1426,7 +1427,7 @@ function send(){
 			ip_total=$(usage get "$tmp_mac")
 			[ -n "$ip_total" ] && ip_total="总计流量：${ip_total}  "
 			send_content="${send_content}${str_linefeed}${str_tab}【${tmp_name}】  ${tmp_ip}${str_linefeed}${str_tab}${ip_total}在线 ${time_online}"
-		done < "$ipAddress_file"
+		done < "${dir}tmp_sort_file"
 	fi
 	
 	[ ! -z "$device_name" ] && send_title="【$device_name】${send_title}"
