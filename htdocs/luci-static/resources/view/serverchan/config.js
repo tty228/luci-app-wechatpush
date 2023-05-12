@@ -613,7 +613,7 @@ return view.extend({
 		o.depends('macmechanism', 'block');
 		o.description = _('Ao:Ao:Ao:Ao:Ao:AA\\|BB:BB:BB:BB:BB:B 可以将多个 MAC 视为同一用户<br/>任一设备在线后不再推送，设备全部离线时才会推送，避免双 wifi 频繁推送');
 
-		o = s.taboption('disturb', widgets.NetworkSelect, 'serverchan_interface', _("接口名称"));
+		o = s.taboption('disturb', widgets.DeviceSelect, 'serverchan_interface', _("接口名称"));
 		o.description = _('仅通知此接口设备');
 		o.modalonly = true;
 		o.multiple = false;
@@ -633,6 +633,18 @@ return view.extend({
 			_('请输入设备 MAC'), hosts);
 		o.datatype = 'list(neg(macaddr))';
 		o.depends('macmechanism2', 'MAC_offline');
+
+		o = s.taboption('disturb', form.ListValue, 'login_disturb', _('登录提醒免打扰'));
+		o.value('', _('关闭'));
+		o.value('1', _('仅记录到日志'));
+		o.value('2', _('仅在首次登录时推送通知'));
+
+		o = s.taboption('disturb', form.Value, 'login_notification_delay', _('登录提醒免打扰时间（s）'));
+		o.rmempty = false;
+		o.placeholder = '3600';
+		o.datatype = 'and(uinteger,min(10))';
+		o.description = _('首次登录后推送通知，在设定时间内不再重复提醒<br/>偷懒一下，单位是秒并且上一次登录时间从日志中读取');
+		o.depends('login_disturb', '2');
 
 		return m.render();
 	}
