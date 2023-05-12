@@ -245,11 +245,11 @@ return view.extend({
 		o.value('1', _('通过接口获取'));
 		o.value('2', _('通过URL获取'));
 
-		o = s.taboption('content', widgets.NetworkSelect, 'ipv4_interface', _("接口名称"));
-		o.description = _('一般选择 wan 接口，多拨环境请自行选择');
+		o = s.taboption('content', widgets.DeviceSelect, 'ipv4_interface', _("接口名称"));
+		o.description = _('一般应为 WAN 或 br-lan 接口，多拨环境请自行选择');
 		o.modalonly = true;
 		o.multiple = false;
-		o.default = 'wan';
+		o.default = 'WAN';
 		o.depends('serverchan_ipv4', '1');
 
 		o = s.taboption('content', form.TextValue, 'ipv4_list', _('IPv4 API列表'));
@@ -296,11 +296,11 @@ return view.extend({
 		o.value('1', _('通过接口获取'));
 		o.value('2', _('通过URL获取'));
 
-		o = s.taboption('content', widgets.NetworkSelect, 'ipv6_interface', _("接口名称"));
-		o.description = _('一般选择 wan 接口，多拨环境请自行选择');
+		o = s.taboption('content', widgets.DeviceSelect, 'ipv6_interface', _("接口名称"));
+		o.description = _('一般应为 WAN 或 br-lan 接口，多拨环境请自行选择');
 		o.modalonly = true;
 		o.multiple = false;
-		o.default = 'wan';
+		o.default = 'WAN';
 		o.depends('serverchan_ipv6', '1');
 
 		o = s.taboption('content', form.TextValue, 'ipv6_list', _('IPv6 API列表'));
