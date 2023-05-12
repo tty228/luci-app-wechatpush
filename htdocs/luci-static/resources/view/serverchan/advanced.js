@@ -118,6 +118,13 @@ return view.extend({
 		o.description = ("使用普通账号即可，不需要超密")
 		o.depends('gateway_info_enable', '1');
 
+		o = s.option(form.Value, 'gateway_sleeptime', _('抓取光猫信息时间间隔'));
+		o.rmempty = false;
+		o.placeholder = '600';
+		o.datatype = 'and(uinteger,min(60))'
+		o.description = ("一般不需要频繁抓取，酌情设置")
+		o.depends('gateway_info_enable', '1');
+
 		o = s.option(form.Flag, "err_enable", ("无人值守任务"))
 		o.default = 0
 		o.rmempty = true

@@ -36,7 +36,7 @@ function read_config(){
 	"serverchan_sheep" "starttime" "endtime" "serverchan_whitelist" "serverchan_blacklist" "serverchan_interface" "MAC_online_list" "MAC_offline_list" "login_disturb" "login_notification_delay" \
 	"up_timeout" "down_timeout" "timeout_retry_count" "thread_num" "soc_code" "server_host" "server_port" "err_enable" "err_sheep_enable" "err_device_aliases" "network_err_event" "system_time_event" "autoreboot_time" "network_restart_time" "public_ip_event" "public_ip_retry_count" \
 	"jsonpath" "sckey" "corpid" "userid" "agentid" "corpsecret" "mediapath" "wxpusher_apptoken" "wxpusher_uids" "wxpusher_topicIds" "pushplus_token" "tg_token" "chat_id" \
-	"gateway_info_enable" "gateway_host_url" "gateway_info_url" "gateway_logout_url" "gateway_username_id" "gateway_password_id" "gateway_username" "gateway_password"
+	"gateway_info_enable" "gateway_host_url" "gateway_info_url" "gateway_logout_url" "gateway_username_id" "gateway_password_id" "gateway_username" "gateway_password" "gateway_sleeptime"
 
 	for str_version in "wrtbwmon" "iputils-arping" "curl" "iw"; do
 		eval `echo ${str_version:0:2}"_version"`=`opkg list-installed|grep -w ^${str_version}|awk '{print $3}'` 2>/dev/null
@@ -159,7 +159,7 @@ utstarcom\|volans\|xerox\|xiaomi\|zdc\|zhongxing\|smartisan" > ${oui_base} && ec
 # 清理临时文件
 function deltemp(){
 	unset title	content ipAddress_logrow online_list online_mac mac_online_status gatewayinfo gateway_iplist
-	rm -f ${dir}title ${dir}content ${dir}tmp_downlist ${dir}send_enable.lock ${tempjsonpath} ${dir}cookies.txt >/dev/null 2>&1
+	rm -f ${dir}title ${dir}content ${dir}tmp_downlist ${dir}send_enable.lock ${tempjsonpath} ${dir}tmp_sort_file >/dev/null 2>&1
 	[ ! -f ${dir}ipAddress ] && rm -f ${dir}client/* >/dev/null 2>&1
 	LockFile unlock
 	[ -f ${logfile} ] && local logrow=$(grep -c "" ${logfile}) || local logrow="0"
@@ -295,6 +295,8 @@ function getname(){
 # 从光猫处获取设备信息
 function getgateway(){
 	[ -z "$gateway_info_enable" ] || [ "$gateway_info_enable" -ne "1" ] && return
+	datetime=$(date -r ${dir}cookies.txt +%s 2>/dev/null) || datetime=0
+	[ `expr $(date +%s) - $datetime` -lt "$gateway_sleeptime" ] && return
 	# 登录
 	local loginfo=`curl -s -L "${gateway_host_url}" -c ${dir}cookies.txt -d "${gateway_username_id}=${gateway_username}&${gateway_password_id}=${gateway_password}"` 2>/dev/null
 	[ ! -z "$loginfo" ] && local mytoken=$(echo $loginfo |sed 's/{/\n/g' | grep token |awk '/realRestart/{print $2}'| sed $'s/\'//g')
