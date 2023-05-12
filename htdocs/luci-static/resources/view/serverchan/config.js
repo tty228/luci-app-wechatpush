@@ -345,13 +345,6 @@ return view.extend({
 		o.depends('serverchan_ipv4', '2');
 		o.depends('serverchan_ipv6', '2');
 
-		o = s.taboption('content', form.Flag, 'zerotier_helper', _('IP 变化后重启 zerotier'));
-		o.description = _('zerotier 的陈年老问题<br/>断网后不能重新打洞，我也不知道修了没有 emmm');
-		o.depends('serverchan_ipv4', '1');
-		o.depends('serverchan_ipv4', '2');
-		o.depends('serverchan_ipv6', '1');
-		o.depends('serverchan_ipv6', '2');
-
 		o = s.taboption('content', form.Flag, 'serverchan_up', _('设备上线通知'));
 
 		o = s.taboption('content', form.Flag, 'serverchan_down', _('设备下线通知'));

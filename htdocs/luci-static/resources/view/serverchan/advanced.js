@@ -36,6 +36,11 @@ return view.extend({
 		o.datatype = "uinteger"
 		o.description = ("若无二级路由设备，信号强度良好，可以减少以上数值<br/>因夜间 wifi 休眠较为玄学，遇到设备频繁推送断开，烦请自行调整参数<br/>..╮(╯_╰）╭..")
 
+		o = s.option(form.Flag, "passive_option", ("关闭主动探测"))
+		o.default = 0
+		o.rmempty = true
+		o.description = ("关闭客户端在线状态的主动探测，启用此功能后设备上下线将不再提示<br/>适用于对在线设备不敏感，但需要其他功能的用户")
+
 		o = s.option(form.Value, "thread_num", ('最大并发进程数'))
 		o.default = "3"
 		o.datatype = "uinteger"
@@ -129,6 +134,10 @@ return view.extend({
 		o.default = 0
 		o.rmempty = true
 		o.description = ("请确认脚本可以正常运行，否则可能造成频繁重启等错误！")
+
+		o = s.option(form.Flag, 'zerotier_helper', _('IP 变化后重启 zerotier'));
+		o.description = _('zerotier 的陈年老问题<br/>断网后不能重新打洞，我也不知道修了没有 emmm');
+		o.depends('err_enable', '1');
 
 		o = s.option(form.Flag, "err_sheep_enable", ("仅在免打扰时段重拨"))
 		o.default = 0
