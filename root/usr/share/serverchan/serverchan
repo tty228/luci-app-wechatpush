@@ -192,15 +192,15 @@ function getip(){
 		{
 			local ipv4_URL=`echo "$ipv4_urllist"| sed -n "${1}p"|sed -e 's/\r//g'`
 			[ ! -z "$ipv4_interface" ] && local tmp_hostIP=$(curl -k -s -4 --interface ${ipv4_interface} -m 5 ${ipv4_URL}) || local tmp_hostIP=$(curl -k -s -4 -m 5 ${ipv4_URL})
-			[ -z "$tmp_hostIP" ] && echo "`date "+%Y-%m-%d %H:%M:%S"`  【info】IP 获取失败，当前使用的 API 为 $ipv4_URL" >> ${logfile}
+			[ -z "$tmp_hostIP" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】IP 获取失败，当前使用的 API 为 $ipv4_URL，接口为：${$ipv4_interface}" >> ${logfile}
 			local tmp_hostIP=`echo $tmp_hostIP|grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'|head -n1`
 			echo "{\"IP\":\"${tmp_hostIP}\", \"URL\":\"${ipv4_URL}\"}"
 		}
 		local hostIP=`get_hostipv4 ${rand_number}`
 		[ -z `echo $hostIP|jq -r '.IP'` ] && local rand_number=`expr $rand_number + 1` && [ $rand_number -gt $url_number ] && local rand_number=1;[ -z `echo $hostIP|jq -r '.IP'` ] && local hostIP=`get_hostipv4 ${rand_number}`
 		[ -z `echo $hostIP|jq -r '.IP'` ] && local rand_number=`expr $rand_number + 1` && [ $rand_number -gt $url_number ] && local rand_number=1;[ -z `echo $hostIP|jq -r '.IP'` ] && local hostIP=`get_hostipv4 ${rand_number}`
-		[ -n "$ipv4_list_auto_up" ] && [ "$ipv4_list_auto_up" -eq "1" ] && [ -z `echo $hostIP|jq -r '.IP'` ] && /usr/libexec/serverchan-call "update_list" "ipv4"
-		[ -n "$list_auto_up" ] && [ "$list_auto_up" -eq "1" ] && [ -z `echo $hostIP|jq -r '.IP'` ] && /usr/libexec/serverchan-call "update_list" "ipv6"
+		[ -n "$list_auto_up" ] && [ "$list_auto_up" -eq "1" ] && [ -z `echo $hostIP|jq -r '.IP'` ] && /usr/libexec/serverchan-call "update_list" "ipv4"
+		[ -z `echo $hostIP|jq -r '.IP'` ] && ipv4_urllist=`cat /usr/share/serverchan/api/ipv4.list` 2>/dev/null
 		echo $hostIP
 
 	# 从接口获取 IPv6
@@ -217,7 +217,7 @@ function getip(){
 		{
 			local ipv6_URL=`echo "$ipv6_urllist"| sed -n "${1}p"|sed -e 's/\r//g'`
 			[ ! -z "$ipv6_interface" ] && local tmp_hostIPv6=$(curl -k -s -6 --interface ${ipv6_interface} -m 5 ${ipv6_URL}) || local tmp_hostIPv6=$(curl -k -s -6 -m 5 ${ipv6_URL})
-			[ -z "$tmp_hostIPv6" ] && echo "`date "+%Y-%m-%d %H:%M:%S"`  【info】IP 获取失败，当前使用的 API 为 $ipv6_URL" >> ${logfile}
+			[ -z "$tmp_hostIPv6" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】IP 获取失败，当前使用的 API 为 $ipv6_URL，接口为：${$ipv6_interface}" >> ${logfile}
 			local tmp_hostIPv6=`echo $tmp_hostIPv6|grep -oE "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}"|head -n1`
 			echo "{\"IP\":\"${tmp_hostIPv6}\", \"URL\":\"${ipv6_URL}\"}"
 		}
@@ -225,7 +225,7 @@ function getip(){
 		[ -z `echo $hostIPv6|jq -r '.IP'` ] && local rand_numberv6=`expr $rand_numberv6 + 1` && [ $rand_numberv6 -gt $urlv6_number ] && local rand_numberv6=1;[ -z `echo $hostIPv6|jq -r '.IP'` ] && local hostIPv6=`get_hostipv6 ${rand_numberv6}`
 		[ -z `echo $hostIPv6|jq -r '.IP'` ] && local rand_numberv6=`expr $rand_numberv6 + 1` && [ $rand_numberv6 -gt $urlv6_number ] && local rand_numberv6=1;[ -z `echo $hostIPv6|jq -r '.IP'` ] && local hostIPv6=`get_hostipv6 ${rand_numberv6}`
 		[ -n "$list_auto_up" ] && [ "$list_auto_up" -eq "1" ] && [ -z `echo $hostIP|jq -r '.IP'` ] && /usr/libexec/serverchan-call "update_list" "ipv6"
-
+		[ -z `echo $hostIPv6|jq -r '.IP'` ] && ipv4_urllist=`cat /usr/share/serverchan/api/ipv6.list` 2>/dev/null
 		echo $hostIPv6
 	fi
 }

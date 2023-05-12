@@ -1,14 +1,21 @@
 #!/bin/sh
 
+logfile="/tmp/serverchan/serverchan.log"
+
 if [ "$1" == "get_client" ]; then
-    devices=$(find /tmp/serverchan/client -type f -print0 | xargs -0 cat | sed "s/'/\"/g" | tr '\n' ',')
-    echo "{\"devices\": [${devices%,}]}"
+	# 生成在线设备列表，沿用 LUA 版本生成的临时文件
+	devices=$(find /tmp/serverchan/client -type f -print0 | xargs -0 cat | sed "s/'/\"/g" | tr '\n' ',')
+	echo "{\"devices\": [${devices%,}]}"
 elif [ "$1" == "clear_log" ]; then
-    # 清空 /tmp/serverchan/serverchan.log 文件
-    > /tmp/serverchan/serverchan.log
+	# 清空 /tmp/serverchan/serverchan.log 文件
+	> /tmp/serverchan/serverchan.log
 elif [ "$1" == "update_list" ]; then
-	datetime=$(date -r /usr/share/serverchan/api/${2}.list +%s 2>/dev/null) || datetime=0
-	[ `expr $(date +%s) - $datetime` -lt "86400" ] && return 2
+	# 更新 API 列表
+	echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】开始更新 $2 API 列表" >> ${logfile}
+	apifile="/usr/share/serverchan/api/${2}.list"
+	[ -f ${apifile} ] && filerow=$(grep -c "" ${apifile}) || filerow="0"
+	[ "$filerow" -ne "0" ] && datetime=$(date -r ${apifile} +%s 2>/dev/null) || datetime=0
+	[ `expr $(date +%s) - $datetime` -lt "86400" ] && return 2 && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】今天已经尝试过了哦，可能作者跑路了，自己找几个地址吧" >> ${logfile}
 	wget --no-check-certificate -t 3 -T 15 -O "/tmp/serverchan/${2}.list" "https://raw.githubusercontent.com/tty228/luci-app-serverchan/master/root/usr/share/serverchan/api/${2}.list" >/dev/null 2>&1
-    [ "$?" -eq "0" ] && mv -f "/tmp/serverchan/${2}.list" "/usr/share/serverchan/api/${2}.list"
+	[ "$?" -eq "0" ] && mv -f "/tmp/serverchan/${2}.list" "/usr/share/serverchan/api/${2}.list" echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】 $2 API 列表更新成功" >> ${logfile}
 fi
