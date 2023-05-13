@@ -218,7 +218,7 @@ return view.extend({
 		o.datatype = 'and(uinteger,min(10))';
 		o.description = _('越短的时间响应越及时，但会占用更多的系统资源');
 
-		o = s.taboption('basic', form.ListValue, 'oui_data', _('MAC设备信息数据库'));
+		o = s.taboption('basic', form.ListValue, 'oui_data', _('MAC 设备数据库'));
 		o.default = '';
 		o.value('', _('关闭'));
 		o.value('1', _('简化版'));
@@ -226,10 +226,26 @@ return view.extend({
 		o.value('3', _('网络查询'));
 		o.description = _('需下载 4.36 MB 原始数据，处理后完整版约 1.2 MB，简化版约 250 kB <br/>若无梯子，请勿使用网络查询');
 
-		o = s.taboption('basic', form.Flag, 'oui_dir', _('下载到内存'));
+		o = s.taboption('basic', form.Button, '_update_oui', _('更新 MAC 设备数据库'));
+		o.inputstyle = 'add';
+		o.onclick = function () {
+			var _this = this;
+			return fs.exec('/usr/libexec/serverchan-call', ['down_oui']).then(function (res) {
+				if (res.code === 0)
+					_this.description = _('更新成功');
+				else if (res.code === 1)
+					_this.description = _('更新失败');
+				else if (res.code === 2)
+					_this.description = _('已是最新，跳过更新');
+				return _this.map.reset();
+			}).catch(function (err) {
+				ui.addNotification(null, E('p', [_('未知错误：%s。').format(err)]));
+				_this.description = _('更新失败。');
+				return _this.map.reset();
+			});
+		}
 		o.depends('oui_data', '1');
 		o.depends('oui_data', '2');
-		o.description = _('懒得做自动更新了，下载到内存中，重启会重新下载 <br/>若无梯子，还是下到机身吧');
 
 		o = s.taboption('basic', form.Flag, 'reset_regularly', _('每天零点重置流量数据'));
 
@@ -270,7 +286,7 @@ return view.extend({
 			});
 		};
 		
-		o = s.taboption('content', form.Button, '_update_ipv4_list', _('手动更新 ipv4_list'));
+		o = s.taboption('content', form.Button, '_update_ipv4_list', _('更新 ipv4_list'));
 		o.inputstyle = 'add';
 		o.onclick = function () {
 			var _this = this;
@@ -320,7 +336,7 @@ return view.extend({
 			});
 		};
 				
-		o = s.taboption('content', form.Button, '_update_ipv6_list', _('手动更新 ipv6_list'));
+		o = s.taboption('content', form.Button, '_update_ipv6_list', _('更新 ipv6_list'));
 		o.inputstyle = 'add';
 		o.onclick = function () {
 			var _this = this;

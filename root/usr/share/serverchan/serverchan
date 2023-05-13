@@ -30,7 +30,7 @@ wait_and_cat() {
 
 # 初始化设置信息
 function read_config(){
-	get_config "serverchan_enable" "lite_enable" "device_name" "sleeptime" "oui_data" "oui_dir" "reset_regularly" "debuglevel" "device_aliases" \
+	get_config "serverchan_enable" "lite_enable" "device_name" "sleeptime" "oui_data" "reset_regularly" "debuglevel" "device_aliases" \
 	"serverchan_ipv4" "ipv4_interface" "serverchan_ipv6" "ipv6_interface" "update_list" "zerotier_helper" "serverchan_up" "serverchan_down" "cpuload_enable" "cpuload" "temperature_enable" "temperature" "client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" "web_logged" "ssh_logged" "web_login_failed" "ssh_login_failed" "login_max_num" "web_login_black" "ip_white_list" "ip_black_timeout" "port_knocking" "ip_white_timeout" "ip_port_white" "port_forward_list" \
 	"regular_time" "regular_time_2" "regular_time_3" "interval_time" \
 	"serverchan_sheep" "starttime" "endtime" "serverchan_whitelist" "serverchan_blacklist" "serverchan_interface" "MAC_online_list" "MAC_offline_list" "login_disturb" "login_notification_delay" \
@@ -44,7 +44,7 @@ function read_config(){
 	dir="/tmp/serverchan/" && mkdir -p ${dir} && mkdir -p ${dir}/client
 	tempjsonpath="/tmp/serverchan/temp.json"
 	ip_blacklist_path="/usr/share/serverchan/api/ip_blacklist"
-	[ ! -z "$oui_dir" ] && [ "$oui_dir" -eq "1" ] && oui_base="${dir}oui_base.txt" || oui_base="/usr/share/serverchan/oui_base.txt"
+	oui_base="${dir}oui_base.txt"
 	debuglevel=`echo "$debuglevel"` && [ -z "$debuglevel" ] && logfile="/dev/null" || logfile="${dir}serverchan.log"
 	serverchan_blacklist=`echo "$serverchan_blacklist"|sed 's/ /\n/g'` 2>/dev/null
 	serverchan_whitelist=`echo "$serverchan_whitelist"|sed 's/ /\n/g'` 2>/dev/null
@@ -92,7 +92,7 @@ function serverchan_init(){
 		cat /usr/share/serverchan/errlog > ${logfile}
 		echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】载入上次重启前日志" >> ${logfile}
 	fi
-	down_oui &
+	/usr/libexec/serverchan-call "down_oui"
 	get_syslog
 
 	rm -f ${dir}fd1 ${dir}sheep_usage ${dir}old_sheep_usage ${dir}client_usage_aliases ${dir}old_client_usage_aliases /usr/share/serverchan/errlog >/dev/null 2>&1
@@ -134,26 +134,6 @@ function diy_send(){
 	curl --connect-timeout 30 -m 60 -X POST -H "$content_type" -d "$data" "${diyurl}"
 	local RETVAL=$?
 	[ $RETVAL -ne "0" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】网络错误或 URL 错误，推送失败，curl 返回值为 ${RETVAL}" >> ${logfile} && return 1 || return 0
-}
-
-# 下载设备MAC厂商信息
-function down_oui(){
-	[ -f ${oui_base} ] && local logrow=$(grep -c "" ${oui_base}) || local logrow="0"
-	[ $logrow -lt "10" ] && rm -f ${oui_base} >/dev/null 2>&1
-	if [ ! -z "$oui_data" ] && [ "$oui_data" -ne "3" ] && [ ! -f ${oui_base} ]; then
-		echo "`date "+%Y-%m-%d %H:%M:%S"` 【初始化】设备MAC厂商信息不存在，重新下载" >> ${logfile}
-		wget --no-check-certificate -t 3 -T 15 -O ${dir}oui.txt https://standards-oui.ieee.org/oui/oui.txt >/dev/null 2>&1
-		if [ -f ${dir}oui.txt ] && [ "$oui_data" -eq "1" ]; then
-			cat ${dir}oui.txt|grep "base 16"|grep -i "apple\|aruba\|asus\|autelan\|belkin\|bhu\|buffalo\|cctf\|cisco\|comba\|datang\|dell\|dlink\|dowell\|ericsson\|fast\|feixun\|\
-fiberhome\|fujitsu\|grentech\|h3c\|hisense\|hiwifi\|honghai\|honghao\|hp\|htc\|huawei\|intel\|jinli\|jse\|lenovo\|lg\|liteon\|malata\|meizu\|mercury\|meru\|moto\|netcore\|\
-netgear\|nokia\|omron\|oneplus\|oppo\|philips\|router_unkown\|samsung\|shanzhai\|sony\|start_net\|sunyuanda\|tcl\|tenda\|texas\|tianyu\|tp-link\|ubq\|undefine\|VMware\|\
-utstarcom\|volans\|xerox\|xiaomi\|zdc\|zhongxing\|smartisan" > ${oui_base} && echo "`date "+%Y-%m-%d %H:%M:%S"` 【初始化】设备MAC厂商信息下载成功" >> ${logfile} || echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】设备MAC厂商信息下载失败" >> ${logfile}
-		fi
-		if [ -f ${dir}oui.txt ] && [ "$oui_data" -eq "2" ]; then
-			cat ${dir}oui.txt|grep "base 16" > ${oui_base} && echo "`date "+%Y-%m-%d %H:%M:%S"` 【初始化】设备MAC厂商信息下载成功" >> ${logfile} || echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】设备MAC厂商信息下载失败" >> ${logfile}
-		fi
-		rm -f ${dir}oui.txt >/dev/null 2>&1
-	fi
 }
 
 # 清理临时文件
