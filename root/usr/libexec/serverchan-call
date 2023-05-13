@@ -35,9 +35,9 @@ elif [ "$1" == "down_oui" ]; then
 		[ $? -ne "0"] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【!!!】设备 MAC 信息文件下载失败，返回码为 $? " && return
 		echo "`date "+%Y-%m-%d %H:%M:%S"` 【初始化】设备 MAC 信息文件下载成功，处理中" >> ${logfile}
 		if [ "$oui_data" -eq "1" ]; then
-			cat ${dir}oui.txt | grep -i -E ".*(base 16).*(apple|aruba|asus|autelan|belkin|bhu|buffalo|cctf|cisco|comba|datang|dell|dlink|dowell|ericsson|fast|feixun|fiberhome|fujitsu|grentech|h3c|hisense|hiwifi|honghai|honghao|hp|htc|huawei|intel|jinli|jse|lenovo|lg|liteon|malata|meizu|mercury|meru|moto|netcore|netgear|nokia|omron|oneplus|oppo|philips|router_unkown|samsung|shanzhai|sony|start_net|sunyuanda|tcl|tenda|texas|tianyu|tp-link|ubq|undefine|VMware|utstarcom|volans|xerox|xiaomi|zdc|zhongxing|smartisan).*" > ${oui_base}
+			cat ${dir}oui.txt | grep -i -E ".*(base 16).*(apple|aruba|asus|autelan|belkin|bhu|buffalo|cctf|cisco|comba|datang|dell|dlink|dowell|ericsson|fast|feixun|fiberhome|fujitsu|grentech|h3c|hisense|hiwifi|honghai|honghao|hp|htc|huawei|intel|jinli|jse|lenovo|lg|liteon|malata|meizu|mercury|meru|moto|netcore|netgear|nokia|omron|oneplus|oppo|philips|router_unkown|samsung|shanzhai|sony|start_net|sunyuanda|tcl|tenda|texas|tianyu|tp-link|ubq|undefine|VMware|utstarcom|volans|xerox|xiaomi|zdc|zhongxing|smartisan).*" | sed -E 's/(Intelligence| TECHNOLOGIES| Device| Systems| TELECOMMUNICATIONS| Instruments| Electronics| Corporation| Telecommunication| Communications| Electrical| Technology| Corporate| Intelligent| Interactive| MOBILE| Solutions| Mobility| Meraki| ELECTRO| VISUAL| Limited| International| Information| LLC|Co$|Co\.|Ltd\.$|Inc\.|B\.V\.$|AB$|,).*$/ /I; s/[[:space:]]*$//; s/ +$//' > ${oui_base}
 		elif [ "$oui_data" -eq "2" ]; then
-			cat ${dir}oui.txt | grep -i "(base 16)" > ${oui_base}
+			cat ${dir}oui.txt | grep -i "(base 16)" | sed -E 's/(Intelligence| TECHNOLOGIES| Device| Systems| TELECOMMUNICATIONS| Instruments| Electronics| Corporation| Telecommunication| Communications| Electrical| Technology| Corporate| Intelligent| Interactive| MOBILE| Solutions| Mobility| Meraki| ELECTRO| VISUAL| Limited| International| Information| LLC|Co$|Co\.|Ltd\.$|Inc\.|B\.V\.$|AB$|,).*$/ /I; s/[[:space:]]*$//; s/ +$//' > ${oui_base}
 		fi
 		rm -f ${dir}oui.txt >/dev/null 2>&1
 		echo "`date "+%Y-%m-%d %H:%M:%S"` 【初始化】设备 MAC 信息文件处理完成" >> ${logfile}
