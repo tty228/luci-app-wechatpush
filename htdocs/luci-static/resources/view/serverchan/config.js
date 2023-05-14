@@ -231,19 +231,15 @@ return view.extend({
 		o.onclick = function () {
 			var _this = this;
 			return fs.exec('/usr/libexec/serverchan-call', ['down_oui']).then(function (res) {
-				if (res.code === 0)
-					_this.description = _('更新成功');
-				else if (res.code === 1)
-					_this.description = _('更新失败');
-				else if (res.code === 2)
+				if (res.code === 2) {
 					_this.description = _('已是最新，跳过更新');
+				}
 				return _this.map.reset();
 			}).catch(function (err) {
-				ui.addNotification(null, E('p', [_('未知错误：%s。').format(err)]));
-				_this.description = _('更新失败。');
+				ui.addNotification(null, E('p', [_('浏览器超时强制退出或未知错误，若日志显示已建立更新进程，请忽略此错误：%s。').format(err)]));
 				return _this.map.reset();
 			});
-		}
+		};
 		o.depends('oui_data', '1');
 		o.depends('oui_data', '2');
 

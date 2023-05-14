@@ -139,7 +139,7 @@ function diy_send(){
 # 清理临时文件
 function deltemp(){
 	unset title	content ipAddress_logrow online_list online_mac mac_online_status gatewayinfo gateway_iplist
-	rm -f ${dir}title ${dir}content ${dir}tmp_downlist ${dir}send_enable.lock ${tempjsonpath} ${dir}tmp_sort_file >/dev/null 2>&1
+	rm -f ${dir}title ${dir}content ${dir}tmp_downlist ${dir}send_enable.lock ${tempjsonpath} ${dir}cookies.txt ${dir}tmp_sort_file >/dev/null 2>&1
 	[ ! -f ${dir}ipAddress ] && rm -f ${dir}client/* >/dev/null 2>&1
 	LockFile unlock
 	[ -f ${logfile} ] && local logrow=$(grep -c "" ${logfile}) || local logrow="0"
@@ -239,7 +239,7 @@ function getmac(){
 }
 
 # 查询主机名
-function getname(){
+function getname() {
 	# 自定义备注
 	local tmp_name=`echo "$device_aliases"|grep -i $2|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
 	[ -f "${dir}ipAddress" ] && [ -z "$tmp_name" ] && local tmp_name=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
@@ -248,45 +248,44 @@ function getname(){
 	[ -f "${dir}tmp_downlist" ] && [ -z "$tmp_name" ] && local tmp_name=`cat ${dir}tmp_downlist|grep -w ${1}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
 	# 静态地址备注名
 	( ! echo "$tmp_name"|grep -q -w "unknown\|*" ) && [ ! -z "$tmp_name" ] && echo "$tmp_name" && return || unset tmp_name # 为unknown时重新读取
-	[ -z "$dhcp_config" ] && dhcp_config=`uci show dhcp|grep "ip\|mac\|name"`
-	for dhcp_config_str in "host" "domain"; do
-		[ -z "$dhcp_config_str" ] && break # 退出整个循环
-		local dhcp_ip_n=`echo "$dhcp_config"|grep -w ^dhcp.@${dhcp_config_str}.*ip=.${1}|sed -nr 's#^dhcp.(.*).ip.*#\1#gp'` 2>/dev/null
-		[ ! -z "$dhcp_ip_n" ] && [ -z "$tmp_name" ] && local tmp_name=`uci get dhcp.${dhcp_ip_n}.name` 2>/dev/null
-		local dhcp_mac_n=`echo "$dhcp_config"|grep -i ^dhcp.@${dhcp_config_str}.*mac=.${2}|sed -nr 's#^dhcp.(.*).mac.*#\1#gp'` 2>/dev/null
-		[ ! -z "$dhcp_mac_n" ] && [ -z "$tmp_name" ] && local tmp_name=`uci get dhcp.${dhcp_ip_n}.name` 2>/dev/null
-		[ ! -z "$tmp_name" ] && break
-	done
+	[ -z "$tmp_name" ] && dhcp_config=`uci show dhcp|grep "ip\|mac\|name"`
+	if [ -n "$dhcp_config" ]; then
+		dhcp_ip_n=$(echo "$dhcp_config" | grep -w ^dhcp.@${dhcp_config_str}.*ip=.${1} | sed -nr 's#^dhcp.(.*).ip.*#\1#gp' 2>/dev/null)
+		[ ! -z "$dhcp_ip_n" ] && [ -z "$tmp_name" ] && tmp_name=$(uci get dhcp.${dhcp_ip_n}.name 2>/dev/null)
+		[ -z "$tmp_name" ] && dhcp_mac_n=$(echo "$dhcp_config" | grep -i ^dhcp.@${dhcp_config_str}.*mac=.${2} | sed -nr 's#^dhcp.(.*).mac.*#\1#gp' 2>/dev/null)
+		[ ! -z "$dhcp_mac_n" ] && [ -z "$tmp_name" ] && tmp_name=$(uci get dhcp.${dhcp_mac_n}.name 2>/dev/null)
+	fi
 	# DHCP
 	( ! echo "$tmp_name"|grep -q -w "unknown\|*" ) && [ ! -z "$tmp_name" ] && echo "$tmp_name" && return || unset tmp_name # 为unknown时重新读取
 	[ -f "/tmp/dhcp.leases" ] && [ -z "$tmp_name" ] && local tmp_name=`cat /tmp/dhcp.leases|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`
 	# 光猫
 	( ! echo "$tmp_name"|grep -q -w "unknown\|*" ) && [ ! -z "$tmp_name" ] && echo "$tmp_name" && return || unset tmp_name # 为unknown时重新读取
-	local tmp_name=`echo "$gatewayinfo"|grep -w ${1}|awk '{print $2}'`
+	local tmp_name=`echo "$gatewayinfo"|grep -w ${1}|awk '{print $2}'|sort -u|head -n1`
 	# MAC设备信息数据库
 	( ! echo "$tmp_name"|grep -q -w "unknown\|*" ) && [ ! -z "$tmp_name" ] && echo "$tmp_name" && return || unset tmp_name # 为unknown时重新读取
 	[ -f "$oui_base" ] && local tmp_name=$(cat $oui_base|grep -i $(echo "$2"|cut -c 1,2,4,5,7,8)|sed -nr 's#^.*16)..(.*)#\1#gp'|sed 's/ /_/g')
 	[ ! -z "$oui_data" ] && [ "$oui_data" -eq "4" ] && local tmp_name=$(curl -sS "https://standards-oui.ieee.org/oui/oui.txt"|grep -i $(echo "$2"|cut -c 1,2,4,5,7,8)|sed -nr 's#^.*16)..(.*)#\1#gp'|sed 's/ /_/g')
 
 	[ -z "$tmp_name" ] && local tmp_name="unknown"
-	echo $tmp_name |tr -d '\n\r'
+	echo "$tmp_name" | sort -u | head -n1 |tr -d '\n\r'
 }
 
 # 从光猫处获取设备信息
 function getgateway(){
 	[ -z "$gateway_info_enable" ] || [ "$gateway_info_enable" -ne "1" ] && return
-	datetime=$(date -r ${dir}cookies.txt +%s 2>/dev/null) || datetime=0
-	[ `expr $(date +%s) - $datetime` -lt "$gateway_sleeptime" ] && return
-	# 登录
-	local loginfo=`curl -s -L "${gateway_host_url}" -c ${dir}cookies.txt -d "${gateway_username_id}=${gateway_username}&${gateway_password_id}=${gateway_password}"` 2>/dev/null
-	[ ! -z "$loginfo" ] && local mytoken=$(echo $loginfo |sed 's/{/\n/g' | grep token |awk '/realRestart/{print $2}'| sed $'s/\'//g')
-	# 获取
-	[ ! -z "$mytoken" ] && local get_gateway=`curl -s -b ${dir}cookies.txt "${gateway_info_url}" -d 'token='$mytoken | jq '.[] | iterables| "\(.ip) \(.devName) \(.model)"'|sed 's/unknown//g'|sed 's/  / /g'|sed 's/ /_/g'|sed 's/_/ /'|sed 's/\"//g'`
-	# 注销
-	[ ! -z "$get_gateway" ] && [ ! -z "$gateway_logout_url" ] && curl -s -b ${dir}cookies.txt "${gateway_logout_url}" -d 'token='$mytoken 2>/dev/null
-	[ -z "$get_gateway" ] && echo "`date "+%Y-%m-%d %H:%M:%S"`  【info】获取光猫信息失败，可能当前用户未注销或设置错误" >> ${logfile}
-
-	echo "$get_gateway"
+	datetime=$(date -r ${dir}gateway_info +%s 2>/dev/null) || datetime=0
+	if [ `expr $(date +%s) - $datetime` -gt "$gateway_sleeptime" ]; then
+		# 登录
+		local loginfo=`curl -s -L "${gateway_host_url}" -c ${dir}cookies.txt -d "${gateway_username_id}=${gateway_username}&${gateway_password_id}=${gateway_password}"` 2>/dev/null
+		[ ! -z "$loginfo" ] && local mytoken=$(echo $loginfo |sed 's/{/\n/g' | grep token |awk '/realRestart/{print $2}'| sed $'s/\'//g')
+		# 获取
+		[ ! -z "$mytoken" ] && local get_gateway=`curl -s -b ${dir}cookies.txt "${gateway_info_url}" -d 'token='$mytoken | jq '.[] | iterables| "\(.ip) \(.devName) \(.model)"'|sed 's/unknown//g'|sed 's/  / /g'|sed 's/ /_/g'|sed 's/_/ /'|sed 's/\"//g'`
+		# 注销
+		[ ! -z "$get_gateway" ] && [ ! -z "$gateway_logout_url" ] && curl -s -b ${dir}cookies.txt "${gateway_logout_url}" -d 'token='$mytoken 2>/dev/null
+		[ -z "$get_gateway" ] && echo "`date "+%Y-%m-%d %H:%M:%S"`  【info】获取光猫信息失败，可能当前用户未注销或设置错误" >> ${logfile}
+	fi
+	[ -z "$get_gateway" ] && cat ${dir}gateway_info && return
+	[ ! -z "$get_gateway" ] && echo "$get_gateway" > ${dir}gateway_info && echo "$get_gateway"
 }
 
 # 查询设备接口
