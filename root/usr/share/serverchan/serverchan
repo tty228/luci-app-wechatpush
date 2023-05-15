@@ -102,9 +102,9 @@ function serverchan_init(){
 	[ -z "${sckey}${tg_token}${pushplus_token}${corpid}${wxpusher_apptoken}${wxpusher_uids}${wxpusher_topicIds}" -a "${jsonpath}" != "/usr/share/serverchan/api/diy.json" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】请填写正确的 key " >> ${logfile} && return 1
 	local interfacelist=`getinterfacelist` && [ -z "$interfacelist" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法获取接口在线时间等信息，可能存在多个接口或配置错误，请确认插件是否正常运行" >> ${logfile}
 	[ ! -z "$temperature_enable" ] && [ "$temperature_enable" -eq "1" ] && [ ! -z "$temperature" ] && local cpu_wendu=`soc_temp` || local cpu_wendu="null"
-	[ -z "$cpu_wendu" ] && echo "`date "+%Y-%m-%d %H:%M:%S"`  【！！！】无法读取设备温度，请检查命令" >> ${logfile}
+	[ -z "$cpu_wendu" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法读取设备温度，请检查命令" >> ${logfile}
 	[ ! -z "$cpuload_enable" ] && [ "$cpuload_enable" -eq "1" ] && [ ! -z "$cpuload" ] && local cpu_fuzai=`cat /proc/loadavg|awk '{print $1}'` 2>/dev/null || local cpu_fuzai="null"
-	[ -z "$cpu_fuzai" ] && echo "`date "+%Y-%m-%d %H:%M:%S"`  【！！！】无法读取设备负载，请检查命令" >> ${logfile}
+	[ -z "$cpu_fuzai" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法读取设备负载，请检查命令" >> ${logfile}
 
 	set_ip_black
 	[ -n "$port_knocking" ] && [ "$port_knocking" -eq "1" ] && init_ip_white "ipv4"
@@ -244,10 +244,10 @@ function getname() {
 	local tmp_name=`echo "$device_aliases"|grep -i $2|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
 	[ -f "${dir}ipAddress" ] && [ -z "$tmp_name" ] && local tmp_name=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
 	# 已保存的 主机名
-	( ! echo "$tmp_name"|grep -q -w "unknown\|*" ) && [ ! -z "$tmp_name" ] && echo "$tmp_name" && return || unset tmp_name # 为unknown时重新读取
-	[ -f "${dir}tmp_downlist" ] && [ -z "$tmp_name" ] && local tmp_name=`cat ${dir}tmp_downlist|grep -w ${1}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
+	echo "$tmp_name" | grep -q -w "unknown\|*" && unset tmp_name # 为unknown时重新读取
+	[ -z "$tmp_name" ] && [ -f "${dir}tmp_downlist" ] && local tmp_name=`cat ${dir}tmp_downlist|grep -w ${1}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
 	# 静态地址备注名
-	( ! echo "$tmp_name"|grep -q -w "unknown\|*" ) && [ ! -z "$tmp_name" ] && echo "$tmp_name" && return || unset tmp_name # 为unknown时重新读取
+	echo "$tmp_name" | grep -q -w "unknown\|*" && unset tmp_name # 为unknown时重新读取
 	[ -z "$tmp_name" ] && dhcp_config=`uci show dhcp|grep "ip\|mac\|name"`
 	if [ -n "$dhcp_config" ]; then
 		dhcp_ip_n=$(echo "$dhcp_config" | grep -w ^dhcp.@${dhcp_config_str}.*ip=.${1} | sed -nr 's#^dhcp.(.*).ip.*#\1#gp' 2>/dev/null)
@@ -256,18 +256,18 @@ function getname() {
 		[ ! -z "$dhcp_mac_n" ] && [ -z "$tmp_name" ] && tmp_name=$(uci get dhcp.${dhcp_mac_n}.name 2>/dev/null)
 	fi
 	# DHCP
-	( ! echo "$tmp_name"|grep -q -w "unknown\|*" ) && [ ! -z "$tmp_name" ] && echo "$tmp_name" && return || unset tmp_name # 为unknown时重新读取
-	[ -f "/tmp/dhcp.leases" ] && [ -z "$tmp_name" ] && local tmp_name=`cat /tmp/dhcp.leases|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`
+	echo "$tmp_name" | grep -q -w "unknown\|*" && unset tmp_name # 为unknown时重新读取
+	[ -z "$tmp_name" ] && [ -f "/tmp/dhcp.leases" ] && local tmp_name=`cat /tmp/dhcp.leases|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`
 	# 光猫
-	( ! echo "$tmp_name"|grep -q -w "unknown\|*" ) && [ ! -z "$tmp_name" ] && echo "$tmp_name" && return || unset tmp_name # 为unknown时重新读取
-	local tmp_name=`echo "$gatewayinfo"|grep -w ${1}|awk '{print $2}'|sort -u|head -n1`
+	echo "$tmp_name" | grep -q -w "unknown\|*" && unset tmp_name # 为unknown时重新读取
+	[ -z "$tmp_name" ] && local	tmp_name=$(cut_str "$(echo "$gatewayinfo"|grep -w ${1}|awk '{print $2}'|sort -u|head -n1)" "30")
 	# MAC设备信息数据库
-	( ! echo "$tmp_name"|grep -q -w "unknown\|*" ) && [ ! -z "$tmp_name" ] && echo "$tmp_name" && return || unset tmp_name # 为unknown时重新读取
-	[ -f "$oui_base" ] && local tmp_name=$(cat $oui_base|grep -i $(echo "$2"|cut -c 1,2,4,5,7,8)|sed -nr 's#^.*16)..(.*)#\1#gp'|sed 's/ /_/g')
-	[ ! -z "$oui_data" ] && [ "$oui_data" -eq "4" ] && local tmp_name=$(curl -sS "https://standards-oui.ieee.org/oui/oui.txt"|grep -i $(echo "$2"|cut -c 1,2,4,5,7,8)|sed -nr 's#^.*16)..(.*)#\1#gp'|sed 's/ /_/g')
+	echo "$tmp_name" | grep -q -w "unknown\|*" && unset tmp_name # 为unknown时重新读取
+	[ -z "$tmp_name" ] && [ -f "$oui_base" ] && local tmp_name=$(cat $oui_base|grep -i $(echo "$2"|cut -c 1,2,4,5,7,8)|sed -nr 's#^.*16)..(.*)#\1#gp')
+	[ -z "$tmp_name" ] && [ ! -z "$oui_data" ] && [ "$oui_data" -eq "4" ] && local tmp_name=$(curl -sS "https://standards-oui.ieee.org/oui/oui.txt"|grep -i $(echo "$2"|cut -c 1,2,4,5,7,8)|sed -nr 's#^.*16)..(.*)#\1#gp')
 
 	[ -z "$tmp_name" ] && local tmp_name="unknown"
-	echo "$tmp_name" | sort -u | head -n1 |tr -d '\n\r'
+	echo "$tmp_name" | sed 's/_/ /g' | sort -u | head -n1 | tr -d '\n\r'
 }
 
 # 从光猫处获取设备信息
@@ -465,30 +465,53 @@ function time_for_humans {
 # 计算字符真实长度
 function length_str {
 	[ ! "$1" ] && return
-
+	
 	local length_zh=`echo "$1"|awk '{print gensub(/[\u4e00-\u9FA5A-Za-z0-9_]/,"","g",$0)}'|awk -F "" '{print NF}'`
 	local length_en=`echo "$1"|awk '{print gensub(/[^\u4e00-\u9FA5A-Za-z0-9_]/,"","g",$0)}'|awk -F "" '{print NF}'`
-
-	echo `expr $length_zh / 3 \* 2 + $length_en`
+	
+	echo $((length_zh / 3 * 2 + length_en))
 }
 
-# 截取字符，避免中文乱码
 function cut_str {
 	[ ! "$1" ] && return
 	[ ! "$2" ] && return
 
-	[ `length_str $1` -le "$2" ] && echo "$1" && return
-	local temp_length=$2
-	while [ $(length_str `echo "$1"|cut -c -$temp_length`) -lt "$2" ]; do
-		temp_length=`expr $temp_length + 1`
-	done
-	while [ $(printf "%d" \'`echo "$1"|cut -c $temp_length`) -ge "128" ] && [ $(printf "%d" \'`echo "$1"|cut -c $temp_length`) -lt "224" ]; do
-		temp_length=`expr $temp_length + 1`
-	done
-	temp_length=`expr $temp_length - 1`
+	if [ $(length_str "$1") -le "$2" ]; then
+		echo "$1"
+		return
+	fi
+	
+	local columns=$(echo "$1" | awk '{print NF}')
+	if [ "$columns" -gt 1 ]; then
+		local max_length=0
+		local max_column=1
+		for i in $(seq 1 $columns); do
+			local length=$(echo "$1"|awk '{print gensub(/[\u4e00-\u9FA5A-Za-z0-9_]/,"","g",$0)}'|awk -F "" '{print NF}')
+			if [ "$length" -gt "$max_length" ]; then
+				max_length=$length
+				max_column=$i
+			fi
+		done
+		local text=$(echo -n "$1" | cut -d ' ' -f $max_column)
+		if [ $(length_str "$text") -le "$2" ]; then
+			echo "$text"
+			return
+		fi
+	fi
 
-	echo $(echo "$1"|cut -c -$temp_length)"..."
+	local temp_length=$2
+	while [ $(length_str "$(echo -n "$1" | cut -c -$temp_length)") -lt "$2" ]; do
+		temp_length=$(expr $temp_length + 1)
+	done
+	while [ $(printf "%d" \'$(echo -n "$1" | cut -c $temp_length)) -ge "128" ] && [ $(printf "%d" \'$(echo -n "$1" | cut -c $temp_length)) -lt "224" ]; do
+		temp_length=$(expr $temp_length + 1)
+	done
+	temp_length=$(expr $temp_length - 1)
+
+	echo "$(echo -n "$1" | cut -c -$temp_length)"..
 }
+
+
 
 # 随机数
 function rand(){
@@ -534,7 +557,7 @@ function serverchan_first(){
 			ip_interface=`getinterface ${ip_mac}`
 			echo "{'ip': '${ip}','mac': '${ip_mac}','name': '${ip_name}','uptime': '0秒','interface': '${ip_interface}','usage': ''}" > ${dir}client/${ip}
 			usage down ${ip}
-			echo "${ip} ${ip_mac} ${ip_name} `date +%s` ${ip_interface}" >> ${dir}ipAddress
+			echo "${ip} ${ip_mac} ${ip_name// /_} `date +%s` ${ip_interface}" >> ${dir}ipAddress
 		fi
 	done
 	for ip in $IPLIST_ipAddress; do
@@ -606,7 +629,7 @@ function serverchan_disturb(){
 				sleep $sleeptime
 			done
 		# 静默
-		elif  [ "$serverchan_sheep" -eq "2" ] ;then
+		elif [ "$serverchan_sheep" -eq "2" ] ;then
 			disturb_text="【免打扰】"
 			return 1
 		fi
@@ -887,7 +910,7 @@ function up(){
 		# ？？？
 		if [ ! -z "$tmp_mac" ] && ( cat ${dir}ipAddress|grep -q -w -i ${tmp_mac} ); then
 			usage down ${1}
-			echo "${1} ${ip_mac} ${ip_name} `date +%s` ${ip_interface}" >> ${dir}ipAddress
+			echo "${1} ${ip_mac} ${ip_name// /_} `date +%s` ${ip_interface}" >> ${dir}ipAddress
 			LockFile unlock && return
 		# ？？？
 		elif [ ! -z "$tmp_mac" ] && [ -f "${dir}tmp_downlist" ] && ( cat ${dir}tmp_downip|grep -q -w -i ${tmp_mac} ); then
@@ -904,7 +927,7 @@ function up(){
 		# up
 		else
 			usage down $1
-			echo "$1 ${ip_mac} ${ip_name} `date +%s` ${ip_interface}" >> ${dir}ipAddress
+			echo "$1 ${ip_mac} ${ip_name// /_} `date +%s` ${ip_interface}" >> ${dir}ipAddress
 			blackwhitelist ${ip_mac};local ip_blackwhite=$?
 			[ -f "${dir}send_enable.lock" ] || [ -z "$serverchan_up" ] || [ -z "$ip_blackwhite" ] && LockFile unlock && return
 			[ ! -z "$serverchan_up" ] && [ "$serverchan_up" -ne "1" ] && LockFile unlock && return
@@ -949,9 +972,9 @@ function down(){
 	else
 		local tmp_name=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
 		local tmp_mac=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
-		if [ ${ip_name} != ${tmp_name} ] || [ ${ip_mac} != ${tmp_mac} ]; then
+		if [ ${ip_name// /_} != ${tmp_name} ] || [ ${ip_mac} != ${tmp_mac} ]; then
 			LockFile lock
-			local tmp_str=$(echo "$1 ${ip_mac} ${ip_name} `cat ${dir}ipAddress|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1` ${ip_interface}")
+			local tmp_str=$(echo "$1 ${ip_mac} ${ip_name// /_} `cat ${dir}ipAddress|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1` ${ip_interface}")
 			sed -i "/^${1} /d" ${dir}ipAddress
 			echo "$tmp_str" >> ${dir}ipAddress
 			LockFile unlock
@@ -1011,7 +1034,7 @@ function current_device(){
 		local ip_mac=`getmac ${ip}`
 		local ip_total=`usage get ${ip_mac}`
 		local ip_name=`getname ${ip} ${ip_mac}`
-		local ip_name=`cut_str $ip_name 15`
+		local ip_name=`cut_str "$ip_name" "15"`
 		if [ "${#ip}" -lt "15" ]; then
 			local n=`expr 15 - ${#ip}`
 			for i in `seq 1 $n`; do
@@ -1347,7 +1370,7 @@ function set_ip_black(){
 	# 检查换行，避免出错
 	[ `tail -n1 "${ip_blacklist_path}" | wc -l` -eq "0" ] && echo -e >> ${ip_blacklist_path}
 	# 如果黑名单列表为空，移除集合并退出
-	if  [ ! -z "$web_login_black" ] && [ "$web_login_black" -eq "0" ] || [ -z "$web_login_black" ] || [ ! -f ${ip_blacklist_path} ] || [ -z "`cat ${ip_blacklist_path}`" ]; then
+	if [ ! -z "$web_login_black" ] && [ "$web_login_black" -eq "0" ] || [ -z "$web_login_black" ] || [ ! -f ${ip_blacklist_path} ] || [ -z "`cat ${ip_blacklist_path}`" ]; then
 		iptables -D INPUT -m set --match-set ip_blacklist src -j DROP >/dev/null 2>&1
 		ipset destroy ip_blacklist >/dev/null 2>&1
 		ip6tables -D INPUT -m set --match-set ip_blacklistv6 src -j DROP >/dev/null 2>&1
@@ -1441,7 +1464,8 @@ function send(){
 		[ "$logrow" -eq "0" ] && send_content="${send_content}${str_splitline}${str_title_start} 当前无在线设备${str_title_end}"
 		time_now=$(date +%s)
 		while read -r tmp_ip tmp_mac tmp_name time_up _; do
-			tmp_name=$(cut_str "$tmp_name" 18)
+			tmp_name=${tmp_name//_/ }
+			tmp_name=$(cut_str "$tmp_name" "18")
 			time_online=$(time_for_humans $((time_now - time_up)))
 			ip_total=$(usage get "$tmp_mac")
 			[ -n "$ip_total" ] && ip_total="总计流量：${ip_total}  "
