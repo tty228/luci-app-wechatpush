@@ -1288,7 +1288,7 @@ function init_ip_white() {
 
 	if ( opkg list-installed|grep -w -q ^firewall4 ); then
 		! nft list set inet fw4 $ipset_name >/dev/null 2>&1 && nft add set inet fw4 $ipset_name { type ${1}_addr\; flags timeout\; timeout ${ip_white_timeout}s\; }
-		nft add chain inet fw4 serverchan_dstnat { type nat hook prerouting priority -100 \; }
+		nft -- add chain inet fw4 serverchan_dstnat { type nat hook prerouting priority -100 \; }
 		nft add chain inet fw4 serverchan_srcnat { type nat hook postrouting priority 100 \; }
 	else
 		! ipset list $ipset_name >/dev/null 2>&1 && ipset create $ipset_name hash:ip timeout $ip_white_timeout $nat_table_cmd >/dev/null 2>&1
@@ -1324,7 +1324,7 @@ function init_ip_white() {
 		local dst_port=`echo ${port_forward}|awk '{print $4}'`
 		if ( opkg list-installed|grep -w -q ^firewall4 ); then
 			! nft list ruleset|grep "$ip_version saddr @${ipset_name} tcp dport $src_port counter .* dnat $ip_version to $dst_ip:$dst_port comment \"!serverchan DNAT rule\"" >/dev/null 2>&1 && nft insert rule inet fw4 serverchan_dstnat meta nfproto $1 $ip_version saddr @${ipset_name} tcp dport $src_port counter dnat to "$dst_ip:$dst_port" comment \"!serverchan DNAT rule\" >/dev/null 2>&1
-			! nft list ruleset|grep "$ip_version saddr $dst_ip tcp dport $dst_port counter .* snat $ip_version to $src_ip comment \"!serverchan SNAT rule\"" >/dev/null 2>&1 && nft insert rule inet fw4 serverchan_srcnat $ip_version saddr $dst_ip tcp dport $dst_port counter snat to $src_ip comment \"!serverchan SNAT rule\" >/dev/null 2>&1
+			! nft list ruleset|grep "$ip_version daddr $dst_ip tcp dport $dst_port counter .* snat $ip_version to $src_ip comment \"!serverchan SNAT rule\"" >/dev/null 2>&1 && nft insert rule inet fw4 serverchan_srcnat $ip_version daddr $dst_ip tcp dport $dst_port counter snat to $src_ip comment \"!serverchan SNAT rule\" >/dev/null 2>&1
 		else
 			${ip_version}tables -t nat -C PREROUTING -m set --match-set $ipset_name src -p tcp --dport $src_port -j DNAT --to-destination "$dst_ip:$dst_port" >/dev/null 2>&1 || ${ip_version}tables -t nat -I PREROUTING -m set --match-set $ipset_name src -p tcp --dport $src_port -j DNAT --to-destination "$dst_ip:$dst_port" >/dev/null 2>&1
 			${ip_version}tables -t nat -C POSTROUTING -m set --match-set $ipset_name src -p tcp -d $dst_ip --dport $dst_port -j SNAT --to-source $src_ip >/dev/null 2>&1 || ${ip_version}tables -t nat -I POSTROUTING -m set --match-set $ipset_name src -p tcp -d $dst_ip --dport $dst_port -j SNAT --to-source $src_ip >/dev/null 2>&1
