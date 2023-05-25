@@ -338,12 +338,12 @@ function soc_temp(){
 		local sensor_field2='["zenpower-pci-00c3"]["Tctl"]["temp1_input"]'
 		local sensor_field3='["k10temp-pci-00c3"]["Tctl"]["temp1_input"]'
 		eval "${1}sensors -j 2>/dev/null" | jq -r "
-		if .${sensor_field3} != null then
-		  .${sensor_field3}
+		if .${sensor_field1} != null then
+		  .${sensor_field1}
 		elif .${sensor_field2} != null then
 		  .${sensor_field2}
-		elif .${sensor_field1} != null then
-		  .${sensor_field1}
+		elif .${sensor_field3} != null then
+		  .${sensor_field3}
 		else
 		  null
 		end // \"\"
@@ -357,7 +357,7 @@ function soc_temp(){
 	[ -z "$temperature" ] && temperature=$(sensors 2>/dev/null|grep °C|sed -nr 's#^.*:.*\+(.*)°C .*#\1#gp'|sort -nr|head -n1)
 	# 将 thermal_zone* 改为 thermal_zone0 thermal_zone1 等，就可以指定设备了
 	[ -z "$temperature" ] && temperature=$(cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null|sort -nr|head -n1|cut -c-2)
-	echo "$temperature"
+	printf "%.1f" "$temperature"
 }
 # 流量数据
 function usage(){
