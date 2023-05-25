@@ -81,6 +81,8 @@ function read_config(){
 	fi
 	wait_and_cat
 	disturb_text=$_api
+	deltemp
+	serverchan_cron
 }
 
 # 初始化
@@ -349,12 +351,13 @@ function soc_temp(){
 	}
 
 	[ ! -z "$server_host" ] && ssh_command="ssh -i /root/.ssh/id_rsa root@${server_host} -p ${server_port} "
-	getsensors "$ssh_command" 2>/dev/null || return 0
+	temperature=$(getsensors "$ssh_command" 2>/dev/null)
 	# 通用（只能取最高温度，不一定是 CPU，特殊设备自行修改）
 	# 将 grep °C 改为温度所在行的特别字符串，如 grep Core 0 等，就可以指定设备了
-	temperature=$(sensors 2>/dev/null|grep °C|sed -nr 's#^.*:.*\+(.*)°C .*#\1#gp'|sort -nr|head -n1)
+	[ -z "$temperature" ] && temperature=$(sensors 2>/dev/null|grep °C|sed -nr 's#^.*:.*\+(.*)°C .*#\1#gp'|sort -nr|head -n1)
 	# 将 thermal_zone* 改为 thermal_zone0 thermal_zone1 等，就可以指定设备了
-	[ -z "$temperature" ] && cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null|sort -nr|head -n1|cut -c-2
+	[ -z "$temperature" ] && temperature=$(cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null|sort -nr|head -n1|cut -c-2)
+	echo "$temperature"
 }
 # 流量数据
 function usage(){
@@ -1485,13 +1488,19 @@ function send(){
 }
 
 # 初始化
-read_config
-deltemp
-serverchan_cron
+if [ "$1" ] ;then
+	[ $1 == "soc" ] && get_config "soc_code" "server_host" "server_port"
+	[ $1 == "soc" ] && soc_temp && return $?
+	read_config
+	[ $1 == "send" ] && send && return $?
+	[ $1 == "test" ] && send test && return $?
+	[ $1 == "t1" ] && thread_num=1 || exit
+else
+	read_config
+fi
 
 # 限制并发进程
 [ -z "$thread_num" ] || [ "$thread_num" -eq "0" ] && thread_num=5
-[ "$1" ] && [ $1 == "t1" ] && thread_num=1
 [ -e ${dir}fd1 ] || mkfifo ${dir}fd1
 exec 5<>${dir}fd1
 rm -f ${dir}fd1 >/dev/null 2>&1
@@ -1499,14 +1508,6 @@ for i in `seq 1 $thread_num`; do
 	echo >&5
 done
 unset i
-
-# 启动参数
-if [ "$1" ] ;then
-	[ $1 == "send" ] && send && return $?
-	[ $1 == "soc" ] && soc_temp && return $?
-	[ $1 == "test" ] && send test && return $?
-	[ $1 == "t1" ] || exit
-fi
 
 # 载入在线设备
 serverchan_init;[ $? -eq 1 ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】读取设置出错，请检查设置项 " >> ${logfile} && exit
