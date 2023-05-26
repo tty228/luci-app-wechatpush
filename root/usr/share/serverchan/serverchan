@@ -31,13 +31,21 @@ wait_and_cat() {
 # 初始化设置信息
 function read_config(){
 	get_config "serverchan_enable" "lite_enable" "device_name" "sleeptime" "oui_data" "reset_regularly" "debuglevel" "device_aliases" \
-	"serverchan_ipv4" "ipv4_interface" "serverchan_ipv6" "ipv6_interface" "update_list" "zerotier_helper" "serverchan_up" "serverchan_down" "cpuload_enable" "cpuload" "temperature_enable" "temperature" "client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" "web_logged" "ssh_logged" "web_login_failed" "ssh_login_failed" "login_max_num" "web_login_black" "ip_white_list" "ip_black_timeout" "port_knocking" "ip_white_timeout" "ip_port_white" "port_forward_list" \
-	"regular_time" "regular_time_2" "regular_time_3" "interval_time" \
+	"serverchan_ipv4" "ipv4_interface" "serverchan_ipv6" "ipv6_interface" "update_list" "zerotier_helper" "device_notification" "cpu_notification" "cpuload" "temperature" "client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" "login_notification" "login_max_num" "web_login_black" "ip_white_list" "ip_black_timeout" "port_knocking" "ip_white_timeout" "ip_port_white" "port_forward_list" \
+	"regular_time" "interval_time" \
 	"serverchan_sheep" "starttime" "endtime" "serverchan_whitelist" "serverchan_blacklist" "serverchan_interface" "MAC_online_list" "MAC_offline_list" "login_disturb" "login_notification_delay" \
 	"up_timeout" "down_timeout" "timeout_retry_count" "passive_option" "thread_num" "soc_code" "server_host" "server_port" "err_enable" "err_sheep_enable" "err_device_aliases" "network_err_event" "system_time_event" "autoreboot_time" "network_restart_time" "public_ip_event" "public_ip_retry_count" \
 	"jsonpath" "sckey" "corpid" "userid" "agentid" "corpsecret" "mediapath" "wxpusher_apptoken" "wxpusher_uids" "wxpusher_topicIds" "pushplus_token" "tg_token" "chat_id" \
 	"gateway_info_enable" "gateway_host_url" "gateway_info_url" "gateway_logout_url" "gateway_username_id" "gateway_password_id" "gateway_username" "gateway_password" "gateway_sleeptime"
-
+	
+	( echo "$device_notification"|grep -q "online" ) && notification_online="true"
+	( echo "$device_notification"|grep -q "offline" ) && notification_offline="true"
+	( echo "$cpu_notification"|grep -q "load" ) && notification_load="true"
+	( echo "$cpu_notification"|grep -q "temp" ) && notification_temp="true"
+	( echo "$login_notification"|grep -q "web_logged" ) && web_logged="true"
+	( echo "$login_notification"|grep -q "ssh_logged" ) && ssh_logged="true"
+	( echo "$login_notification"|grep -q "web_login_failed" ) && web_login_failed="true"
+	( echo "$login_notification"|grep -q "ssh_login_failed" ) && ssh_login_failed="true"
 	for str_version in "wrtbwmon" "iputils-arping" "curl" "iw"; do
 		eval `echo ${str_version:0:2}"_version"`=`opkg list-installed|grep -w ^${str_version}|awk '{print $3}'` 2>/dev/null
 	done
@@ -103,9 +111,9 @@ function serverchan_init(){
 	[ -z "$cu_version" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法获取依赖项 curl 版本号，请确认插件是否正常运行" >> ${logfile}
 	[ -z "${sckey}${tg_token}${pushplus_token}${corpid}${wxpusher_apptoken}${wxpusher_uids}${wxpusher_topicIds}" -a "${jsonpath}" != "/usr/share/serverchan/api/diy.json" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】请填写正确的 key " >> ${logfile} && return 1
 	local interfacelist=`getinterfacelist` && [ -z "$interfacelist" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法获取接口在线时间等信息，可能存在多个接口或配置错误，请确认插件是否正常运行" >> ${logfile}
-	[ ! -z "$temperature_enable" ] && [ "$temperature_enable" -eq "1" ] && [ ! -z "$temperature" ] && local cpu_wendu=`soc_temp` || local cpu_wendu="null"
+	[ -n "$notification_temp" ] && [ -n "$temperature" ] && local cpu_wendu=`soc_temp` || local cpu_wendu="null"
 	[ -z "$cpu_wendu" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法读取设备温度，请检查命令" >> ${logfile}
-	[ ! -z "$cpuload_enable" ] && [ "$cpuload_enable" -eq "1" ] && [ ! -z "$cpuload" ] && local cpu_fuzai=`cat /proc/loadavg|awk '{print $1}'` 2>/dev/null || local cpu_fuzai="null"
+	[ -n "$notification_load" ] && [ -n "$cpuload" ] && local cpu_fuzai=`cat /proc/loadavg|awk '{print $1}'` 2>/dev/null || local cpu_fuzai="null"
 	[ -z "$cpu_fuzai" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法读取设备负载，请检查命令" >> ${logfile}
 
 	set_ip_black
@@ -284,7 +292,7 @@ function getgateway(){
 		[ ! -z "$mytoken" ] && local get_gateway=`curl -s -b ${dir}cookies.txt "${gateway_info_url}" -d 'token='$mytoken | jq '.[] | iterables| "\(.ip) \(.devName) \(.model)"'|sed 's/unknown//g'|sed 's/  / /g'|sed 's/ /_/g'|sed 's/_/ /'|sed 's/\"//g'`
 		# 注销
 		[ ! -z "$get_gateway" ] && [ ! -z "$gateway_logout_url" ] && curl -s -b ${dir}cookies.txt "${gateway_logout_url}" -d 'token='$mytoken 2>/dev/null
-		[ -z "$get_gateway" ] && echo "`date "+%Y-%m-%d %H:%M:%S"`  【info】获取光猫信息失败，可能当前用户未注销或设置错误" >> ${logfile}
+		[ -z "$get_gateway" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】获取光猫信息失败，可能当前用户未注销或设置错误" >> ${logfile}
 	fi
 	[ -z "$get_gateway" ] && cat ${dir}gateway_info && return
 	[ ! -z "$get_gateway" ] && echo "$get_gateway" > ${dir}gateway_info && echo "$get_gateway"
@@ -599,13 +607,13 @@ function serverchan_cron(){
 		crontab -l 2>/dev/null > conf && echo -e "0 0 * * * rm /tmp/serverchan/usage.db >/dev/null 2>&1" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
 		crontab -l 2>/dev/null > conf && echo -e "0 0 * * * rm /tmp/serverchan/usage6.db >/dev/null 2>&1" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
 	fi
-	[ ! -z "$regular_time_2" ] && local regular_time_2=",${regular_time_2}"
-	[ ! -z "$regular_time_3" ] && local regular_time_3=",${regular_time_3}"
+
 	# 定时发送
-	if [ ! -z "$regular_time" ] || [ ! -z "$regular_time_2" ] || [ ! -z "$regular_time_3" ]; then
-		crontab -l 2>/dev/null > conf && echo -e "0 $regular_time$regular_time_2$regular_time_3 * * * /usr/share/serverchan/serverchan send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
+	if [ -n "$regular_time" ]; then
+		regular_time=`echo $regular_time|sed 's/ /,/g'` 2>/dev/null
+		crontab -l 2>/dev/null > conf && echo -e "0 $regular_time * * * /usr/share/serverchan/serverchan send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
 	# 间隔发送
-	elif [ ! -z "$interval_time" ]; then
+	elif [ -n "$interval_time" ]; then
 		crontab -l 2>/dev/null > conf && echo -e "0 */$interval_time * * * /usr/share/serverchan/serverchan send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
 	fi
 
@@ -932,8 +940,7 @@ function up(){
 			usage down $1
 			echo "$1 ${ip_mac} ${ip_name// /_} `date +%s` ${ip_interface}" >> ${dir}ipAddress
 			blackwhitelist ${ip_mac};local ip_blackwhite=$?
-			[ -f "${dir}send_enable.lock" ] || [ -z "$serverchan_up" ] || [ -z "$ip_blackwhite" ] && LockFile unlock && return
-			[ ! -z "$serverchan_up" ] && [ "$serverchan_up" -ne "1" ] && LockFile unlock && return
+			[ -f "${dir}send_enable.lock" ] || [ -z "$notification_online" ] || [ -z "$ip_blackwhite" ] && LockFile unlock && return
 			[ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne "0" ] && LockFile unlock && return
 
 			[ -f "${dir}title" ] && local title=`cat ${dir}title`
@@ -997,8 +1004,7 @@ function down_send(){
 	for ip in $IPLIST; do
 		local ip_mac=`getmac ${ip}`
 		blackwhitelist ${ip_mac};local ip_blackwhite=$?
-		[ -z "$serverchan_down" ] || [ -z "$ip_blackwhite" ] && continue
-		[ ! -z "$serverchan_down" ] && [ "$serverchan_down" -ne "1" ] && continue
+		[ -z "$notification_offline" ] || [ -z "$ip_blackwhite" ] && continue
 		[ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne "0" ] && continue
 		[ ! -z "$serverchan_blacklist" ] && local tmp_mac=`echo "${serverchan_blacklist}"|grep -w -i ${ip_mac}`
 		[ ! -z "$serverchan_whitelist" ] && local tmp_mac=`echo "${serverchan_whitelist}"|grep -w -i ${ip_mac}`
@@ -1058,7 +1064,7 @@ function current_device(){
 
 # 检测 cpu 状态
 function cpu_load(){
-	if [ ! -z "$temperature_enable" ] && [ "$temperature_enable" -eq "1" ] && [ ! -z "$temperature" ]; then
+	if [ -n "$notification_temp" ] && [ -n "$temperature" ]; then
 		[ -z "$temperature_time" ] && temperature_time=`date +%s`
 		local cpu_wendu=`soc_temp`;
 
@@ -1078,7 +1084,7 @@ function cpu_load(){
 		fi
 	fi
 
-	if [ ! -z "$cpuload_enable" ] && [ "$cpuload_enable" -eq "1" ] && [ ! -z "$cpuload" ]; then
+	if [ -n "$notification_load" ] && [ -n "$cpuload" ]; then
 		[ -z "$cpuload_time" ] && cpuload_time=`date +%s`
 		local cpu_fuzai=`cat /proc/loadavg|awk '{print $1}'` 2>/dev/null
 
@@ -1166,7 +1172,7 @@ function login_send(){
 		fi
 		[ -n "$log_only" ] && echo "`date "+%Y-%m-%d"` ${login_time} 【info】设备 ${login_ip} 通过 Web ${login_mode} 登录了路由器 " >> ${logfile} && continue
 		[ ! -z "$login_mode" ] && local content_mode="${str_linefeed}${str_tab}登录方式： ${str_space}${str_space}${str_space}${str_space}${login_mode}"
-		if [ ! -z "$web_logged" ] && [ "$web_logged" -eq "1" ] && { [ -z "$login_disturb" ] || [ "$login_disturb" -ne "1" ]; }; then
+		if [ -n "$web_logged" ] && { [ -z "$login_disturb" ] || [ "$login_disturb" -ne "1" ]; }; then
 			if [ -z "$title" ]; then
 				title="${login_ip} 通过 Web 登录了路由器"
 				content="${content}${str_splitline}${str_title_start} 登录信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
@@ -1198,7 +1204,7 @@ function login_send(){
 		fi
 		[ -n "$log_only" ] && echo "`date "+%Y-%m-%d"` ${login_time} 【info】设备 ${login_ip} 通过 Web ${login_mode} 登录了路由器 " >> ${logfile} && continue
 		[ ! -z "$login_mode" ] && local content_mode="${str_linefeed}${str_tab}登录方式： ${str_space}${str_space}${str_space}${str_space}${login_mode}"
-		if [ ! -z "$ssh_logged" ] && [ "$ssh_logged" -eq "1" ] && { [ -z "$login_disturb" ] || [ "$login_disturb" -ne "1" ]; }; then
+		if [ -n "$ssh_logged" ] && { [ -z "$login_disturb" ] || [ "$login_disturb" -ne "1" ]; }; then
 			if [ -z "$title" ]; then
 				title="${login_ip} 通过 SSH 登录了路由器"
 				content="${content}${str_splitline}${str_title_start} 登录信息${str_title_end}${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${str_space}${login_time}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}${content_mode}"
@@ -1221,7 +1227,7 @@ function login_send(){
 		echo "$ip_white_list"|grep -w -q "$login_ip" && continue
 		local login_sum=`cat ${dir}web_failed|grep -w "${login_ip}"|wc -l`
 		if [ "$login_sum" -ge "$login_max_num" ] ;then
-			if [ ! -z "$web_login_failed" ] && [ "$web_login_failed" -eq "1" ]; then
+			if [ -n "$web_login_failed" ]; then
 				if [ -z "$title" ]; then
 					title="${login_ip} 通过 Web 频繁尝试登录"
 					content="${content}${str_splitline}${str_title_start} 登录信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
@@ -1245,7 +1251,7 @@ function login_send(){
 		echo "$ip_white_list"|grep -w -q "$login_ip" && continue
 		local login_sum=`cat ${dir}ssh_failed|grep -w "${login_ip}"|wc -l`
 		if [ "$login_sum" -ge "$login_max_num" ] ;then
-			if [ ! -z "$ssh_login_failed" ] && [ "$ssh_login_failed" -eq "1" ]; then
+			if [ -n "$ssh_login_failed" ]; then
 				if [ -z "$title" ]; then
 					title="${login_ip} 通过 SSH 频繁尝试登录"
 					content="${content}${str_splitline}${str_title_start} 登录信息${str_title_end}${str_linefeed}${str_tab}设备 IP： ${str_space}${str_space}${str_space}${str_space}${login_ip}"
@@ -1403,21 +1409,21 @@ function set_ip_black(){
 function send(){
 	echo "`date "+%Y-%m-%d %H:%M:%S"` 【定时数据】创建定时任务" >> ${logfile}
 	serverchan_disturb;local send_disturb=$?
-	get_config "send_title" "router_status" "router_temp" "router_wan" "client_list"
+	get_config "send_title" "send_notification"
 	
 	cpuload=`getcpu`
 	service_status=$(ubus call service list '{"name": "serverchan"}' | grep -o '"running": true')
-	[ -z "$1" ] && [ ! -z "$client_list" ] && [ "$client_list" -eq "1" ] && > ${dir}send_enable.lock && [ -z "$service_status" ] && serverchan_first &
-	if [ -z "$1" ] && [ ! -z "$router_status" ] && [ "$router_status" -eq "1" ]; then
+	[ -z "$1" ] && ( echo "$send_notification"|grep -q "client_list" ) && > ${dir}send_enable.lock && [ -z "$service_status" ] && serverchan_first &
+	if [ -z "$1" ] && ( echo "$send_notification"|grep -q "router_status" ); then
 		cat /proc/loadavg|awk '{print $1" "$2" "$3}' > "$output_dir/systemload" &
 		free -m|sed -n '2p'|awk '{printf "%.2f%%\n",($3/$2)*100}' > "$output_dir/ramload" &
 		curl -o /dev/null --connect-timeout 5 -s -w %{http_code} www.google.com > "$output_dir/Qwai" &
 		cat /proc/uptime|awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("运行时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}' > "$output_dir/systemstatustime" &
 		systeminfo_enable="1"
 	fi
-	[ -z "$1" ] && [ ! -z "$router_temp" ] && [ "$router_temp" -eq "1" ] && soc_temp > "$output_dir/cputemp" &
+	[ -z "$1" ] && ( echo "$send_notification"|grep -q "router_temp" ) && soc_temp > "$output_dir/cputemp" &
 	
-	if [ -z "$1" ] && [ ! -z "$router_wan" ] && [ "$router_wan" -eq "1" ]; then
+	if [ -z "$1" ] && ( echo "$send_notification"|grep -q "wan_info" ); then
 		getip wanipv4 > "$output_dir/send_wanIP" &
 		getip hostipv4|jq -r '.IP' > "$output_dir/send_hostIP" &
 		waninfo_enable="1"
@@ -1443,7 +1449,7 @@ function send(){
 		send_content="${send_content}${str_linefeed}${str_tab}${systemstatustime}"
 	fi
 
-	if [ -z "$1" ] && [ ! -z "$router_temp" ] && [ "$router_temp" -eq "1" ]; then
+	if [ -z "$1" ] && ( echo "$send_notification"|grep -q "router_temp" ); then
 		[ ! -z "$cputemp" ] && send_content="${send_content}${str_splitline}${str_title_start} 设备温度${str_title_end}${str_linefeed}${str_tab}CPU：${cputemp}℃"
 		[ -z "$cputemp" ] && send_content="${send_content}${str_splitline}${str_title_start} 设备温度${str_title_end}${str_linefeed}${str_tab}无法获取设备温度"
 	fi
@@ -1461,7 +1467,7 @@ function send(){
 		send_content="${send_content}${str_linefeed}${str_tab}${wanstatustime}"
 	fi
 
-	if [ -z "$1" ] && [ ! -z "$client_list" ] && [ "$client_list" -eq "1" ]; then
+	if [ -z "$1" ] && ( echo "$send_notification"|grep -q "client_list" ); then
 		wait
 		awk '{ lines[i++] = $0 } END { for (j = i-1; j >= 0; j--) print lines[j] }' "${dir}ipAddress" > "${dir}tmp_sort_file"
 		logrow=$(awk 'END {print NR}' ${dir}ipAddress)
