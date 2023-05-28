@@ -1194,7 +1194,7 @@ function login_send(){
 	echo "" > ${dir}web_login
 	unset login_ip login_time login_mode
 	# SSH 登录提醒
-	for login_ip in `cat ${dir}ssh_login|awk '{print $3}'|grep -v "^$"|sed -nr 's#^(.*):.[0-9]{1,5}#\1#gp'|sort -u`; do
+	for login_ip in `cat ${dir}ssh_login|awk '{print $3}'|grep -v "^$"|sed -nr 's#^(.*):.[0-9]{1,5}#\1#gp'|sed -e 's/%.*//'|sort -u`; do
 		[ -z "$login_ip" ] && continue
 		add_ip_white ${login_ip}
 		local login_time=`cat ${dir}ssh_login|grep -w ${login_ip}|awk '{print $1}'|grep -v "^$"|sort -u|head -n1`
@@ -1205,7 +1205,7 @@ function login_send(){
 			[ ! -z "$login_log" ] && log_timestamp=$(date -d "$(echo "$login_log" | awk '{print $1, $2}')" +%s) || log_timestamp=0
 			[ $(($(date +%s) - log_timestamp)) -lt $login_notification_delay ] && log_only="1"
 		fi
-		[ -n "$log_only" ] && echo "`date "+%Y-%m-%d"` ${login_time} 【info】设备 ${login_ip} 通过 Web ${login_mode} 登录了路由器 " >> ${logfile} && continue
+		[ -n "$log_only" ] && echo "`date "+%Y-%m-%d"` ${login_time} 【info】设备 ${login_ip} 通过 SSH ${login_mode} 登录了路由器 " >> ${logfile} && continue
 		[ ! -z "$login_mode" ] && local content_mode="${str_linefeed}${str_tab}登录方式： ${str_space}${str_space}${str_space}${str_space}${login_mode}"
 		if [ -n "$ssh_logged" ] && { [ -z "$login_disturb" ] || [ "$login_disturb" -ne "1" ]; }; then
 			if [ -z "$title" ]; then
@@ -1249,7 +1249,7 @@ function login_send(){
 	done
 	unset login_ip login_sum
 	# SSH 非法登录
-	for login_ip in `cat ${dir}ssh_failed|awk '{print $1}'|grep -v "^$"|sed -nr 's#^(.*):.[0-9]{1,5}#\1#gp'|sort -u`; do
+	for login_ip in `cat ${dir}ssh_failed|awk '{print $1}'|grep -v "^$"|sed -nr 's#^(.*):.[0-9]{1,5}#\1#gp'|sed -e 's/%.*//'|sort -u`; do
 		[ -z "$login_ip" ] && continue
 		echo "$ip_white_list"|grep -w -q "$login_ip" && continue
 		local login_sum=`cat ${dir}ssh_failed|grep -w "${login_ip}"|wc -l`
