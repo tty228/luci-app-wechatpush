@@ -295,8 +295,7 @@ function getgateway(){
 		[ ! -z "$get_gateway" ] && [ ! -z "$gateway_logout_url" ] && curl -s -b ${dir}cookies.txt "${gateway_logout_url}" -d 'token='$mytoken 2>/dev/null
 		[ -z "$get_gateway" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】获取光猫信息失败，可能当前用户未注销或设置错误" >> ${logfile}
 	fi
-	[ -z "$get_gateway" ] && cat ${dir}gateway_info && return
-	[ ! -z "$get_gateway" ] && echo "$get_gateway" > ${dir}gateway_info && echo "$get_gateway"
+	[ ! -z "$get_gateway" ] && echo "$get_gateway" > ${dir}gateway_info
 }
 
 # 查询设备接口
@@ -318,15 +317,16 @@ function getinterface(){
 
 # ping
 function getping(){
-	local ip_interface=`getinterface ${2}`
-	[ "$iw_version" ] && [ "$ip_interface" ] && local wlan_online=`iw dev ${ip_interface} station dump 2>/dev/null|grep -i -w ${2}|grep Station` >/dev/null 2>&1
+	ip_interface=`getinterface ${2}`
+	[ "$iw_version" ] && [ "$ip_interface" ] && wlan_online=`iw dev ${ip_interface} station dump 2>/dev/null|grep -i -w ${2}|grep Station` >/dev/null 2>&1
 	[ "$wlan_online" ] && return 0
+	arplist=$(cat /proc/net/arp)
 	for i in `seq 1 ${4}`; do
-		( ! echo "$ip_ms"|grep -q "ms" ) && local interface=`cat /proc/net/arp|grep -w ${1}|awk '{print $6}'|grep -v "^$"|sort -u|head -n1` && [ ! -z "$interface" ] && local ip_ms=`arping -I ${interface} -c 20 -f -w ${3} ${1}` 2>/dev/null
-		( ! echo "$ip_ms"|grep -q "ms" ) && local ip_ms=`ping -c 5 -w ${3} ${1}|grep -v '100% packet loss'` 2>/dev/null
+		[ "$(echo "$arplist"|grep -i -w "${2}"|wc -l)" -eq 1 ] && interface=$(echo "$arplist"|grep -w ${1}|awk '{print $6}'|grep -v "^$"|sort -u|head -n1) && [ ! -z "$interface" ] && ip_ms=`arping -I ${interface} -c 20 -f -w ${3} ${1}` 2>/dev/null
+		( ! echo "$ip_ms"|grep -q "ms" ) && ip_ms=`ping -c 5 -w ${3} ${1}|grep -v '100% packet loss'` 2>/dev/null
 		( ! echo "$ip_ms"|grep -q "ms" ) && sleep 1
 	done
-	( echo "$ip_ms"|grep -q "ms" )
+	echo "$ip_ms"|grep -q "ms"
 }
 
 # CPU 占用率
@@ -536,6 +536,7 @@ function rand(){
 # 在线设备列表
 function serverchan_first(){
 	[ -f "${dir}ipAddress" ] && local IPLIST_ipAddress=`cat ${dir}ipAddress|awk '{print $1}'|grep -v "^$"|sort -u`
+	getgateway
 	for ip in $IPLIST_ipAddress; do
 		[ ! -z "$passive_option" ] && [ "$passive_option" -eq "1" ] && break
 		read -u 5
@@ -547,7 +548,7 @@ function serverchan_first(){
 	wait
 
 	local IPLIST=`cat /proc/net/arp|grep "0x2\|0x6"|awk '{print $1}'|grep -v "^169.254."|grep -v "^$"|sort -u|grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'`
-	gatewayinfo=`getgateway`
+	gatewayinfo=`cat ${dir}gateway_info`
 	local gateway_iplist=`echo "${gatewayinfo}"|awk '{print $1}'`
 	[ ! -z "$gateway_iplist" ] && local IPLIST=`echo -e "${IPLIST}\n${gateway_iplist}"|grep -v "^$"|sort -u`
 	for ip in $IPLIST; do
@@ -891,11 +892,7 @@ function ip_changes(){
 		[ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -ne "0" ] && content="${content}${str_linefeed}${str_tab}当前IPv6：${IPv6}"
 	fi
 
-	# IP 变化，悄咪咪的重启 ddns 和 zerotier
-	# 因 zerotier 的陈年老问题，断网后不能重新打洞，我也不知道修了没有
-	# 这个私货其实一直悄咪咪的在代码里存着，一直想做个开关但是我又好懒
-	# emmm，这个说明就不放网页上了，怕被喷哈哈哈哈哈哈哈哈哈
-	# ddns 之前好像也有问题，应该修了吧，没用 ddns，懒得试了，先删了
+	# IP 变化，悄咪咪的重启 zerotier
 	if [ ! -z "$content" ] && [ -n "$zerotier_helper" ] && [ "$zerotier_helper" -eq "1" ];then
 		[ -z "$zerotier_enabled" ] && zerotier_enabled=$(uci get zerotier.sample_config.enabled)
 		if [ ! -z "$zerotier_enabled" ] && [ $zerotier_enabled -eq "1" ] ; then
@@ -977,6 +974,7 @@ function down(){
 		LockFile lock
 		[ ! -f "${dir}send_enable.lock" ] && cat ${dir}ipAddress|grep -w ${1}|grep -v "^$"|sort -u|head -n1 >> ${dir}tmp_downlist
 		sed -i "/^${1} /d" ${dir}ipAddress
+		sed -i "/^${1} /d" ${dir}gateway_info
 		rm -f ${dir}client/${1} >/dev/null 2>&1
 		LockFile unlock
 	# 更新主机名或 MAC
