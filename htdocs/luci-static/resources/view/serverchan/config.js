@@ -223,7 +223,7 @@ return view.extend({
 				return fs.write('/usr/share/serverchan/api/diy.json', formvalue.trim().replace(/\r\n/g, '\n') + '\n');
 			});
 		};
-		o.description = _('请参照注释和其他接口文件修改，精力有限，不再支持更多接口，自行调试<br />请参考类似网站检查 json 文件格式：https://www.baidu.com/s?wd=json在线解析');
+		o.description = _('请参照注释和其他接口文件修改，精力有限，不再支持更多接口，自行调试<br />请参考类似网站检查 json 文件格式：https://www.baidu.com/s?wd=json在线解析<br/>文本框请使用 "保存" 按钮');
 		o.depends('jsonpath', '/usr/share/serverchan/api/diy.json');
 		
 
@@ -306,7 +306,6 @@ return view.extend({
 		o.depends('serverchan_ipv4', '1');
 
 		o = s.taboption('content', form.TextValue, 'ipv4_list', _('IPv4 API列表'));
-		o.description = _('从以上列表中随机地址访问');
 		o.depends('serverchan_ipv4', '2');
 		o.optional = false;
 		o.rows = 8;
@@ -322,7 +321,8 @@ return view.extend({
 				return fs.write('/usr/share/serverchan/api/ipv4.list', formvalue.trim().replace(/\r\n/g, '\n') + '\n');
 			});
 		};
-		
+		o.description = _('从以上列表中随机地址访问<br/>文本框请使用 "保存" 按钮');
+
 		o = s.taboption('content', form.Button, '_update_ipv4_list', _('更新 ipv4_list'));
 		o.inputstyle = 'add';
 		o.onclick = function () {
@@ -359,7 +359,6 @@ return view.extend({
 		o.depends('serverchan_ipv6', '1');
 
 		o = s.taboption('content', form.TextValue, 'ipv6_list', _('IPv6 API列表'));
-		o.description = _('从以上列表中随机地址访问');
 		o.depends('serverchan_ipv6', '2')
 		o.rows = 8;
 		o.wrap = 'oft';
@@ -374,7 +373,8 @@ return view.extend({
 				return fs.write('/usr/share/serverchan/api/ipv6.list', formvalue.trim().replace(/\r\n/g, '\n') + '\n');
 			});
 		};
-				
+		o.description = _('从以上列表中随机地址访问<br/>文本框请使用 "保存" 按钮');
+
 		o = s.taboption('content', form.Button, '_update_ipv6_list', _('更新 ipv6_list'));
 		o.inputstyle = 'add';
 		o.onclick = function () {
@@ -516,7 +516,7 @@ return view.extend({
 			});
 		};
 		o.depends('web_login_black', '1');
-		o.description = _('可在此处添加或删除，timeout 后的数字为剩余时间(秒)，添加时只需要输入 IP');
+		o.description = _('可在此处添加或删除，后面的数字为剩余时间，添加时只需要输入 IP<br/>清空时请保留一个回车，不然无法保存 ╮(╯_╰)╭<br/>文本框请使用 "保存" 按钮');
 
 		// 定时推送
 		o = s.taboption('crontab', cbiRichListValue, 'crontab', _('定时任务设定'));

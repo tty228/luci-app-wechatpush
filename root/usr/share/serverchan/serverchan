@@ -116,9 +116,11 @@ function serverchan_init(){
 	[ -n "$notification_load" ] && [ -n "$cpuload" ] && local cpu_fuzai=`cat /proc/loadavg|awk '{print $1}'` 2>/dev/null || local cpu_fuzai="null"
 	[ -z "$cpu_fuzai" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法读取设备负载，请检查命令" >> ${logfile}
 
-	set_ip_black
 	[ -n "$port_knocking" ] && [ "$port_knocking" -eq "1" ] && init_ip_white "ipv4"
 	[ -n "$port_knocking" ] && [ "$port_knocking" -eq "1" ] && init_ip_white "ipv6"
+	[ -n "$web_login_black" ] && [ "$web_login_black" -eq "1" ] && init_ip_black "ipv4"
+	[ -n "$web_login_black" ] && [ "$web_login_black" -eq "1" ] && init_ip_black "ipv6"
+	set_ip_black
 	return 0
 }
 
@@ -781,7 +783,7 @@ function rand_geturl(){
 				geterrdevicealiases
 				if [ "$?" -eq "0" ]; then
 					[ -f /usr/share/serverchan/autoreboot_count ] && retry_count=`cat /usr/share/serverchan/autoreboot_count` && rm -f /usr/share/serverchan/autoreboot_count >/dev/null 2>&1
-					[ ! -z ${retry_count} ] && retry_count=0;retry_count=`expr $retry_count + 1`
+					[ ! -z "${retry_count}" ] && retry_count=0;retry_count=`expr $retry_count + 1`
 					if [ "$network_err_event" -eq "1" ] ;then
 						if [ "$retry_count" -lt "3" ] ;then
 							echo "$retry_count" > /usr/share/serverchan/autoreboot_count
@@ -1144,6 +1146,8 @@ EOF
 function login_send(){
 	[ -n "$port_knocking" ] && [ "$port_knocking" -eq "1" ] && init_ip_white "ipv4"
 	[ -n "$port_knocking" ] && [ "$port_knocking" -eq "1" ] && init_ip_white "ipv6"
+	[ -n "$web_login_black" ] && [ "$web_login_black" -eq "1" ] && init_ip_black "ipv4"
+	[ -n "$web_login_black" ] && [ "$web_login_black" -eq "1" ] && init_ip_black "ipv6"
 	[ -z "$web_logged" ] && [ -z "$ssh_logged" ] && [ -z "$web_login_failed" ] && [ -z "$ssh_login_failed" ] && return
 	[ ! -f ${dir}login_monitor ] && return
 	# 登录
@@ -1274,26 +1278,26 @@ function login_send(){
 function add_ip_white() {
 	[ -n "$port_knocking" ] && [ "$port_knocking" -eq "1" ] || return
 	# 检查 IP 版本
-	( echo "$1"|grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$' ) && local ipset_name="ip_whitelist"
-	( echo "$1"|grep -Eq '^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$' ) && local ipset_name="ip_whitelistv6"
-	[ -z $ipset_name ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【!!!】白名单添加失败，IP 格式错误" >> ${logfile} && return
+	( echo "$1"|grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$' ) && local ipset_name="serverchan_whitelist"
+	( echo "$1"|grep -Eq '^([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}$' ) && local ipset_name="serverchan_whitelistv6"
+	[ -z "$ipset_name" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【!!!】白名单添加失败，IP 格式错误" >> ${logfile} && return
 
-	( opkg list-installed|grep -w -q ^firewall4 ) && nft list set inet fw4 $ipset_name >/dev/null 2>&1|grep $1 >/dev/null 2>&1 && nft delete element inet fw4 $ipset_name { $1 } >/dev/null 2>&1
+	( opkg list-installed|grep -w -q ^firewall4 ) && nft delete element inet fw4 $ipset_name { $1 } >/dev/null 2>&1
 	( opkg list-installed|grep -w -q ^firewall4 ) && nft add element inet fw4 $ipset_name { $1 } && return #没找到刷新时间的命令，删除再添加
 	ipset -exist add $ipset_name $1 timeout $ip_white_timeout
 }
 
 # 初始化白名单
 function init_ip_white() {
-	[ -z $web_login_black ] && [ -z $port_knocking ] && return
+	[ -n "$port_knocking" ] && [ "$port_knocking" -eq "1" ] || return
 	# 设置 IP 版本变量
 	if [ $1=="ipv4" ]; then
-		local ipset_name="ip_whitelist"
-		local ip_version="ip"
+		ipset_name="serverchan_whitelist"
+		ip_version="ip"
 	elif [ $1=="ipv6" ]; then
-		local ipset_name="ip_whitelistv6"
-		local ip_version="ip6"
-		local nat_table_cmd="family inet6"
+		ipset_name="serverchan_whitelistv6"
+		ip_version="ip6"
+		nat_table_cmd="family inet6"
 	fi
 
 	if ( opkg list-installed|grep -w -q ^firewall4 ); then
@@ -1305,15 +1309,15 @@ function init_ip_white() {
 	fi
 
 	# 端口放行
-	if [ ! -z $ip_port_white ]; then
+	if [ ! -z "$ip_port_white" ]; then
 		local ip_port_white=`echo "$ip_port_white"|sed 's/ //g'|sed 's/,/, /g'` 2>/dev/null
 		if ( opkg list-installed|grep -w -q ^firewall4 ); then
-			local count_accept_rules=`nft list ruleset | grep -c "tcp dport.* ${ip_port_white}.* $ip_version saddr @${ipset_name} counter packets .* accept comment \"!serverchan Accept rule\""`
+			local count_accept_rules=`nft list ruleset | grep -c "tcp dport.* ${ip_port_white}.* $ip_version saddr @${ipset_name} counter packets .* accept comment \"\!serverchan Accept rule\""`
 			if [ $count_accept_rules -eq 0 ]; then
-				nft insert rule inet fw4 input tcp dport { $ip_port_white } $ip_version saddr @$ipset_name counter accept comment \"!serverchan Accept rule\" >/dev/null 2>&1
+				nft insert rule inet fw4 input tcp dport { $ip_port_white } $ip_version saddr @$ipset_name counter accept comment \"\!serverchan Accept rule\" >/dev/null 2>&1
 			elif [ $count_accept_rules -ne 1 ]; then
 				local i=0
-				local handles=`nft --handle list ruleset | grep "!serverchan Accept rule" | grep -v "tcp dport.* ${ip_port_white}.* $ip_version saddr @${ipset_name} counter packets .* accept comment \"!serverchan Accept rule\"" | awk '{print $NF}'`
+				local handles=`nft --handle list ruleset | grep "\!serverchan Accept rule" | grep -v "tcp dport.* ${ip_port_white}.* $ip_version saddr @${ipset_name} counter packets .* accept comment \"\!serverchan Accept rule\"" | awk '{print $NF}'`
 				for handle in $handles; do
 					[ $i -eq 0 ] && i=1 && continue
 					nft delete rule $handle
@@ -1333,8 +1337,8 @@ function init_ip_white() {
 		local dst_ip=`echo ${port_forward}|awk '{print $3}'`
 		local dst_port=`echo ${port_forward}|awk '{print $4}'`
 		if ( opkg list-installed|grep -w -q ^firewall4 ); then
-			! nft list ruleset|grep "$ip_version saddr @${ipset_name} tcp dport $src_port counter .* dnat $ip_version to $dst_ip:$dst_port comment \"!serverchan DNAT rule\"" >/dev/null 2>&1 && nft insert rule inet fw4 serverchan_dstnat meta nfproto $1 $ip_version saddr @${ipset_name} tcp dport $src_port counter dnat to "$dst_ip:$dst_port" comment \"!serverchan DNAT rule\" >/dev/null 2>&1
-			! nft list ruleset|grep "$ip_version daddr $dst_ip tcp dport $dst_port counter .* snat $ip_version to $src_ip comment \"!serverchan SNAT rule\"" >/dev/null 2>&1 && nft insert rule inet fw4 serverchan_srcnat $ip_version daddr $dst_ip tcp dport $dst_port counter snat to $src_ip comment \"!serverchan SNAT rule\" >/dev/null 2>&1
+			! nft list ruleset|grep "$ip_version saddr @${ipset_name} tcp dport $src_port counter .* dnat $ip_version to $dst_ip:$dst_port comment \"\!serverchan DNAT rule\"" >/dev/null 2>&1 && nft insert rule inet fw4 serverchan_dstnat meta nfproto $1 $ip_version saddr @${ipset_name} tcp dport $src_port counter dnat to "$dst_ip:$dst_port" comment \"\!serverchan DNAT rule\" >/dev/null 2>&1
+			! nft list ruleset|grep "$ip_version daddr $dst_ip tcp dport $dst_port counter .* snat $ip_version to $src_ip comment \"\!serverchan SNAT rule\"" >/dev/null 2>&1 && nft insert rule inet fw4 serverchan_srcnat $ip_version daddr $dst_ip tcp dport $dst_port counter snat to $src_ip comment \"\!serverchan SNAT rule\" >/dev/null 2>&1
 		else
 			${ip_version}tables -t nat -C PREROUTING -m set --match-set $ipset_name src -p tcp --dport $src_port -j DNAT --to-destination "$dst_ip:$dst_port" >/dev/null 2>&1 || ${ip_version}tables -t nat -I PREROUTING -m set --match-set $ipset_name src -p tcp --dport $src_port -j DNAT --to-destination "$dst_ip:$dst_port" >/dev/null 2>&1
 			${ip_version}tables -t nat -C POSTROUTING -m set --match-set $ipset_name src -p tcp -d $dst_ip --dport $dst_port -j SNAT --to-source $src_ip >/dev/null 2>&1 || ${ip_version}tables -t nat -I POSTROUTING -m set --match-set $ipset_name src -p tcp -d $dst_ip --dport $dst_port -j SNAT --to-source $src_ip >/dev/null 2>&1
@@ -1343,64 +1347,78 @@ function init_ip_white() {
 	unset port_forward
 }
 
-# 封禁 iptables 暂时还可以使用，以后再说吧
+# 初始化黑名单规则
+function init_ip_black(){
+	[ -n "$web_login_black" ] && [ "$web_login_black" -eq "1" ] || return
+	# 设置 IP 版本变量
+	if [ $1=="ipv4" ]; then
+		ipset_name="serverchan_blacklist"
+		ip_version="ip"
+	elif [ $1=="ipv6" ]; then
+		ipset_name="serverchan_blacklistv6"
+		ip_version="ip6"
+		nat_table_cmd="family inet6"
+	fi
+	
+	if ( opkg list-installed|grep -w -q ^firewall4 ); then
+		! nft list set inet fw4 ${ipset_name} >/dev/null 2>&1 && nft add set inet fw4 ${ipset_name} { type ${1}_addr\; flags timeout\; timeout ${ip_black_timeout}s\; }
+		! nft list ruleset|grep "$ip_version saddr @${ipset_name} counter .* comment \"\!serverchan Drop rule\"" >/dev/null 2>&1 && nft insert rule inet fw4 input $ip_version saddr @${ipset_name} counter drop comment \"\!serverchan Drop rule\" >/dev/null 2>&1
+	else
+		ipset list $ipset_name >/dev/null 2>&1 || ipset create ${ipset_name} hash:ip timeout ${ip_black_timeout} ${nat_table_cmd} >/dev/null 2>&1
+		${ip_version}tables -C INPUT -m set --match-set ${ipset_name} src -j DROP >/dev/null 2>&1 || ${ip_version}tables -I INPUT -m set --match-set ${ipset_name} src -j DROP >/dev/null 2>&1
+	fi
+}
+
 # 添加黑名单
 function add_ip_black(){
 	[ ! "$1" ] && return
-	( ipset -q test ip_blacklist ${1} ) && continue
-	( ipset -q test ip_blacklistv6 ${1} ) && continue
+	# 检查 IP 版本
+	( echo "$1"|grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$' ) && ipset_name="serverchan_blacklist"
+	( echo "$1"|grep -Eq '^([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}$' ) && ipset_name="serverchan_blacklistv6"
+	[ -z "$ipset_name" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【!!!】黑名单添加失败，IP 格式错误" >> ${logfile} && return
 
-	[ "$1" ] && echo "$1 timeout ${ip_black_timeout}" >> ${ip_blacklist_path}
-	# 检查并添加
-	if ( echo ${1}|grep -q -Eo "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" ); then
-		ipset list ip_blacklist >/dev/null 2>&1 || ipset create ip_blacklist hash:ip timeout ${ip_black_timeout} >/dev/null 2>&1
-		iptables -C INPUT -m set --match-set ip_blacklist src -j DROP >/dev/null 2>&1 || iptables -I INPUT -m set --match-set ip_blacklist src -j DROP >/dev/null 2>&1
-		ipset add ip_blacklist ${1} timeout ${ip_black_timeout}
-	elif ( echo ${1}|grep -q -oE "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}" ); then
-		ipset list ip_blacklistv6 >/dev/null 2>&1 || ipset create ip_blacklistv6 hash:ip timeout ${ip_black_timeout} family inet6 >/dev/null 2>&1
-		ip6tables -C INPUT -m set --match-set ip_blacklistv6 src -j DROP >/dev/null 2>&1 || ip6tables -I INPUT -m set --match-set ip_blacklistv6 src -j DROP >/dev/null 2>&1
-		ipset add ip_blacklistv6 ${1} timeout ${ip_black_timeout}
-	fi
+	! cat ${ip_blacklist_path}|grep -q -w -i ${1} && echo "$1 timeout ${ip_black_timeout}" >> ${ip_blacklist_path}
+
+	( opkg list-installed|grep -w -q ^firewall4 ) && nft add element inet fw4 ${ipset_name} { $1 } >/dev/null 2>&1
+	( opkg list-installed|grep -w -q ^firewall4 ) && return
+
+	ipset -exist add $ipset_name ${1} timeout ${ip_black_timeout}
 }
 
 # 移出黑名单
 function del_ip_black(){
 	[ ! "$1" ] && return
-
 	sed -i "/^${1}/d" ${ip_blacklist_path}
-	if ( echo ${1}|grep -q -Eo "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}" ); then
-		ipset list ip_blacklist >/dev/null 2>&1 && ipset -! del ip_blacklist ${1}
-	elif ( echo ${1}|grep -oE "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}" ); then
-		ipset list ip_blacklistv6 >/dev/null 2>&1 && ipset -! del ip_blacklistv6 ${1}
-	fi
+	
+	# 检查 IP 版本
+	( echo "$1"|grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$' ) && ipset_name="serverchan_blacklist"
+	( echo "$1"|grep -Eq '^([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}$' ) && ipset_name="serverchan_blacklistv6"
+	[ -z "$ipset_name" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【!!!】黑名单删除失败，IP 格式错误" >> ${logfile} && return
+	
+	( opkg list-installed|grep -w -q ^firewall4 ) && nft delete element inet fw4 ${ipset_name} { $1 } >/dev/null 2>&1
+	( opkg list-installed|grep -w -q ^firewall4 ) && return
+	ipset list ${ipset_name} >/dev/null 2>&1 && ipset -! del ${ipset_name} ${1}
 }
 
 # 设置防火墙列表
 function set_ip_black(){
 	# 检查换行，避免出错
 	[ `tail -n1 "${ip_blacklist_path}" | wc -l` -eq "0" ] && echo -e >> ${ip_blacklist_path}
-	# 如果黑名单列表为空，移除集合并退出
-	if [ ! -z "$web_login_black" ] && [ "$web_login_black" -eq "0" ] || [ -z "$web_login_black" ] || [ ! -f ${ip_blacklist_path} ] || [ -z "`cat ${ip_blacklist_path}`" ]; then
-		iptables -D INPUT -m set --match-set ip_blacklist src -j DROP >/dev/null 2>&1
-		ipset destroy ip_blacklist >/dev/null 2>&1
-		ip6tables -D INPUT -m set --match-set ip_blacklistv6 src -j DROP >/dev/null 2>&1
-		ipset destroy ip_blacklistv6 >/dev/null 2>&1
-		return
-	fi
+
 	# 从 ip_blacklist 文件逐行添加黑名单，add_ip_black() 处验证是否重复
 	for ip_black in `cat ${ip_blacklist_path}|awk '{print $1}'`; do
 		add_ip_black ${ip_black}
 	done
-	# 当 ip_blacklist 文件清除 IP 时，移除防火墙规则
-	for fw_ip_blacklist in `ipset list ip_blacklist 2>/dev/null|grep -Eo "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}"`; do
-		[ -z "$fw_ip_blacklist" ] && continue
-		local fw_info_blacklist=`ipset list ip_blacklist 2>/dev/null|grep -w -i ${fw_ip_blacklist}`
-		cat ${ip_blacklist_path}|grep -q -w -i ${fw_ip_blacklist} && sed -i "/^${fw_ip_blacklist}/d" ${ip_blacklist_path} && echo ${fw_info_blacklist} >> ${ip_blacklist_path} || del_ip_black ${fw_ip_blacklist}
-	done
-	for fw_ip_blacklistv6 in `ipset list ip_blacklistv6 2>/dev/null|grep -Eo "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}"`; do
-		[ -z "$fw_ip_blacklistv6" ] && continue
-		local fw_info_blacklistv6=`ipset list ip_blacklistv6 2>/dev/null|grep -w -i ${fw_ip_blacklistv6}`
-		cat ${ip_blacklist_path}|grep -q -w -i ${fw_ip_blacklistv6} && sed -i "/^${fw_ip_blacklistv6}/d" ${ip_blacklist_path} && echo ${fw_info_blacklistv6} >> ${ip_blacklist_path} || del_ip_black ${fw_ip_blacklistv6}
+	# 当 ip_blacklist 文件清除 IP 时，从集合中清除 IP
+	fw_info_blacklist=$(nft list set inet fw4 ${ipset_name} | tr -d '\n' | grep -oE 'elements = \{[^}]*\}' | grep -oE '[^{}]+ expires [^,}]+[,\}]' | tr ',}' '\n' | tr -s ' ' | sed -e 's/^[[:space:]]*//')
+	[ -z "$fw_info_blacklist" ] && fw_info_blacklist=$(ipset list ${ipset_name} | grep "timeout" 2>/dev/null)
+
+	IFS=$'\n'
+	for ip_black_info in `echo "$fw_info_blacklist"`; do
+		ip_black=$(echo "$ip_black_info"|grep -Eo "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}")
+		[ -z "$ip_black" ] && ip_black=$(echo "$ip_black_info"|grep -Eo "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}")
+		[ -z "$ip_black" ] && continue
+		cat ${ip_blacklist_path}|grep -q -w -i ${ip_black} && sed -i "/^${ip_black}/d" ${ip_blacklist_path} && echo ${ip_black_info} >> ${ip_blacklist_path} || del_ip_black ${ip_black}
 	done
 }
 
