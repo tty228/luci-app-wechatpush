@@ -235,11 +235,12 @@ function getinterfaceuptime(){
 # 查询 MAC 地址
 function getmac(){
 	# 已保存的 MAC
-	[ -f "${dir}ipAddress" ] && local tmp_mac=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
-	( echo "$tmp_mac"|grep -q "unknown" ) && unset tmp_mac # 为unknown时重新读取
+	[ -f "${dir}ipAddress" ] && local tmp_mac=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $2}'|grep -v "^$"`
+	( echo "$tmp_mac"|grep -q "unknown" ) && unset tmp_mac # 为 unknown 时重新读取
+	[ "$(grep -w "${tmp_mac}" "${dir}ipAddress" | wc -l)" -gt 1 ] && unset tmp_mac # 某些路由器中继模式，会进行 MAC 克隆，重复值重新读取
 	[ -f "${dir}tmp_downlist" ] && [ -z "$tmp_mac" ] && local tmp_mac=`cat ${dir}tmp_downlist|grep -w ${1}|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
 	# DHCP
-	( echo "$tmp_mac"|grep -q "unknown" ) && unset tmp_mac # 为unknown时重新读取
+	( echo "$tmp_mac"|grep -q "unknown" ) && unset tmp_mac # 为 unknown 时重新读取
 	[ -f "/tmp/dhcp.leases" ] && [ -z "$tmp_mac" ] && local tmp_mac=`cat /tmp/dhcp.leases|grep -w ${1}|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
 	# arp
 	[ -z "$tmp_mac" ] && local tmp_mac=`cat /proc/net/arp|grep "0x2\|0x6"|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`

@@ -131,15 +131,21 @@ return view.extend({
 		// 基本设置
 		o = s.taboption('basic', form.Flag, 'serverchan_enable', _('启用'));
 
-		o = s.taboption('basic', form.ListValue, 'jsonpath', _('推送模式'));
-		o.default = '/usr/share/serverchan/api/serverchan.json';
-		o.value('/usr/share/serverchan/api/serverchan.json', _('微信 Server酱'));
-		o.value('/usr/share/serverchan/api/qywx_mpnews.json', _('企业微信 图文消息'));
-		o.value('/usr/share/serverchan/api/qywx_markdown.json', _('企业微信 markdown版（不支持公众号）'));
-		o.value('/usr/share/serverchan/api/wxpusher.json', _('wxpusher'));
-		o.value('/usr/share/serverchan/api/pushplus.json', _('pushplus'));
-		o.value('/usr/share/serverchan/api/telegram.json', _('Telegram'));
-		o.value('/usr/share/serverchan/api/diy.json', _('自定义推送'));
+		o = s.taboption('basic', cbiRichListValue, 'jsonpath', _('推送模式'));
+		o.value('/usr/share/serverchan/api/serverchan.json', _('微信 Server酱'),
+			_('使用 Server酱 接口，配置较简单，支持多项推送方式'));
+		o.value('/usr/share/serverchan/api/qywx_mpnews.json', _('企业微信 图文消息'),
+			_('使用 企业微信应用消息，配置较为麻烦，且 2022 年 6 月 20 日之后新创建的应用，需要额外配置可信IP，可信IP不可公用，不再推荐此通道'));
+		o.value('/usr/share/serverchan/api/qywx_markdown.json', _('企业微信 markdown版'),
+			_('企业微信应用消息 纯文字版，无需点击标题查看内容，其他同上'));
+		o.value('/usr/share/serverchan/api/wxpusher.json', _('wxpusher'),
+			_('微信推送的另一个通道，配置较简单，只支持公众号'));
+		o.value('/usr/share/serverchan/api/pushplus.json', _('pushplus'),
+			_('微信推送的另一个通道，配置较简单，支持多项推送方式'));
+		o.value('/usr/share/serverchan/api/telegram.json', _('Telegram'),
+			_('Telegram 推送，通过 chatid 若无梯子，请勿使用'));
+		o.value('/usr/share/serverchan/api/diy.json', _('自定义推送'),
+			_('通过修改 json 文件，使用自定义接口'));
 
 		o = s.taboption('basic', form.Value, 'sckey', _('微信推送/新旧共用'));
 		o.description = _('Server酱 sendkey') + ' <a href="https://sct.ftqq.com/" target="_blank">' + _('点击这里') + '</a>';
@@ -199,7 +205,7 @@ return view.extend({
 		o.depends('jsonpath', '/usr/share/serverchan/api/telegram.json');
 
 		o = s.taboption('basic', form.Value, 'chat_id', _('TG_chatid'));
-		o.description = _('获取 chat_id') + ' <a href="https://t.me/getuserIDbot" target="_blank">' + _('点击这里') + '</a>';
+		o.description = _('获取 chat_id') + ' <a href="https://t.me/getuserIDbot" target="_blank">' + _('点击这里') + '</a>' + ('<br />如需通过 群组/频道 推送，请创建一个非中文的群组或频道（便于查找 chatid，后续再更名）<br />将机器人添加至群组，发送信息后通过 https://api.telegram.org/bot *token* /getUpdates 获取');
 		o.rmempty = false;
 		o.depends('jsonpath', '/usr/share/serverchan/api/telegram.json');
 
@@ -217,7 +223,9 @@ return view.extend({
 				return fs.write('/usr/share/serverchan/api/diy.json', formvalue.trim().replace(/\r\n/g, '\n') + '\n');
 			});
 		};
+		o.description = _('请参照注释和其他接口文件修改，精力有限，不再支持更多接口，自行调试<br />请参考类似网站检查 json 文件格式：https://www.baidu.com/s?wd=json在线解析');
 		o.depends('jsonpath', '/usr/share/serverchan/api/diy.json');
+		
 
 		o = s.taboption('basic', form.Button, '_test', _('发送测试'), _('你可能需要先保存配置再进行发送'));
 		o.inputstyle = 'add';
