@@ -143,7 +143,7 @@ return view.extend({
 		o.value('/usr/share/serverchan/api/pushplus.json', _('pushplus'),
 			_('微信推送的另一个通道，配置较简单，支持多项推送方式'));
 		o.value('/usr/share/serverchan/api/telegram.json', _('Telegram'),
-			_('Telegram 推送，通过 chatid 若无梯子，请勿使用'));
+			_('Telegram bot 推送，若无梯子，请勿使用'));
 		o.value('/usr/share/serverchan/api/diy.json', _('自定义推送'),
 			_('通过修改 json 文件，使用自定义接口'));
 
@@ -286,8 +286,21 @@ return view.extend({
 
 		o = s.taboption('basic', form.Flag, 'debuglevel', _('开启日志'));
 
-		o = s.taboption('basic', form.DynamicList, 'device_aliases', _('设备别名'));
-		o.description = _('<br/> 请输入设备 MAC 和设备别名，用“-”隔开，如：<br/> XX:XX:XX:XX:XX:XX-我的手机');
+		o = s.taboption('basic', form.TextValue, '_device_aliases', _('设备别名'));
+		o.rows = 20;
+		o.wrap = 'oft';
+		o.cfgvalue = function (section_id) {
+			return fs.trimmed('/usr/share/serverchan/api/device_aliases.list');
+		};
+		o.write = function (section_id, formvalue) {
+			return this.cfgvalue(section_id).then(function (value) {
+				if (value == formvalue) {
+					return
+				}
+				return fs.write('/usr/share/serverchan/api/device_aliases.list', formvalue.trim().replace(/\r\n/g, '\n') + '\n');
+			});
+		};
+		o.description = _('请输入设备 MAC 和设备别名，用 " " 隔开，如：<br/> XX:XX:XX:XX:XX:XX 我的手机');
 
 		// 推送内容
 		o = s.taboption('content', cbiRichListValue, 'serverchan_ipv4', _('IPv4 变动通知'));
@@ -360,6 +373,7 @@ return view.extend({
 
 		o = s.taboption('content', form.TextValue, 'ipv6_list', _('IPv6 API列表'));
 		o.depends('serverchan_ipv6', '2')
+		o.optional = false;
 		o.rows = 8;
 		o.wrap = 'oft';
 		o.cfgvalue = function (section_id) {
@@ -501,7 +515,6 @@ return view.extend({
 		o.depends('port_knocking', '1');
 
 		o = s.taboption('ipset', form.TextValue, 'ip_black_list', _('IP 黑名单列表'));
-		o.optional = false;
 		o.rows = 8;
 		o.wrap = 'soft';
 		o.cfgvalue = function (section_id) {

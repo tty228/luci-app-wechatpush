@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-serverchan
-PKG_VERSION:=2.08.3
+PKG_VERSION:=2.09.0
 PKG_RELEASE:=10
 
 PKG_MAINTAINER:=tty228 <tty228@yeah.net>
@@ -16,6 +16,7 @@ define Package/$(PKG_NAME)/conffiles
 /usr/share/serverchan/api/logo.jpg
 /usr/share/serverchan/api/ipv4.list
 /usr/share/serverchan/api/ipv6.list
+/usr/share/serverchan/api/device_aliases.list
 endef
 
 include $(TOPDIR)/feeds/luci/luci.mk

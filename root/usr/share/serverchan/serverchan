@@ -30,7 +30,7 @@ wait_and_cat() {
 
 # 初始化设置信息
 function read_config(){
-	get_config "serverchan_enable" "lite_enable" "device_name" "sleeptime" "oui_data" "reset_regularly" "debuglevel" "device_aliases" \
+	get_config "serverchan_enable" "lite_enable" "device_name" "sleeptime" "oui_data" "reset_regularly" "debuglevel" \
 	"serverchan_ipv4" "ipv4_interface" "serverchan_ipv6" "ipv6_interface" "update_list" "zerotier_helper" "device_notification" "cpu_notification" "cpuload" "temperature" "client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" "login_notification" "login_max_num" "web_login_black" "ip_white_list" "ip_black_timeout" "port_knocking" "ip_white_timeout" "ip_port_white" "port_forward_list" \
 	"regular_time" "interval_time" \
 	"serverchan_sheep" "starttime" "endtime" "serverchan_whitelist" "serverchan_blacklist" "serverchan_interface" "MAC_online_list" "MAC_offline_list" "login_disturb" "login_notification_delay" \
@@ -56,7 +56,7 @@ function read_config(){
 	debuglevel=`echo "$debuglevel"` && [ -z "$debuglevel" ] && logfile="/dev/null" || logfile="${dir}serverchan.log"
 	serverchan_blacklist=`echo "$serverchan_blacklist"|sed 's/ /\n/g'` 2>/dev/null
 	serverchan_whitelist=`echo "$serverchan_whitelist"|sed 's/ /\n/g'` 2>/dev/null
-	device_aliases=`echo "$device_aliases"|sed 's/ /\n/g'|sed 's/-/ /'` 2>/dev/null
+	device_aliases=`cat /usr/share/serverchan/api/device_aliases.list` 2>/dev/null
 	err_device_aliases=`echo "$err_device_aliases"|sed 's/ /\n/g'` 2>/dev/null
 	client_usage_whitelist=`echo "$client_usage_whitelist"|sed 's/ /\n/g'` 2>/dev/null
 	ip_white_list=`echo "$ip_white_list"|sed 's/ /\n/g'` 2>/dev/null
@@ -183,8 +183,8 @@ function getip(){
 		function get_hostipv4()
 		{
 			local ipv4_URL=`echo "$ipv4_urllist"| sed -n "${1}p"|sed -e 's/\r//g'`
-			[ ! -z "$ipv4_interface" ] && local tmp_hostIP=$(curl -k -s -4 --interface ${ipv4_interface} -m 5 ${ipv4_URL}) || local tmp_hostIP=$(curl -k -s -4 -m 5 ${ipv4_URL})
-			[ -z "$tmp_hostIP" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】IP 获取失败，当前使用的 API 为 $ipv4_URL，接口为：${$ipv4_interface}" >> ${logfile}
+			[ ! -z "$ipv4_interface" ] && local tmp_hostIP=$(eval "curl -k -s -4 --interface ${ipv4_interface} -m 5 ${ipv4_URL}") || local tmp_hostIP=$(eval "curl -k -s -4 -m 5 ${ipv4_URL}")
+			[ -z "$tmp_hostIP" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】IP 获取失败，当前使用的 API 为 $ipv4_URL，接口为：${ipv4_interface}" >> ${logfile}
 			local tmp_hostIP=`echo $tmp_hostIP|grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'|head -n1`
 			echo "{\"IP\":\"${tmp_hostIP}\", \"URL\":\"${ipv4_URL}\"}"
 		}
@@ -208,8 +208,8 @@ function getip(){
 		function get_hostipv6()
 		{
 			local ipv6_URL=`echo "$ipv6_urllist"| sed -n "${1}p"|sed -e 's/\r//g'`
-			[ ! -z "$ipv6_interface" ] && local tmp_hostIPv6=$(curl -k -s -6 --interface ${ipv6_interface} -m 5 ${ipv6_URL}) || local tmp_hostIPv6=$(curl -k -s -6 -m 5 ${ipv6_URL})
-			[ -z "$tmp_hostIPv6" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】IP 获取失败，当前使用的 API 为 $ipv6_URL，接口为：${$ipv6_interface}" >> ${logfile}
+			[ ! -z "$ipv6_interface" ] && local tmp_hostIPv6=$(eval "curl -k -s -6 --interface ${ipv6_interface} -m 5 ${ipv6_URL}") || local tmp_hostIPv6=$(eval "curl -k -s -6 -m 5 ${ipv6_URL}")
+			[ -z "$tmp_hostIPv6" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】IP 获取失败，当前使用的 API 为 $ipv6_URL，接口为：${ipv6_interface}" >> ${logfile}
 			local tmp_hostIPv6=`echo $tmp_hostIPv6|grep -oE "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}"|head -n1`
 			echo "{\"IP\":\"${tmp_hostIPv6}\", \"URL\":\"${ipv6_URL}\"}"
 		}
@@ -254,7 +254,7 @@ function getmac(){
 # 查询主机名
 function getname() {
 	# 自定义备注
-	local tmp_name=`echo "$device_aliases"|grep -i $2|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
+	local tmp_name=`echo "$device_aliases"|grep -i $2|awk '{ for(i=2; i<=NF; i++) printf $i " "; print "" }'|grep -v "^$"|sort -u|head -n1`
 	[ -f "${dir}ipAddress" ] && [ -z "$tmp_name" ] && local tmp_name=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
 	# 已保存的 主机名
 	echo "$tmp_name" | grep -q -w "unknown\|*" && unset tmp_name # 为unknown时重新读取
@@ -550,7 +550,7 @@ function serverchan_first(){
 	wait
 
 	local IPLIST=`cat /proc/net/arp|grep "0x2\|0x6"|awk '{print $1}'|grep -v "^169.254."|grep -v "^$"|sort -u|grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'`
-	gatewayinfo=`cat ${dir}gateway_info`
+	[ -f "${dir}gateway_info" ] && gatewayinfo=`cat ${dir}gateway_info`
 	local gateway_iplist=`echo "${gatewayinfo}"|awk '{print $1}'`
 	[ ! -z "$gateway_iplist" ] && local IPLIST=`echo -e "${IPLIST}\n${gateway_iplist}"|grep -v "^$"|sort -u`
 	for ip in $IPLIST; do
@@ -1410,8 +1410,8 @@ function set_ip_black(){
 		add_ip_black ${ip_black}
 	done
 	# 当 ip_blacklist 文件清除 IP 时，从集合中清除 IP
-	fw_info_blacklist=$(nft list set inet fw4 ${ipset_name} | tr -d '\n' | grep -oE 'elements = \{[^}]*\}' | grep -oE '[^{}]+ expires [^,}]+[,\}]' | tr ',}' '\n' | tr -s ' ' | sed -e 's/^[[:space:]]*//')
-	[ -z "$fw_info_blacklist" ] && fw_info_blacklist=$(ipset list ${ipset_name} | grep "timeout" 2>/dev/null)
+	( opkg list-installed|grep -w -q ^firewall4 ) && fw_info_blacklist=$(nft list set inet fw4 ${ipset_name} | tr -d '\n' | grep -oE 'elements = \{[^}]*\}' | grep -oE '[^{}]+ expires [^,}]+[,\}]' | tr ',}' '\n' | tr -s ' ' | sed -e 's/^[[:space:]]*//')
+	( ! opkg list-installed|grep -w -q ^firewall4 ) && fw_info_blacklist=$(ipset list ${ipset_name} | grep "timeout" 2>/dev/null)
 
 	IFS=$'\n'
 	for ip_black_info in `echo "$fw_info_blacklist"`; do
