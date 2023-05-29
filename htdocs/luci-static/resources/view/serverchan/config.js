@@ -345,8 +345,6 @@ return view.extend({
 					_this.description = _('更新成功');
 				else if (res.code === 1)
 					_this.description = _('更新失败');
-				else if (res.code === 2)
-					_this.description = _('已是最新，跳过更新');
 				return _this.map.reset();
 			}).catch(function (err) {
 				ui.addNotification(null, E('p', [_('未知错误：%s。').format(err)]));
@@ -398,8 +396,6 @@ return view.extend({
 					_this.description = _('更新成功');
 				else if (res.code === 1)
 					_this.description = _('更新失败');
-				else if (res.code === 2)
-					_this.description = _('已是最新，跳过更新');
 				return _this.map.reset();
 			}).catch(function (err) {
 				ui.addNotification(null, E('p', [_('未知错误：%s。').format(err)]));

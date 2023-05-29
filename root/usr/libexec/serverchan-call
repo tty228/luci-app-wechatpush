@@ -40,7 +40,6 @@ elif [ "$1" == "clear_log" ]; then
 elif [ "$1" == "update_list" ]; then
 	# 更新 API 列表
 	echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】开始更新 $2 API 列表" >> ${logfile}
-	[ `file_date "/usr/share/serverchan/api/${2}.list"` -lt "86400" ] && return 2 && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】今天已经尝试过了哦，可能作者跑路了，自己找几个地址吧" >> ${logfile}
 	wget --no-check-certificate -t 3 -T 15 -O "/tmp/serverchan/${2}.list" "https://raw.githubusercontent.com/tty228/luci-app-serverchan/master/root/usr/share/serverchan/api/${2}.list" >/dev/null 2>&1
 	[ "$?" -eq "0" ] && mv -f "/tmp/serverchan/${2}.list" "/usr/share/serverchan/api/${2}.list" echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】 $2 API 列表更新成功" >> ${logfile}
 elif [ "$1" == "down_oui" ]; then
