@@ -300,7 +300,7 @@ return view.extend({
 				return fs.write('/usr/share/serverchan/api/device_aliases.list', formvalue.trim().replace(/\r\n/g, '\n') + '\n');
 			});
 		};
-		o.description = _('请输入设备 MAC 和设备别名，用 " " 隔开，如：<br/> XX:XX:XX:XX:XX:XX 我的手机');
+		o.description = _('请输入设备 MAC 和设备别名，用 " " 隔开，如：<br/> XX:XX:XX:XX:XX:XX 我的手机<br/>192.168.1.2 我的电脑');
 
 		// 推送内容
 		o = s.taboption('content', cbiRichListValue, 'serverchan_ipv4', _('IPv4 变动通知'));

@@ -239,7 +239,7 @@ function getmac(){
 	# 已保存的 MAC
 	[ -f "${dir}ipAddress" ] && local tmp_mac=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $2}'|grep -v "^$"`
 	( echo "$tmp_mac"|grep -q "unknown" ) && unset tmp_mac # 为 unknown 时重新读取
-	[ -n "$tmp_mac" ] && [ "$(grep -w "${tmp_mac}" "${dir}ipAddress" | wc -l)" -gt 1 ] && unset tmp_mac # 某些路由器中继模式，会进行 MAC 克隆，重复值重新读取
+	[ -n "$tmp_mac" ] && [ "$(grep -w -i "${tmp_mac}" "${dir}ipAddress" | wc -l)" -gt "1" ] && unset tmp_mac # 某些路由器中继模式，会进行 MAC 克隆，重复值重新读取
 	[ -f "${dir}tmp_downlist" ] && [ -z "$tmp_mac" ] && local tmp_mac=`cat ${dir}tmp_downlist|grep -w ${1}|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
 	# DHCP
 	( echo "$tmp_mac"|grep -q "unknown" ) && unset tmp_mac # 为 unknown 时重新读取
@@ -252,11 +252,13 @@ function getmac(){
 }
 
 # 查询主机名
-function getname() {
+function getname(){
 	# 自定义备注
-	local tmp_name=`echo "$device_aliases"|grep -i $2|awk '{ for(i=2; i<=NF; i++) printf $i " "; print "" }'|grep -v "^$"|sort -u|head -n1`
-	[ -f "${dir}ipAddress" ] && [ -z "$tmp_name" ] && local tmp_name=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
+	local tmp_name=`echo "$device_aliases"|grep -i -w "^${1}\|^${2}"|awk '{ for(i=2; i<=NF; i++) printf $i " "; print "" }'|grep -v "^$"|sort -u|head -n1`
+	[ -n "$tmp_name" ] && echo "$tmp_name" | tr -d '\n\r' | awk '$1=$1' | sed 's/_/ /g' | sort -u | head -n1 && return
+	echo "$2" | grep -q -w "unknown\|*" && echo "unknown" && return # 当 MAC 获取失败时先不要尝试获取主机名
 	# 已保存的 主机名
+	[ -f "${dir}ipAddress" ] && [ -z "$tmp_name" ] && local tmp_name=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
 	echo "$tmp_name" | grep -q -w "unknown\|*" && unset tmp_name # 为unknown时重新读取
 	[ -z "$tmp_name" ] && [ -f "${dir}tmp_downlist" ] && local tmp_name=`cat ${dir}tmp_downlist|grep -w ${1}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
 	# 静态地址备注名
@@ -280,7 +282,7 @@ function getname() {
 	[ -z "$tmp_name" ] && [ ! -z "$oui_data" ] && [ "$oui_data" -eq "4" ] && local tmp_name=$(curl -sS "https://standards-oui.ieee.org/oui/oui.txt"|grep -i $(echo "$2"|cut -c 1,2,4,5,7,8)|sed -nr 's#^.*16)..(.*)#\1#gp')
 
 	[ -z "$tmp_name" ] && local tmp_name="unknown"
-	echo "$tmp_name" | sed 's/_/ /g' | sort -u | head -n1 | tr -d '\n\r'
+	echo "$tmp_name" | tr -d '\n\r' | awk '$1=$1' | sed 's/_/ /g' | sort -u | head -n1
 }
 
 # 从光猫处获取设备信息
@@ -572,6 +574,7 @@ function serverchan_first(){
 			ip_interface=`getinterface ${ip_mac}`
 			echo "{'ip': '${ip}','mac': '${ip_mac}','name': '${ip_name}','uptime': '0秒','interface': '${ip_interface}','usage': ''}" > ${dir}client/${ip}
 			usage down ${ip}
+			[ "$(grep -w -i "${ip_mac}" "${dir}ipAddress" | wc -l)" -ne "0" ] && ip_name="unknown" # 某些路由器中继模式，会进行 MAC 克隆，重复值将主机名设为无效
 			echo "${ip} ${ip_mac} ${ip_name// /_} `date +%s` ${ip_interface}" >> ${dir}ipAddress
 		fi
 	done
@@ -921,6 +924,7 @@ function up(){
 		# ？？？
 		if [ ! -z "$tmp_mac" ] && ( cat ${dir}ipAddress|grep -q -w -i ${tmp_mac} ); then
 			usage down ${1}
+			[ "$(grep -w -i "${ip_mac}" "${dir}ipAddress" | wc -l)" -ne "0" ] && ip_name="unknown" # 某些路由器中继模式，会进行 MAC 克隆，重复值将主机名设为无效
 			echo "${1} ${ip_mac} ${ip_name// /_} `date +%s` ${ip_interface}" >> ${dir}ipAddress
 			LockFile unlock && return
 		# ？？？
@@ -938,6 +942,7 @@ function up(){
 		# up
 		else
 			usage down $1
+			[ "$(grep -w -i "${ip_mac}" "${dir}ipAddress" | wc -l)" -ne "0" ] && ip_name="unknown" # 某些路由器中继模式，会进行 MAC 克隆，重复值将主机名设为无效
 			echo "$1 ${ip_mac} ${ip_name// /_} `date +%s` ${ip_interface}" >> ${dir}ipAddress
 			blackwhitelist ${ip_mac};local ip_blackwhite=$?
 			[ -f "${dir}send_enable.lock" ] || [ -z "$notification_online" ] || [ -z "$ip_blackwhite" ] && LockFile unlock && return
@@ -985,9 +990,10 @@ function down(){
 		local tmp_mac=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
 		if [ ${ip_name// /_} != ${tmp_name} ] || [ ${ip_mac} != ${tmp_mac} ]; then
 			LockFile lock
-			local tmp_str=$(echo "$1 ${ip_mac} ${ip_name// /_} `cat ${dir}ipAddress|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1` ${ip_interface}")
+			olduptime=$(cat ${dir}ipAddress|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1)
 			sed -i "/^${1} /d" ${dir}ipAddress
 			echo "$tmp_str" >> ${dir}ipAddress
+			echo "$1  ${ip_mac} ${ip_name// /_} ${olduptime} ${ip_interface}" >> ${dir}ipAddress
 			LockFile unlock
 		fi
 		local time_up=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`
