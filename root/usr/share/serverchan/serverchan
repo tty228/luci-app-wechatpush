@@ -992,7 +992,6 @@ function down(){
 			LockFile lock
 			olduptime=$(cat ${dir}ipAddress|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1)
 			sed -i "/^${1} /d" ${dir}ipAddress
-			echo "$tmp_str" >> ${dir}ipAddress
 			echo "$1  ${ip_mac} ${ip_name// /_} ${olduptime} ${ip_interface}" >> ${dir}ipAddress
 			LockFile unlock
 		fi
