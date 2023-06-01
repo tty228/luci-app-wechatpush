@@ -3,7 +3,7 @@
 # 读取设置文件
 function get_config(){
 	while [[ "$*" != "" ]]; do
-		eval ${1}='`uci get serverchan.serverchan.$1`' 2>/dev/null
+		eval ${1}='`uci get wechatpush.config.$1`' 2>/dev/null
 		shift
 	done
 }
@@ -30,12 +30,17 @@ wait_and_cat() {
 
 # 初始化设置信息
 function read_config(){
-	get_config "serverchan_enable" "lite_enable" "device_name" "sleeptime" "oui_data" "reset_regularly" "debuglevel" \
-	"serverchan_ipv4" "ipv4_interface" "serverchan_ipv6" "ipv6_interface" "update_list" "zerotier_helper" "device_notification" "cpu_notification" "cpuload" "temperature" "client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" "login_notification" "login_max_num" "web_login_black" "ip_white_list" "ip_black_timeout" "port_knocking" "ip_white_timeout" "ip_port_white" "port_forward_list" \
-	"regular_time" "interval_time" \
-	"serverchan_sheep" "starttime" "endtime" "serverchan_whitelist" "serverchan_blacklist" "serverchan_interface" "MAC_online_list" "MAC_offline_list" "login_disturb" "login_notification_delay" \
-	"up_timeout" "down_timeout" "timeout_retry_count" "passive_option" "thread_num" "soc_code" "server_host" "server_port" "err_enable" "err_sheep_enable" "err_device_aliases" "network_err_event" "system_time_event" "autoreboot_time" "network_restart_time" "public_ip_event" "public_ip_retry_count" \
+	get_config \
+	"enable" "lite_enable" "device_name" "sleeptime" "oui_data" "reset_regularly" "debuglevel" \
 	"jsonpath" "sckey" "corpid" "userid" "agentid" "corpsecret" "mediapath" "wxpusher_apptoken" "wxpusher_uids" "wxpusher_topicIds" "pushplus_token" "tg_token" "chat_id" \
+	"get_ipv4_mode" "ipv4_interface" "get_ipv6_mode" "ipv6_interface" "auto_update_ip_list" \
+	"device_notification" "cpu_notification" "cpu_load_threshold" "temperature_threshold" \
+	"client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" \
+	"login_notification" "login_max_num" "login_web_black" "login_ip_black_timeout" "login_ip_white_list" "port_knocking_enable" "login_ip_white_timeout" "login_port_white" "login_port_forward_list" \
+	"crontab_regular_time" "crontab_interval_time" \
+	"do_not_disturb_mode" "do_not_disturb_starttime" "do_not_disturb_endtime" "up_down_push_whitelist" "up_down_push_blacklist" "up_down_push_interface" "mac_online_list" "mac_offline_list" "login_disturb" "login_notification_delay" \
+	"up_timeout" "down_timeout" "timeout_retry_count" "passive_mode" "thread_num" "soc_code" "server_host" "server_port" \
+	"unattended_enable" "zerotier_helper" "unattended_only_on_disturb_time" "unattended_device_aliases" "network_disconnect_event" "unattended_autoreboot_mode" "autoreboot_system_uptime" "autoreboot_network_uptime" \
 	"gateway_info_enable" "gateway_host_url" "gateway_info_url" "gateway_logout_url" "gateway_username_id" "gateway_password_id" "gateway_username" "gateway_password" "gateway_sleeptime"
 	
 	( echo "$device_notification"|grep -q "online" ) && notification_online="true"
@@ -49,32 +54,33 @@ function read_config(){
 	for str_version in "wrtbwmon" "iputils-arping" "curl" "iw"; do
 		eval `echo ${str_version:0:2}"_version"`=`opkg list-installed|grep -w ^${str_version}|awk '{print $3}'` 2>/dev/null
 	done
-	dir="/tmp/serverchan/" && mkdir -p ${dir} && mkdir -p ${dir}/client
-	tempjsonpath="/tmp/serverchan/temp.json"
-	ip_blacklist_path="/usr/share/serverchan/api/ip_blacklist"
+	dir="/tmp/wechatpush/" && mkdir -p ${dir} && mkdir -p ${dir}/client
+	tempjsonpath="/tmp/wechatpush/temp.json"
+	ip_blacklist_path="/usr/share/wechatpush/api/ip_blacklist"
 	oui_base="${dir}oui_base.txt"
-	debuglevel=`echo "$debuglevel"` && [ -z "$debuglevel" ] && logfile="/dev/null" || logfile="${dir}serverchan.log"
-	serverchan_blacklist=`echo "$serverchan_blacklist"|sed 's/ /\n/g'` 2>/dev/null
-	serverchan_whitelist=`echo "$serverchan_whitelist"|sed 's/ /\n/g'` 2>/dev/null
-	device_aliases=`cat /usr/share/serverchan/api/device_aliases.list` 2>/dev/null
-	err_device_aliases=`echo "$err_device_aliases"|sed 's/ /\n/g'` 2>/dev/null
+	debuglevel=`echo "$debuglevel"` && [ -z "$debuglevel" ] && logfile="/dev/null" || logfile="${dir}wechatpush.log"
+	login_port_forward_list=`echo "$login_port_forward_list"|sed 's/ /\n/g'` 2>/dev/null
+	up_down_push_blacklist=`echo "$up_down_push_blacklist"|sed 's/ /\n/g'` 2>/dev/null
+	up_down_push_whitelist=`echo "$up_down_push_whitelist"|sed 's/ /\n/g'` 2>/dev/null
+	device_aliases=`cat /usr/share/wechatpush/api/device_aliases.list` 2>/dev/null
+	unattended_device_aliases=`echo "$unattended_device_aliases"|sed 's/ /\n/g'` 2>/dev/null
 	client_usage_whitelist=`echo "$client_usage_whitelist"|sed 's/ /\n/g'` 2>/dev/null
-	ip_white_list=`echo "$ip_white_list"|sed 's/ /\n/g'` 2>/dev/null
-	mark_mac_list="${MAC_online_list} ${MAC_offline_list}"
+	login_ip_white_list=`echo "$login_ip_white_list"|sed 's/ /\n/g'` 2>/dev/null
+	mark_mac_list="${mac_online_list} ${mac_offline_list}"
 	mark_mac_list=`echo "$mark_mac_list"|sed 's/ /\n/g'|sed 's/-/ /'` 2>/dev/null
-	ipv4_urllist=`cat /usr/share/serverchan/api/ipv4.list` 2>/dev/null
-	ipv6_urllist=`cat /usr/share/serverchan/api/ipv6.list` 2>/dev/null
-	[ -z "$serverchan_ipv4" ] && serverchan_ipv4=0
-	[ -z "$serverchan_ipv6" ] && serverchan_ipv6=0
+	ipv4_urllist=`cat /usr/share/wechatpush/api/ipv4.list` 2>/dev/null
+	ipv6_urllist=`cat /usr/share/wechatpush/api/ipv6.list` 2>/dev/null
+	[ -z "$get_ipv4_mode" ] && get_ipv4_mode=0
+	[ -z "$get_ipv6_mode" ] && get_ipv6_mode=0
 	[ -z "$sleeptime" ] && sleeptime="60"
-	[ -z "$ip_black_timeout" ] && ip_black_timeout="86400"
-	[ -z "$ip_white_timeout" ] && ip_white_timeout="600"
+	[ -z "$login_ip_black_timeout" ] && login_ip_black_timeout="86400"
+	[ -z "$login_ip_white_timeout" ] && login_ip_white_timeout="600"
 	[ "$iw_version" ] && wlan_interface=`iw dev 2>/dev/null|grep Interface|awk '{print $2}'` >/dev/null 2>&1
 	[ -z "$up_timeout" ] || [ "$up_timeout" -eq "0" ] && up_timeout="2"
 	[ -z "$down_timeout" ] || [ "$down_timeout" -eq "0" ] && down_timeout="20";down_timeout=`expr ${down_timeout} / 2 + 1`
 	[ -z "$timeout_retry_count" ] && timeout_retry_count="2";[ "$timeout_retry_count" -eq "0" ] && timeout_retry_count="1"
 	[ -z "$server_port" ] && server_port="22"
-	output_dir="/tmp/serverchan/json_output"
+	output_dir="/tmp/wechatpush/json_output"
 	mkdir -p "$output_dir"
 	if ( echo "$lite_enable"|grep -q "content" ); then
 		str_title_start="" && str_title_end="" && str_splitline="" && str_linefeed="" && str_tab=""
@@ -90,36 +96,36 @@ function read_config(){
 	wait_and_cat
 	disturb_text=$_api
 	deltemp
-	serverchan_cron
+	cron
 }
 
 # 初始化
-function serverchan_init(){
+function init(){
 	enable_detection
 	echo "---------------------------------------------------------------------------------------" >> ${logfile}
 	echo "`date "+%Y-%m-%d %H:%M:%S"` 【初始化】start running..." >> ${logfile}
-	if [ -f "/usr/share/serverchan/errlog" ]; then
-		cat /usr/share/serverchan/errlog > ${logfile}
+	if [ -f "/usr/share/wechatpush/errlog" ]; then
+		cat /usr/share/wechatpush/errlog > ${logfile}
 		echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】载入上次重启前日志" >> ${logfile}
 	fi
-	/usr/libexec/serverchan-call "down_oui"
+	/usr/libexec/wechatpush-call "down_oui"
 	get_syslog
 
-	rm -f ${dir}fd1 ${dir}sheep_usage ${dir}old_sheep_usage ${dir}client_usage_aliases ${dir}old_client_usage_aliases /usr/share/serverchan/errlog >/dev/null 2>&1
+	rm -f ${dir}fd1 ${dir}sheep_usage ${dir}old_sheep_usage ${dir}client_usage_aliases ${dir}old_client_usage_aliases /usr/share/wechatpush/errlog >/dev/null 2>&1
 	[ ! -f "/usr/sbin/wrtbwmon" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】未安装 wrtbwmon ，流量统计不可用" >> ${logfile}
 	[ -z "$ip_version" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法获取依赖项 iputils-arping 版本号，请确认插件是否正常运行" >> ${logfile}
 	[ -z "$cu_version" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法获取依赖项 curl 版本号，请确认插件是否正常运行" >> ${logfile}
-	[ -z "${sckey}${tg_token}${pushplus_token}${corpid}${wxpusher_apptoken}${wxpusher_uids}${wxpusher_topicIds}" -a "${jsonpath}" != "/usr/share/serverchan/api/diy.json" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】请填写正确的 key " >> ${logfile} && return 1
+	[ -z "${sckey}${tg_token}${pushplus_token}${corpid}${wxpusher_apptoken}${wxpusher_uids}${wxpusher_topicIds}" -a "${jsonpath}" != "/usr/share/wechatpush/api/diy.json" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】请填写正确的 key " >> ${logfile} && return 1
 	local interfacelist=`getinterfacelist` && [ -z "$interfacelist" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法获取接口在线时间等信息，可能存在多个接口或配置错误，请确认插件是否正常运行" >> ${logfile}
-	[ -n "$notification_temp" ] && [ -n "$temperature" ] && local cpu_wendu=`soc_temp` || local cpu_wendu="null"
-	[ -z "$cpu_wendu" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法读取设备温度，请检查命令" >> ${logfile}
-	[ -n "$notification_load" ] && [ -n "$cpuload" ] && local cpu_fuzai=`cat /proc/loadavg|awk '{print $1}'` 2>/dev/null || local cpu_fuzai="null"
+	[ -n "$notification_temp" ] && [ -n "$temperature_threshold" ] && local cpu_temp=`soc_temp` || local cpu_temp="null"
+	[ -z "$cpu_temp" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法读取设备温度，请检查命令" >> ${logfile}
+	[ -n "$notification_load" ] && [ -n "$cpu_load_threshold" ] && local cpu_fuzai=`cat /proc/loadavg|awk '{print $1}'` 2>/dev/null || local cpu_fuzai="null"
 	[ -z "$cpu_fuzai" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】无法读取设备负载，请检查命令" >> ${logfile}
 
-	[ -n "$port_knocking" ] && [ "$port_knocking" -eq "1" ] && init_ip_white "ipv4"
-	[ -n "$port_knocking" ] && [ "$port_knocking" -eq "1" ] && init_ip_white "ipv6"
-	[ -n "$web_login_black" ] && [ "$web_login_black" -eq "1" ] && init_ip_black "ipv4"
-	[ -n "$web_login_black" ] && [ "$web_login_black" -eq "1" ] && init_ip_black "ipv6"
+	[ -n "$port_knocking_enable" ] && [ "$port_knocking_enable" -eq "1" ] && init_ip_white "ipv4"
+	[ -n "$port_knocking_enable" ] && [ "$port_knocking_enable" -eq "1" ] && init_ip_white "ipv6"
+	[ -n "$login_web_black" ] && [ "$login_web_black" -eq "1" ] && init_ip_black "ipv4"
+	[ -n "$login_web_black" ] && [ "$login_web_black" -eq "1" ] && init_ip_black "ipv6"
 	set_ip_black
 	return 0
 }
@@ -162,7 +168,7 @@ function deltemp(){
 function enable_detection(){
 	[ ! "$1" ] && local time_n=1
 	for i in `seq 1 $time_n`; do
-		get_config serverchan_enable;[ -z "$serverchan_enable" ] || [ "$serverchan_enable" -eq "0" ] && exit || sleep 1
+		get_config enable;[ -z "$enable" ] || [ "$enable" -eq "0" ] && exit || sleep 1
 	done
 }
 
@@ -191,8 +197,8 @@ function getip(){
 		local hostIP=`get_hostipv4 ${rand_number}`
 		[ -z `echo $hostIP|jq -r '.IP'` ] && local rand_number=`expr $rand_number + 1` && [ $rand_number -gt $url_number ] && local rand_number=1;[ -z `echo $hostIP|jq -r '.IP'` ] && local hostIP=`get_hostipv4 ${rand_number}`
 		[ -z `echo $hostIP|jq -r '.IP'` ] && local rand_number=`expr $rand_number + 1` && [ $rand_number -gt $url_number ] && local rand_number=1;[ -z `echo $hostIP|jq -r '.IP'` ] && local hostIP=`get_hostipv4 ${rand_number}`
-		[ -n "$list_auto_up" ] && [ "$list_auto_up" -eq "1" ] && [ -z `echo $hostIP|jq -r '.IP'` ] && /usr/libexec/serverchan-call "update_list" "ipv4"
-		[ -z `echo $hostIP|jq -r '.IP'` ] && ipv4_urllist=`cat /usr/share/serverchan/api/ipv4.list` 2>/dev/null
+		[ -n "$list_auto_up" ] && [ "$list_auto_up" -eq "1" ] && [ -z `echo $hostIP|jq -r '.IP'` ] && /usr/libexec/wechatpush-call "auto_update_ip_list" "ipv4"
+		[ -z `echo $hostIP|jq -r '.IP'` ] && ipv4_urllist=`cat /usr/share/wechatpush/api/ipv4.list` 2>/dev/null
 		echo $hostIP
 
 	# 从接口获取 IPv6
@@ -216,8 +222,8 @@ function getip(){
 		local hostIPv6=`get_hostipv6 ${rand_numberv6}`
 		[ -z `echo $hostIPv6|jq -r '.IP'` ] && local rand_numberv6=`expr $rand_numberv6 + 1` && [ $rand_numberv6 -gt $urlv6_number ] && local rand_numberv6=1;[ -z `echo $hostIPv6|jq -r '.IP'` ] && local hostIPv6=`get_hostipv6 ${rand_numberv6}`
 		[ -z `echo $hostIPv6|jq -r '.IP'` ] && local rand_numberv6=`expr $rand_numberv6 + 1` && [ $rand_numberv6 -gt $urlv6_number ] && local rand_numberv6=1;[ -z `echo $hostIPv6|jq -r '.IP'` ] && local hostIPv6=`get_hostipv6 ${rand_numberv6}`
-		[ -n "$list_auto_up" ] && [ "$list_auto_up" -eq "1" ] && [ -z `echo $hostIP|jq -r '.IP'` ] && /usr/libexec/serverchan-call "update_list" "ipv6"
-		[ -z `echo $hostIPv6|jq -r '.IP'` ] && ipv4_urllist=`cat /usr/share/serverchan/api/ipv6.list` 2>/dev/null
+		[ -n "$list_auto_up" ] && [ "$list_auto_up" -eq "1" ] && [ -z `echo $hostIP|jq -r '.IP'` ] && /usr/libexec/wechatpush-call "auto_update_ip_list" "ipv6"
+		[ -z `echo $hostIPv6|jq -r '.IP'` ] && ipv4_urllist=`cat /usr/share/wechatpush/api/ipv6.list` 2>/dev/null
 		echo $hostIPv6
 	fi
 }
@@ -363,7 +369,7 @@ function soc_temp(){
 		"
 	}
 
-	[ ! -z "$server_host" ] && ssh_command="ssh -i /root/.ssh/id_rsa root@${server_host} -p ${server_port} "
+	[ ! -z "$server_host" ] && ssh_command="ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -i /root/.ssh/id_rsa root@${server_host} -p ${server_port} "
 	temperature=$(getsensors "$ssh_command" 2>/dev/null)
 	# 通用（只能取最高温度，不一定是 CPU，特殊设备自行修改）
 	# 将 grep °C 改为温度所在行的特别字符串，如 grep Core 0 等，就可以指定设备了
@@ -538,11 +544,11 @@ function rand(){
 }
 
 # 在线设备列表
-function serverchan_first(){
+function first(){
 	[ -f "${dir}ipAddress" ] && local IPLIST_ipAddress=`cat ${dir}ipAddress|awk '{print $1}'|grep -v "^$"|sort -u`
 	getgateway
 	for ip in $IPLIST_ipAddress; do
-		[ ! -z "$passive_option" ] && [ "$passive_option" -eq "1" ] && break
+		[ ! -z "$passive_mode" ] && [ "$passive_mode" -eq "1" ] && break
 		read -u 5
 		{
 			down $ip
@@ -556,7 +562,7 @@ function serverchan_first(){
 	local gateway_iplist=`echo "${gatewayinfo}"|awk '{print $1}'`
 	[ ! -z "$gateway_iplist" ] && local IPLIST=`echo -e "${IPLIST}\n${gateway_iplist}"|grep -v "^$"|sort -u`
 	for ip in $IPLIST; do
-		[ ! -z "$passive_option" ] && [ "$passive_option" -eq "1" ] && break
+		[ ! -z "$passive_mode" ] && [ "$passive_mode" -eq "1" ] && break
 		read -u 5
 		{
 			up $ip
@@ -565,8 +571,8 @@ function serverchan_first(){
 	done
 	wait
 
-	[ -z "$passive_option" ] && return
-	[ "$passive_option" -ne "1" ] && return
+	[ -z "$passive_mode" ] && return
+	[ "$passive_mode" -ne "1" ] && return
 	for ip in $IPLIST; do
 		if ( ! echo "$IPLIST_ipAddress"|grep -q -i -w $ip ); then
 			ip_mac=`getmac $ip`
@@ -574,7 +580,6 @@ function serverchan_first(){
 			ip_interface=`getinterface ${ip_mac}`
 			echo "{'ip': '${ip}','mac': '${ip_mac}','name': '${ip_name}','uptime': '0秒','interface': '${ip_interface}','usage': ''}" > ${dir}client/${ip}
 			usage down ${ip}
-			[ "$(grep -w -i "${ip_mac}" "${dir}ipAddress" | wc -l)" -ne "0" ] && ip_name="unknown" # 某些路由器中继模式，会进行 MAC 克隆，重复值将主机名设为无效
 			echo "${ip} ${ip_mac} ${ip_name// /_} `date +%s` ${ip_interface}" >> ${dir}ipAddress
 		fi
 	done
@@ -595,44 +600,44 @@ function serverchan_first(){
 }
 
 # 创建计划任务
-function serverchan_cron(){
+function cron(){
 	function del_cron(){
-		( echo `crontab -l 2>/dev/null`|grep -q "serverchan" ) && crontab -l > conf && sed -i "/serverchan/d" conf && crontab conf && rm -f conf >/dev/null 2>&1
+		( echo `crontab -l 2>/dev/null`|grep -q "wechatpush" ) && crontab -l > conf && sed -i "/wechatpush/d" conf && crontab conf && rm -f conf >/dev/null 2>&1
 	}
 	function re_cron(){
 		/etc/init.d/cron stop
 		/etc/init.d/cron start
 	}
 	del_cron
-	if [ -z "$serverchan_enable" ]; then
+	if [ -z "$enable" ]; then
 		re_cron
 		return
 	fi
 
 	# 重置流量
 	if [ ! -z "$reset_regularly" ] && [ "$reset_regularly" -eq "1" ]; then
-		crontab -l 2>/dev/null > conf && echo -e "0 0 * * * rm /tmp/serverchan/usage.db >/dev/null 2>&1" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
-		crontab -l 2>/dev/null > conf && echo -e "0 0 * * * rm /tmp/serverchan/usage6.db >/dev/null 2>&1" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
+		crontab -l 2>/dev/null > conf && echo -e "0 0 * * * rm /tmp/wechatpush/usage.db >/dev/null 2>&1" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
+		crontab -l 2>/dev/null > conf && echo -e "0 0 * * * rm /tmp/wechatpush/usage6.db >/dev/null 2>&1" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
 	fi
 
 	# 定时发送
-	if [ -n "$regular_time" ]; then
-		regular_time=`echo $regular_time|sed 's/ /,/g'` 2>/dev/null
-		crontab -l 2>/dev/null > conf && echo -e "0 $regular_time * * * /usr/share/serverchan/serverchan send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
+	if [ -n "$crontab_regular_time" ]; then
+		crontab_regular_time=`echo $crontab_regular_time|sed 's/ /,/g'` 2>/dev/null
+		crontab -l 2>/dev/null > conf && echo -e "0 $crontab_regular_time * * * /usr/share/wechatpush/wechatpush send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
 	# 间隔发送
-	elif [ -n "$interval_time" ]; then
-		crontab -l 2>/dev/null > conf && echo -e "0 */$interval_time * * * /usr/share/serverchan/serverchan send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
+	elif [ -n "$crontab_interval_time" ]; then
+		crontab -l 2>/dev/null > conf && echo -e "0 */$crontab_interval_time * * * /usr/share/wechatpush/wechatpush send &" >> conf && crontab conf && rm -f conf >/dev/null 2>&1
 	fi
 
 	re_cron
 }
 
 # 免打扰检测
-function serverchan_disturb(){
-	[ -z "$serverchan_sheep" ] || [ -z "$starttime" ] || [ -z "$endtime" ] && return 0
+function disturb(){
+	[ -z "$do_not_disturb_mode" ] || [ -z "$do_not_disturb_starttime" ] || [ -z "$do_not_disturb_endtime" ] && return 0
 
 	# 非免打扰时间
-	if [ `date +%H` -ge $endtime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a $starttime -lt $endtime ] || [ `date +%H` -lt $starttime -a `date +%H` -ge $endtime -a $starttime -gt $endtime ]; then
+	if [ `date +%H` -ge $do_not_disturb_endtime -a $do_not_disturb_starttime -lt $do_not_disturb_endtime ] || [ `date +%H` -lt $do_not_disturb_starttime -a $do_not_disturb_starttime -lt $do_not_disturb_endtime ] || [ `date +%H` -lt $do_not_disturb_starttime -a `date +%H` -ge $do_not_disturb_endtime -a $do_not_disturb_starttime -gt $do_not_disturb_endtime ]; then
 		unset sheep_starttime
 		rm -f ${dir}sheep_usage ${dir}old_sheep_usage  2>/dev/null
 		disturb_text=`jq -r '._api' ${jsonpath}`
@@ -641,13 +646,13 @@ function serverchan_disturb(){
 	else
 		[ -z "$sheep_starttime" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【免打扰】夜深了，该休息了" >> ${logfile} && sheep_starttime=`date +%s`
 		# 挂起
-		if [ "$serverchan_sheep" -eq "1" ] ;then
-			while [ `date +%H` -lt "$endtime" ]; do
+		if [ "$do_not_disturb_mode" -eq "1" ] ;then
+			while [ `date +%H` -lt "$do_not_disturb_endtime" ]; do
 				enable_detection
 				sleep $sleeptime
 			done
 		# 静默
-		elif [ "$serverchan_sheep" -eq "2" ] ;then
+		elif [ "$do_not_disturb_mode" -eq "2" ] ;then
 			disturb_text="【免打扰】"
 			return 1
 		fi
@@ -657,13 +662,13 @@ function serverchan_disturb(){
 # 文件锁
 function LockFile(){
 	if [ $1 = "lock" ] ;then
-		[ ! -f "${dir}serverchan.lock" ] && > ${dir}serverchan.lock && return
-		while [ -f "${dir}serverchan.lock" ]; do
+		[ ! -f "${dir}wechatpush.lock" ] && > ${dir}wechatpush.lock && return
+		while [ -f "${dir}wechatpush.lock" ]; do
 			enable_detection 1
 		done
 		LockFile lock
 	fi
-	[ $1 = "unlock" ] && rm -f ${dir}serverchan.lock >/dev/null 2>&1
+	[ $1 = "unlock" ] && rm -f ${dir}wechatpush.lock >/dev/null 2>&1
 	return 0
 }
 
@@ -671,13 +676,13 @@ function LockFile(){
 function blackwhitelist(){
 	[ ! "$1" ] && return 1
 
-	[ -z "$serverchan_whitelist" ] && [ -z "$serverchan_blacklist" ] && [ -z "$serverchan_interface" ] && [ -z "$MAC_online_list" ] && [ -z "$MAC_offline_list" ] && return 0
-	[ ! -z "$serverchan_whitelist" ] && ( echo "$serverchan_whitelist"|grep -q -i -w $1 ) && return 1
-	[ ! -z "$serverchan_blacklist" ] && ( ! echo "$serverchan_blacklist"|grep -q -i -w $1 ) && return 1
-	[ ! -z "$serverchan_interface" ] && ( ! echo `getinterface ${1}`|grep -q -i -w $serverchan_interface ) && return 1
-	[ ! -z "$MAC_online_list" ] && [ ! -z "$mac_online_status" ] && return 1
-	[ ! -z "$MAC_online_list" ] && ( echo "$MAC_online_list"|grep -q -i -w $1 ) && return 1
-	[ ! -z "$MAC_offline_list" ] && [ -z "$mac_online_status" ] && return 1
+	[ -z "$up_down_push_whitelist" ] && [ -z "$up_down_push_blacklist" ] && [ -z "$up_down_push_interface" ] && [ -z "$mac_online_list" ] && [ -z "$mac_offline_list" ] && return 0
+	[ ! -z "$up_down_push_whitelist" ] && ( echo "$up_down_push_whitelist"|grep -q -i -w $1 ) && return 1
+	[ ! -z "$up_down_push_blacklist" ] && ( ! echo "$up_down_push_blacklist"|grep -q -i -w $1 ) && return 1
+	[ ! -z "$up_down_push_interface" ] && ( ! echo `getinterface ${1}`|grep -q -i -w $up_down_push_interface ) && return 1
+	[ ! -z "$mac_online_list" ] && [ ! -z "$mac_online_status" ] && return 1
+	[ ! -z "$mac_online_list" ] && ( echo "$mac_online_list"|grep -q -i -w $1 ) && return 1
+	[ ! -z "$mac_offline_list" ] && [ -z "$mac_online_status" ] && return 1
 
 	return 0
 }
@@ -696,17 +701,17 @@ EOF
 
 # 查看无人值守任务设备是否在线
 function geterrdevicealiases(){
-	[ -z "$err_device_aliases" ] && return
+	[ -z "$unattended_device_aliases" ] && return
 	[ -f ${dir}ipAddress ] && local logrow=$(grep -c "" ${dir}ipAddress) || local logrow="0";[ $logrow -eq "0" ] && return
 
 	local MACLIST=`cat ${dir}ipAddress|awk '{print $2}'|grep -v "^$"|sort -u`
 	for mac in $MACLIST; do
-		[ -z "$err_mac" ] && [ ! -z "$mac" ] && local err_mac=`echo "$err_device_aliases"|grep -i $mac|grep -v "^$"|sort -u|head -n1`
+		[ -z "$unattended_mac" ] && [ ! -z "$mac" ] && local unattended_mac=`echo "$unattended_device_aliases"|grep -i $mac|grep -v "^$"|sort -u|head -n1`
 	done
 	# 进入免打扰时间已经超过一小时
 	if [ ! -z "$sheep_starttime" ] && [ "$((`date +%s`-$sheep_starttime))" -ge "3600" ]; then
 		> ${dir}sheep_usage
-		local MACLIST=`echo "$err_device_aliases"|grep -v "^$"|sort -u`
+		local MACLIST=`echo "$unattended_device_aliases"|grep -v "^$"|sort -u`
 		for mac in $MACLIST; do
 			[ ! -z "$mac" ] && local tmptotal=`usage get ${mac} bytes`
 			[ ! -z "$tmptotal" ] && awk 'BEGIN{printf "%.0f\n",'$tmptotal'/'204800'}' 2>/dev/null >> ${dir}sheep_usage
@@ -715,48 +720,27 @@ function geterrdevicealiases(){
 		sheep_usage=`cat ${dir}sheep_usage` 2>/dev/null
 		[ "$old_sheep_usage" == "$sheep_usage" ] && [ -z "$sheep_nousage_starttime" ] && sheep_nousage_starttime=`date +%s`
 		[ "$old_sheep_usage" != "$sheep_usage" ] && unset sheep_nousage_starttime && cat ${dir}sheep_usage 2>/dev/null > ${dir}old_sheep_usage
-		[ ! -z "$sheep_nousage_starttime" ] && [ "$((`date +%s`-$sheep_nousage_starttime))" -ge "300" ] && unset err_mac
+		[ ! -z "$sheep_nousage_starttime" ] && [ "$((`date +%s`-$sheep_nousage_starttime))" -ge "300" ] && unset unattended_mac
 	fi
-	[ -z "$err_mac" ]
+	[ -z "$unattended_mac" ]
 }
 
 # 无人值守任务
 function unattended(){
-	[ -z "$err_enable" ] || [ "$err_enable" -ne "1" ] && return
-	[ ! -z "$err_sheep_enable" ] && [ "$err_sheep_enable" -eq "1" ] && [ -z "$sheep_starttime" ] && return
+	[ -z "$unattended_enable" ] || [ "$unattended_enable" -ne "1" ] && return
+	[ ! -z "$unattended_only_on_disturb_time" ] && [ "$unattended_only_on_disturb_time" -eq "1" ] && [ -z "$sheep_starttime" ] && return
 	geterrdevicealiases;[ $? -eq "1" ] && return
 
-	if [ ! -z "$system_time_event" ]; then
+	if [ ! -z "$unattended_autoreboot_mode" ]; then
 		local interfaceuptime=`getinterfaceuptime`
-		if [ ! -z "$autoreboot_time" ] && [ `cat /proc/uptime|awk -F. '{run_hour=$1/3600;printf("%d",run_hour)}'` -ge "$autoreboot_time" ] && [ "$system_time_event" -eq "1" ]; then
+		if [ ! -z "$autoreboot_system_uptime" ] && [ `cat /proc/uptime|awk -F. '{run_hour=$1/3600;printf("%d",run_hour)}'` -ge "$autoreboot_system_uptime" ] && [ "$unattended_autoreboot_mode" -eq "1" ]; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【无人值守任务】重启路由器咯" >> ${logfile}
-			cat ${logfile} > /usr/share/serverchan/errlog
+			cat ${logfile} > /usr/share/wechatpush/errlog
 			sleep 2 && reboot && exit
-		elif [ ! -z "$network_restart_time" ] && [ ! -z "$interfaceuptime" ] && [ `echo "$interfaceuptime"|awk -F. '{run_hour=$1/3600;printf("%d",run_hour)}'` -ge "$network_restart_time" ] && [ "$system_time_event" -eq "2" ]; then
+		elif [ ! -z "$autoreboot_network_uptime" ] && [ ! -z "$interfaceuptime" ] && [ `echo "$interfaceuptime"|awk -F. '{run_hour=$1/3600;printf("%d",run_hour)}'` -ge "$autoreboot_network_uptime" ] && [ "$unattended_autoreboot_mode" -eq "2" ]; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【无人值守任务】重新拨号咯" >> ${logfile}
 			ifup wan >/dev/null 2>&1
 			sleep 60
-		fi
-	fi
-
-	# 重拨尝试获取公网 IP、待弃用或改进
-	[ -z "$public_ip_today" ] && public_ip_today=`date +"%d"`
-	[ -z "$public_ip_count" ] && public_ip_count="0"
-	[ $public_ip_today -ne `date +"%d"` ] && public_ip_today=`date +"%d"` && public_ip_count=1
-	if [ ! -z "$public_ip_event" ] && [ ! -z "$public_ip_retry_count" ] && [ "$public_ip_count" -le "$public_ip_retry_count" ]; then
-		public_ip_count=`expr $public_ip_count + 1`
-		local wanIP=`getip wanipv4`
-		local hostIP=`getip hostipv4|jq -r '.IP'`
-		if [ ! -z "$wanIP" ] && [ ! -z "$hostIP" ] && ( ! echo "$wanIP"|grep -q -w ${hostIP} );then
-			echo "`date "+%Y-%m-%d %H:%M:%S"` 【无人值守任务】重拨尝试获取公网 ip，当前第 $public_ip_count 次 " >> ${logfile}
-			ifup wan >/dev/null 2>&1
-			sleep 60
-			local wanIP=`getip wanipv4` && local hostIP=`getip hostipv4|jq -r '.IP'`
-			[ ! -z "$serverchan_ipv4" ] && [ "$serverchan_ipv4" -eq "1" ] && local IPv4=${wanIP}
-			[ ! -z "$serverchan_ipv4" ] && [ "$serverchan_ipv4" -eq "2" ] && local IPv4=${hostIP}
-			[ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -eq "1" ] && local IPv6=`getip wanipv6`
-			[ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -eq "2" ] && local IPv6=`getip hostipv6|jq -r '.IP'`
-			[ ! -z "$wanIP" ] && [ ! -z "$hostIP" ] && ( ! echo "$wanIP"|grep -q -w ${hostIP} ) && echo IPv4 $IPv4 > ${dir}ip && echo -e IPv6 $last_IPv6 >> ${dir}ip
 		fi
 	fi
 }
@@ -780,104 +764,56 @@ function rand_geturl(){
 			[ -z "$network_enable" ] || [ "$network_enable" -eq "200" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】当前网络不通！停止检测！ " >> ${logfile}
 			local network_enable="404"
 			# 无人值守、待弃用或改进
-			[ -z "$network_err_time" ] && network_err_time=`date +%s`
-			if [ ! -z "$network_err_event" ] && [ "$((`date +%s`-$network_err_time))" -ge "600" ]; then
-				> ${dir}send_enable.lock && serverchan_first && deltemp
+			[ -z "$network_unattended_time" ] && network_unattended_time=`date +%s`
+			if [ ! -z "$network_disconnect_event" ] && [ "$((`date +%s`-$network_unattended_time))" -ge "600" ]; then
+				> ${dir}send_enable.lock && first && deltemp
 				geterrdevicealiases
 				if [ "$?" -eq "0" ]; then
-					[ -f /usr/share/serverchan/autoreboot_count ] && retry_count=`cat /usr/share/serverchan/autoreboot_count` && rm -f /usr/share/serverchan/autoreboot_count >/dev/null 2>&1
+					[ -f /usr/share/wechatpush/autoreboot_count ] && retry_count=`cat /usr/share/wechatpush/autoreboot_count` && rm -f /usr/share/wechatpush/autoreboot_count >/dev/null 2>&1
 					[ ! -z "${retry_count}" ] && retry_count=0;retry_count=`expr $retry_count + 1`
-					if [ "$network_err_event" -eq "1" ] ;then
+					if [ "$network_disconnect_event" -eq "1" ] ;then
 						if [ "$retry_count" -lt "3" ] ;then
-							echo "$retry_count" > /usr/share/serverchan/autoreboot_count
+							echo "$retry_count" > /usr/share/wechatpush/autoreboot_count
 							echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】正在尝试重启路由，当前第 $retry_count 次 " >> ${logfile}
-							cat ${logfile} > /usr/share/serverchan/errlog
+							cat ${logfile} > /usr/share/wechatpush/errlog
 							sleep 2 && reboot && exit
 						fi
 						[ "$retry_count" -eq "3" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】已经重启路由2次，修复失败，请主人自行修复哦" >> ${logfile}
-					elif [ "$network_err_event" -eq "2" ] ;then
+					elif [ "$network_disconnect_event" -eq "2" ] ;then
 						[ "$retry_count" -lt "3" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】正在尝试重启网络，当前第 $retry_count 次 " >> ${logfile} && ifup wan >/dev/null 2>&1
 						[ "$retry_count" -eq "3" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】已经重启网络2次，修复失败，请主人自行修复哦 " >> ${logfile}
-					elif [ "$network_err_event" -eq "3" ] ;then
-						if [ "$retry_count" -eq "1" ] ;then
-							echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】正在尝试修复网络，当前第 1 次，重启网络服务中 " >> ${logfile} && network_restart
-						elif [ "$retry_count" -eq "2" ] ;then
-							echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】正在尝试修复网络，当前第 2 次，关闭可能造成网络断开的软件" >> ${logfile}
-							[ `uci get koolproxy.@global[0].enabled 2>/dev/null` -eq "1" ] && [ `uci get koolproxy.@global[0].koolproxy_mode 2>/dev/null` -eq "1" ] && /etc/init.d/koolproxy stop >/dev/null 2>&1
-							[ `uci get adbyby.@adbyby[0].enable 2>/dev/null` -eq "1" ] && [ `uci get adbyby.@adbyby[0].wan_mode 2>/dev/null` -eq "0" ] && /etc/init.d/adbyby stop >/dev/null 2>&1
-							[ `uci get passwall.@global[0].enabled 2>/dev/null` -eq "1" ] && [ `uci get passwall.@global[0].proxy_mode 2>/dev/null|grep global` ] && /etc/init.d/koolproxy stop >/dev/null 2>&1
-							local shadowsocksr_enabled=`uci get shadowsocksr.@global[0].global_server 2>/dev/null|grep nil`
-							local shadowsocksr_run_mode=`uci get shadowsocksr.@global[0].run_mode 2>/dev/null|grep all`
-							[ -z "$shadowsocksr_enabled" ] && [ ! -z "$shadowsocksr_run_mode" ] && /etc/init.d/shadowsocksr stop >/dev/null 2>&1
-							sleep 60 && network_restart
-						elif [ "$retry_count" -eq "3" ] ;then
-							echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】正在尝试修复网络，当前第 3 次，备份设置项，并修改相关设置" >> ${logfile}
-							mkdir -p /usr/share/serverchan/configbak
-							cp -p -f /etc/config/network /usr/share/serverchan/configbak/network
-							cp -p -f /etc/config/dhcp /usr/share/serverchan/configbak/dhcp
-							cp -p -f /etc/config/firewall /usr/share/serverchan/configbak/firewall
-							cp -p -f /etc/firewall.user /usr/share/serverchan/configbak/firewall.user
-							uci set network.wan.peerdns='0'
-							uci delete network.wan.dns
-							uci add_list network.wan.dns='223.5.5.5'
-							uci add_list network.wan.dns='119.29.29.29'
-							uci delete network.wan.mtu
-							uci commit network
-							uci set dhcp.@dnsmasq[0].port='53'
-							uci set dhcp.@dnsmasq[0].resolvfile='/tmp/resolv.conf.auto'
-							uci delete dhcp.@dnsmasq[0].server
-							uci delete dhcp.@dnsmasq[0].noresolv
-							uci commit dhcp
-							uci delete firewall.redirect
-							>/etc/firewall.user
-							uci commit firewall
-							sleep 60 && network_restart
-						elif [ "$retry_count" -eq "4" ] ;then
-							echo "$retry_count" > /usr/share/serverchan/autoreboot_count
-							cat ${logfile} > /usr/share/serverchan/errlog
-							sleep 2 && reboot && exit
-						elif [ "$retry_count" -eq "5" ] ;then
-							echo "$retry_count" > /usr/share/serverchan/autoreboot_count
-							echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】修复失败，还原设置中，请自行检查网络设置" >> ${logfile}
-							cp -p -f /usr/share/serverchan/configbak/network /etc/config/network
-							cp -p -f /usr/share/serverchan/configbak/dhcp /etc/config/dhcp
-							cp -p -f /usr/share/serverchan/configbak/firewall /etc/config/firewall
-							cp -p -f /usr/share/serverchan/configbak/firewall.user /etc/firewall.user
-							cat ${logfile} > /usr/share/serverchan/errlog
-							sleep 2 && reboot && exit
-						fi
 					fi
 				fi
-			elif [ -f /usr/share/serverchan/autoreboot_count ]; then
-				network_err_time=`expr $network_err_time - 600` && sleep 60
+			elif [ -f /usr/share/wechatpush/autoreboot_count ]; then
+				network_unattended_time=`expr $network_unattended_time - 600` && sleep 60
 			fi
 			enable_detection
 			sleep $sleeptime
 		fi
 	continue
 	done
-	rm -f /usr/share/serverchan/autoreboot_count >/dev/null 2>&1
+	rm -f /usr/share/wechatpush/autoreboot_count >/dev/null 2>&1
 }
 
 # 检测 ip 状况
 function ip_changes(){
-	[ ! -z "$serverchan_ipv4" ] && [ "$serverchan_ipv4" -eq "1" ] && local IPv4=`getip wanipv4` && local IPv4_URL="网络接口"
-	[ ! -z "$serverchan_ipv4" ] && [ "$serverchan_ipv4" -eq "2" ] && local IPv4=`getip hostipv4` && local IPv4_URL=`echo ${IPv4}|jq -r '.URL'` && local IPv4=`echo ${IPv4}|jq -r '.IP'`
-	[ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -eq "1" ] && local IPv6=`getip wanipv6` && local IPv6_URL="网络接口"
-	[ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -eq "2" ] && local IPv6=`getip hostipv6` && local IPv6_URL=`echo ${IPv6}|jq -r '.URL'` && local IPv6=`echo ${IPv6}|jq -r '.IP'`
+	[ "$get_ipv4_mode" -eq "1" ] && local IPv4=`getip wanipv4` && local IPv4_URL="网络接口"
+	[ "$get_ipv4_mode" -eq "2" ] && local IPv4=`getip hostipv4` && local IPv4_URL=`echo ${IPv4}|jq -r '.URL'` && local IPv4=`echo ${IPv4}|jq -r '.IP'`
+	[ "$get_ipv6_mode" -eq "1" ] && local IPv6=`getip wanipv6` && local IPv6_URL="网络接口"
+	[ "$get_ipv6_mode" -eq "2" ] && local IPv6=`getip hostipv6` && local IPv6_URL=`echo ${IPv6}|jq -r '.URL'` && local IPv6=`echo ${IPv6}|jq -r '.IP'`
 
 	# 存在临时文件
 	if [ -f ${dir}ip ]; then
 		local last_IPv4=$(cat "${dir}ip"|grep IPv4|awk '{print $2}'|grep -v "^$"|sort -u|head -n1)
 		local last_IPv6=$(cat "${dir}ip"|grep IPv6|awk '{print $2}'|grep -v "^$"|sort -u|head -n1)
-		if [ ! -z "$serverchan_ipv4" ] && [ "$serverchan_ipv4" -ne "0" ] && [ ! -z "$IPv4" ] && ( ! echo ${IPv4}|grep -w -q ${last_IPv4} ); then
+		if [ "$get_ipv4_mode" -ne "0" ] && [ ! -z "$IPv4" ] && ( ! echo ${IPv4}|grep -w -q ${last_IPv4} ); then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}当前 IP：${IPv4}    from：${IPv4_URL}" >> ${logfile}
 			echo IPv4 $IPv4 > ${dir}ip && echo -e IPv6 $last_IPv6 >> ${dir}ip
 			title="IP 地址变化"
 			content="${content}${str_splitline}${str_title_start} IP 地址变化${str_title_end}${str_linefeed}${str_tab}当前 IP：${IPv4}"
 		fi
 
-		if [ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -ne "0" ] && [ ! -z "$IPv6" ] && ( ! echo "$IPv6"|grep -w -q ${last_IPv6} ); then
+		if [ "$get_ipv6_mode" -ne "0" ] && [ ! -z "$IPv6" ] && ( ! echo "$IPv6"|grep -w -q ${last_IPv6} ); then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}当前 IPv6：${IPv6}    from：${IPv6_URL}" >> ${logfile}
 			echo IPv4 $IPv4 > ${dir}ip && echo -e IPv6 $IPv6 >> ${dir}ip
 			[ -z "$title" ] && title="IPv6 地址变化"
@@ -888,13 +824,13 @@ function ip_changes(){
 	# 临时文件目录为空
 	else
 		echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}路由器已经重启!" >> ${logfile}
-		[ ! -z "$serverchan_ipv4" ] && [ "$serverchan_ipv4" -ne "0" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}当前 IP: ${IPv4}    from：${IPv4_URL}" >> ${logfile}
-		[ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -ne "0" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}当前 IPv6: ${IPv6}    from：${IPv6_URL}" >> ${logfile}
+		[ "$get_ipv4_mode" -ne "0" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}当前 IP: ${IPv4}    from：${IPv4_URL}" >> ${logfile}
+		[ "$get_ipv6_mode" -ne "0" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}当前 IPv6: ${IPv6}    from：${IPv6_URL}" >> ${logfile}
 		echo IPv4 $IPv4 > ${dir}ip && echo -e IPv6 $IPv6 >> ${dir}ip
 		title="路由器重新启动"
 		content="${content}${str_splitline}${str_title_start} 路由器重新启动${str_title_end}"
-		[ ! -z "$serverchan_ipv4" ] && [ "$serverchan_ipv4" -ne "0" ] && content="${content}${str_linefeed}${str_tab}当前IP：${IPv4}"
-		[ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -ne "0" ] && content="${content}${str_linefeed}${str_tab}当前IPv6：${IPv6}"
+		[ "$get_ipv4_mode" -ne "0" ] && content="${content}${str_linefeed}${str_tab}当前IP：${IPv4}"
+		[ "$get_ipv6_mode" -ne "0" ] && content="${content}${str_linefeed}${str_tab}当前IPv6：${IPv6}"
 	fi
 
 	# IP 变化，悄咪咪的重启 zerotier
@@ -918,13 +854,12 @@ function up(){
 	# 连通
 	if [ "$ping_online" -eq "0" ]; then
 		LockFile lock
-		[ ! -z "$serverchan_blacklist" ] && local tmp_mac=`echo "${serverchan_blacklist}"|grep -w -i ${ip_mac}`
-		[ ! -z "$serverchan_whitelist" ] && local tmp_mac=`echo "${serverchan_whitelist}"|grep -w -i ${ip_mac}`
+		[ ! -z "$up_down_push_blacklist" ] && local tmp_mac=`echo "${up_down_push_blacklist}"|grep -w -i ${ip_mac}`
+		[ ! -z "$up_down_push_whitelist" ] && local tmp_mac=`echo "${up_down_push_whitelist}"|grep -w -i ${ip_mac}`
 		echo "{'ip': '${1}','mac': '${ip_mac}','name': '${ip_name}','uptime': '0秒','interface': '${ip_interface}','usage': ''}" > ${dir}client/${1}
 		# ？？？
 		if [ ! -z "$tmp_mac" ] && ( cat ${dir}ipAddress|grep -q -w -i ${tmp_mac} ); then
 			usage down ${1}
-			[ "$(grep -w -i "${ip_mac}" "${dir}ipAddress" | wc -l)" -ne "0" ] && ip_name="unknown" # 某些路由器中继模式，会进行 MAC 克隆，重复值将主机名设为无效
 			echo "${1} ${ip_mac} ${ip_name// /_} `date +%s` ${ip_interface}" >> ${dir}ipAddress
 			LockFile unlock && return
 		# ？？？
@@ -942,7 +877,6 @@ function up(){
 		# up
 		else
 			usage down $1
-			[ "$(grep -w -i "${ip_mac}" "${dir}ipAddress" | wc -l)" -ne "0" ] && ip_name="unknown" # 某些路由器中继模式，会进行 MAC 克隆，重复值将主机名设为无效
 			echo "$1 ${ip_mac} ${ip_name// /_} `date +%s` ${ip_interface}" >> ${dir}ipAddress
 			blackwhitelist ${ip_mac};local ip_blackwhite=$?
 			[ -f "${dir}send_enable.lock" ] || [ -z "$notification_online" ] || [ -z "$ip_blackwhite" ] && LockFile unlock && return
@@ -961,7 +895,7 @@ function up(){
 				local content="${str_splitline}${str_title_start} 新设备连接${str_title_end}${str_linefeed}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${ip_name}${str_linefeed}${str_tab}客户端IP： ${str_space}${str_space}${str_space}${str_space}${1}${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${ip_mac}${str_linefeed}${str_tab}网络接口：${str_space}${str_space}${str_space}${str_space}${str_space}${ip_interface}"
 			fi
 			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}新设备 ${ip_name} ${1} 连接了">> ${logfile}
-			#[ ! -z "$serverchan_blacklist" ] && local title="你偷偷关注的设备上线了"
+			#[ ! -z "$up_down_push_blacklist" ] && local title="你偷偷关注的设备上线了"
 			[ ! -z "$title" ] && echo "$title" >${dir}title
 			[ ! -z "$content" ] && echo -n "$content" >>${dir}content
 		fi
@@ -992,6 +926,7 @@ function down(){
 			LockFile lock
 			olduptime=$(cat ${dir}ipAddress|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1)
 			sed -i "/^${1} /d" ${dir}ipAddress
+			[ ${ip_mac} != ${tmp_mac} ] && ip_name="unknown" # MAC 变化时应删除主机名重新获取
 			echo "$1  ${ip_mac} ${ip_name// /_} ${olduptime} ${ip_interface}" >> ${dir}ipAddress
 			LockFile unlock
 		fi
@@ -1012,8 +947,8 @@ function down_send(){
 		blackwhitelist ${ip_mac};local ip_blackwhite=$?
 		[ -z "$notification_offline" ] || [ -z "$ip_blackwhite" ] && continue
 		[ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne "0" ] && continue
-		[ ! -z "$serverchan_blacklist" ] && local tmp_mac=`echo "${serverchan_blacklist}"|grep -w -i ${ip_mac}`
-		[ ! -z "$serverchan_whitelist" ] && local tmp_mac=`echo "${serverchan_whitelist}"|grep -w -i ${ip_mac}`
+		[ ! -z "$up_down_push_blacklist" ] && local tmp_mac=`echo "${up_down_push_blacklist}"|grep -w -i ${ip_mac}`
+		[ ! -z "$up_down_push_whitelist" ] && local tmp_mac=`echo "${up_down_push_whitelist}"|grep -w -i ${ip_mac}`
 		[ ! -z "$tmp_mac" ] && ( cat ${dir}ipAddress|grep -q -w -i ${tmp_mac} ) && continue
 
 		local ip_name=`getname ${ip} ${ip_mac}`
@@ -1070,38 +1005,38 @@ function current_device(){
 
 # 检测 cpu 状态
 function cpu_load(){
-	if [ -n "$notification_temp" ] && [ -n "$temperature" ]; then
-		[ -z "$temperature_time" ] && temperature_time=`date +%s`
-		local cpu_wendu=`soc_temp`;
+	if [ -n "$notification_temp" ] && [ -n "$temperature_threshold" ]; then
+		[ -z "$temp_last_overload_time" ] && temp_last_overload_time=`date +%s`
+		local cpu_temp=`soc_temp`;
 
-		if [ ! -z "$cpu_wendu" ] && [ `expr $cpu_wendu \> $temperature` -eq "1" ]; then
-			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！警报！！】 CPU 温度过高: ${cpu_wendu}" >> ${logfile}
+		if [ ! -z "$cpu_temp" ] && [ `expr $cpu_temp \> $temperature_threshold` -eq "1" ]; then
+			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！警报！！】 CPU 温度过高: ${cpu_temp}" >> ${logfile}
 		else
-			temperature_time=`date +%s`
+			temp_last_overload_time=`date +%s`
 		fi
 
-		if [ ! -z "$cpu_wendu" ] && [ "$((`date +%s`-$temperature_time))" -ge "300" ] && [ -z "$temperaturecd_time" ]; then
+		if [ ! -z "$cpu_temp" ] && [ "$((`date +%s`-$temp_last_overload_time))" -ge "300" ] && [ -z "$temperaturecd_time" ]; then
 			title="CPU 温度过高！"
 			temperaturecd_time=`date +%s`
-			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text} CPU 温 度过高: ${cpu_wendu}" >> ${logfile}
-			content="${content}${str_splitline}${str_title_start} CPU 温度过高${str_title_end}${str_linefeed}${str_tab}CPU 温度已连续五分钟超过预设${str_linefeed}${str_tab}接下来一小 时不再提示${str_linefeed}${str_tab}当前温度：${cpu_wendu}℃"
+			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text} CPU 温 度过高: ${cpu_temp}" >> ${logfile}
+			content="${content}${str_splitline}${str_title_start} CPU 温度过高${str_title_end}${str_linefeed}${str_tab}CPU 温度已连续五分钟超过预设${str_linefeed}${str_tab}接下来一小 时不再提示${str_linefeed}${str_tab}当前温度：${cpu_temp}℃"
 		elif [ ! -z "$temperaturecd_time" ] && [ "$((`date +%s`-$temperaturecd_time))" -ge "3300" ] ;then
 			unset temperaturecd_time
 		fi
 	fi
 
-	if [ -n "$notification_load" ] && [ -n "$cpuload" ]; then
-		[ -z "$cpuload_time" ] && cpuload_time=`date +%s`
+	if [ -n "$notification_load" ] && [ -n "$cpu_load_threshold" ]; then
+		[ -z "$cpu_last_overload_time" ] && cpu_last_overload_time=`date +%s`
 		local cpu_fuzai=`cat /proc/loadavg|awk '{print $1}'` 2>/dev/null
 
-		if [ ! -z "$cpu_fuzai" ] && [ `expr $cpu_fuzai \> $cpuload` -eq "1" ]; then
+		if [ ! -z "$cpu_fuzai" ] && [ `expr $cpu_fuzai \> $cpu_load_threshold` -eq "1" ]; then
 			echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！警报！！】 CPU 负载过高: ${cpu_fuzai}" >> ${logfile}
 			cputop log
 		elif [ ! -z "$cpu_fuzai" ]; then
-			cpuload_time=`date +%s`
+			cpu_last_overload_time=`date +%s`
 		fi
 
-		if [ ! -z "$cpu_fuzai" ] && [ "$((`date +%s`-$cpuload_time))" -ge "300" ] && [ -z "$cpucd_time" ]; then
+		if [ ! -z "$cpu_fuzai" ] && [ "$((`date +%s`-$cpu_last_overload_time))" -ge "300" ] && [ -z "$cpucd_time" ]; then
 			unset getlogtop
 			if [ ! -z "$title" ] && ( echo "$title"|grep -q "过高" ); then
 				title="设备报警！"
@@ -1149,10 +1084,10 @@ EOF
 
 # 登录提醒通知
 function login_send(){
-	[ -n "$port_knocking" ] && [ "$port_knocking" -eq "1" ] && init_ip_white "ipv4"
-	[ -n "$port_knocking" ] && [ "$port_knocking" -eq "1" ] && init_ip_white "ipv6"
-	[ -n "$web_login_black" ] && [ "$web_login_black" -eq "1" ] && init_ip_black "ipv4"
-	[ -n "$web_login_black" ] && [ "$web_login_black" -eq "1" ] && init_ip_black "ipv6"
+	[ -n "$port_knocking_enable" ] && [ "$port_knocking_enable" -eq "1" ] && init_ip_white "ipv4"
+	[ -n "$port_knocking_enable" ] && [ "$port_knocking_enable" -eq "1" ] && init_ip_white "ipv6"
+	[ -n "$login_web_black" ] && [ "$login_web_black" -eq "1" ] && init_ip_black "ipv4"
+	[ -n "$login_web_black" ] && [ "$login_web_black" -eq "1" ] && init_ip_black "ipv6"
 	[ -z "$web_logged" ] && [ -z "$ssh_logged" ] && [ -z "$web_login_failed" ] && [ -z "$ssh_login_failed" ] && return
 	[ ! -f ${dir}login_monitor ] && return
 	# 登录
@@ -1176,7 +1111,7 @@ function login_send(){
 		add_ip_white ${login_ip}
 		local login_time=`cat ${dir}web_login|grep -w ${login_ip}|awk '{print $1}'|grep -v "^$"|sort -u|head -n1`
 		local login_mode=`cat ${dir}web_login|grep -w ${login_ip}|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
-		echo "$ip_white_list"|grep -w -q "$login_ip" && log_only="1"
+		echo "$login_ip_white_list"|grep -w -q "$login_ip" && log_only="1"
 		if [ ! -z "$login_disturb" ] && [ "$login_disturb" -eq "2" ]; then
 			[ -f "$logfile" ] && login_log=$(grep -w "$login_ip" "$logfile" | grep -v "\【info\】" | tail -n 1)
 			[ ! -z "$login_log" ] && log_timestamp=$(date -d "$(echo "$login_log" | awk '{print $1, $2}')" +%s) || log_timestamp=0
@@ -1208,7 +1143,7 @@ function login_send(){
 		add_ip_white ${login_ip}
 		local login_time=`cat ${dir}ssh_login|grep -w ${login_ip}|awk '{print $1}'|grep -v "^$"|sort -u|head -n1`
 		local login_mode=`cat ${dir}ssh_login|grep -w ${login_ip}|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
-		echo "$ip_white_list"|grep -w -q "$login_ip" && log_only="1"
+		echo "$login_ip_white_list"|grep -w -q "$login_ip" && log_only="1"
 		if [ ! -z "$login_disturb" ] && [ "$login_disturb" -eq "2" ]; then
 			[ -f "$logfile" ] && login_log=$(grep -w "$login_ip" "$logfile" | grep -v "\【info\】" | tail -n 1)
 			[ ! -z "$login_log" ] && log_timestamp=$(date -d "$(echo "$login_log" | awk '{print $1, $2}')" +%s) || log_timestamp=0
@@ -1236,7 +1171,7 @@ function login_send(){
 	# Web 非法登录
 	for login_ip in `cat ${dir}web_failed|awk '{print $1}'|grep -v "^$"|sort -u`; do
 		[ -z "$login_ip" ] && continue
-		echo "$ip_white_list"|grep -w -q "$login_ip" && continue
+		echo "$login_ip_white_list"|grep -w -q "$login_ip" && continue
 		local login_sum=`cat ${dir}web_failed|grep -w "${login_ip}"|wc -l`
 		if [ "$login_sum" -ge "$login_max_num" ] ;then
 			if [ -n "$web_login_failed" ]; then
@@ -1260,7 +1195,7 @@ function login_send(){
 	# SSH 非法登录
 	for login_ip in `cat ${dir}ssh_failed|awk '{print $1}'|grep -v "^$"|sort -u`; do
 		[ -z "$login_ip" ] && continue
-		echo "$ip_white_list"|grep -w -q "$login_ip" && continue
+		echo "$login_ip_white_list"|grep -w -q "$login_ip" && continue
 		local login_sum=`cat ${dir}ssh_failed|grep -w "${login_ip}"|wc -l`
 		if [ "$login_sum" -ge "$login_max_num" ] ;then
 			if [ -n "$ssh_login_failed" ]; then
@@ -1285,60 +1220,60 @@ function login_send(){
 
 # 添加白名单，懒得写删除项和信息显示了，纯粹就是懒
 function add_ip_white() {
-	[ -n "$port_knocking" ] && [ "$port_knocking" -eq "1" ] || return
+	[ -n "$port_knocking_enable" ] && [ "$port_knocking_enable" -eq "1" ] || return
 	# 检查 IP 版本
-	( echo "$1"|grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$' ) && local ipset_name="serverchan_whitelist"
-	( echo "$1"|grep -Eq '^([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}$' ) && local ipset_name="serverchan_whitelistv6"
+	( echo "$1"|grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$' ) && local ipset_name="wechatpush_whitelist"
+	( echo "$1"|grep -Eq '^([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}$' ) && local ipset_name="wechatpush_whitelistv6"
 	[ -z "$ipset_name" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【!!!】白名单添加失败，IP 格式错误" >> ${logfile} && return
 
 	( opkg list-installed|grep -w -q ^firewall4 ) && nft delete element inet fw4 $ipset_name { $1 } >/dev/null 2>&1
 	( opkg list-installed|grep -w -q ^firewall4 ) && nft add element inet fw4 $ipset_name { $1 } && return #没找到刷新时间的命令，删除再添加
-	ipset -exist add $ipset_name $1 timeout $ip_white_timeout
+	ipset -exist add $ipset_name $1 timeout $login_ip_white_timeout
 }
 
 # 初始化白名单
 function init_ip_white() {
-	[ -n "$port_knocking" ] && [ "$port_knocking" -eq "1" ] || return
+	[ -n "$port_knocking_enable" ] && [ "$port_knocking_enable" -eq "1" ] || return
 	# 设置 IP 版本变量
-	if [ $1=="ipv4" ]; then
-		ipset_name="serverchan_whitelist"
+	if [ $1 == "ipv4" ]; then
+		ipset_name="wechatpush_whitelist"
 		ip_version="ip"
-	elif [ $1=="ipv6" ]; then
-		ipset_name="serverchan_whitelistv6"
+	elif [ $1 == "ipv6" ]; then
+		ipset_name="wechatpush_whitelistv6"
 		ip_version="ip6"
 		nat_table_cmd="family inet6"
 	fi
 
 	if ( opkg list-installed|grep -w -q ^firewall4 ); then
-		! nft list set inet fw4 $ipset_name >/dev/null 2>&1 && nft add set inet fw4 $ipset_name { type ${1}_addr\; flags timeout\; timeout ${ip_white_timeout}s\; }
-		nft -- add chain inet fw4 serverchan_dstnat { type nat hook prerouting priority -100 \; }
-		nft add chain inet fw4 serverchan_srcnat { type nat hook postrouting priority 100 \; }
+		! nft list set inet fw4 $ipset_name >/dev/null 2>&1 && nft add set inet fw4 $ipset_name { type ${1}_addr\; flags timeout\; timeout ${login_ip_white_timeout}s\; }
+		nft -- add chain inet fw4 wechatpush_dstnat { type nat hook prerouting priority -100 \; }
+		nft add chain inet fw4 wechatpush_srcnat { type nat hook postrouting priority 100 \; }
 	else
-		! ipset list $ipset_name >/dev/null 2>&1 && ipset create $ipset_name hash:ip timeout $ip_white_timeout $nat_table_cmd >/dev/null 2>&1
+		! ipset list $ipset_name >/dev/null 2>&1 && ipset create $ipset_name hash:ip timeout $login_ip_white_timeout $nat_table_cmd >/dev/null 2>&1
 	fi
 
 	# 端口放行
-	if [ ! -z "$ip_port_white" ]; then
-		local ip_port_white=`echo "$ip_port_white"|sed 's/ //g'|sed 's/,/, /g'` 2>/dev/null
+	if [ ! -z "$login_port_white" ]; then
+		local login_port_white=`echo "$login_port_white"|sed 's/ //g'|sed 's/,/, /g'` 2>/dev/null
 		if ( opkg list-installed|grep -w -q ^firewall4 ); then
-			local count_accept_rules=`nft list ruleset | grep -c "tcp dport.* ${ip_port_white}.* $ip_version saddr @${ipset_name} counter packets .* accept comment \"\!serverchan Accept rule\""`
+			local count_accept_rules=`nft list ruleset | grep -c "tcp dport.* ${login_port_white}.* $ip_version saddr @${ipset_name} counter packets .* accept comment \"\!wechatpush Accept rule\""`
 			if [ $count_accept_rules -eq 0 ]; then
-				nft insert rule inet fw4 input tcp dport { $ip_port_white } $ip_version saddr @$ipset_name counter accept comment \"\!serverchan Accept rule\" >/dev/null 2>&1
+				nft insert rule inet fw4 input tcp dport { $login_port_white } $ip_version saddr @$ipset_name counter accept comment \"\!wechatpush Accept rule\" >/dev/null 2>&1
 			elif [ $count_accept_rules -ne 1 ]; then
 				local i=0
-				local handles=`nft --handle list ruleset | grep "\!serverchan Accept rule" | grep -v "tcp dport.* ${ip_port_white}.* $ip_version saddr @${ipset_name} counter packets .* accept comment \"\!serverchan Accept rule\"" | awk '{print $NF}'`
+				local handles=`nft --handle list ruleset | grep "\!wechatpush Accept rule" | grep -v "tcp dport.* ${login_port_white}.* $ip_version saddr @${ipset_name} counter packets .* accept comment \"\!wechatpush Accept rule\"" | awk '{print $NF}'`
 				for handle in $handles; do
 					[ $i -eq 0 ] && i=1 && continue
 					nft delete rule $handle
 				done
 			fi
 		else
-			${ip_version}tables -C INPUT -m set --match-set $ipset_name src -p tcp -m multiport --dport $ip_port_white -j ACCEPT >/dev/null 2>&1 || ${ip_version}tables -I INPUT -m set --match-set $ipset_name src -p tcp -m multiport --dport $ip_port_white -j ACCEPT >/dev/null 2>&1
+			${ip_version}tables -C INPUT -m set --match-set $ipset_name src -p tcp -m multiport --dport $login_port_white -j ACCEPT >/dev/null 2>&1 || ${ip_version}tables -I INPUT -m set --match-set $ipset_name src -p tcp -m multiport --dport $login_port_white -j ACCEPT >/dev/null 2>&1
 		fi
 	fi
 	unset handle
 	# 端口转发
-	for port_forward in `echo "$port_forward_list"`; do
+	for port_forward in `echo "$login_port_forward_list"`; do
 		port_forward=`echo "$port_forward"|sed 's/,/ /g'` 2>/dev/null
 		[ `echo $port_forward| awk -F" " '{print NF}'` -ne "4" ] && continue
 		local src_ip=`echo ${port_forward}|awk '{print $1}'`
@@ -1346,8 +1281,8 @@ function init_ip_white() {
 		local dst_ip=`echo ${port_forward}|awk '{print $3}'`
 		local dst_port=`echo ${port_forward}|awk '{print $4}'`
 		if ( opkg list-installed|grep -w -q ^firewall4 ); then
-			! nft list ruleset|grep "$ip_version saddr @${ipset_name} tcp dport $src_port counter .* dnat $ip_version to $dst_ip:$dst_port comment \"\!serverchan DNAT rule\"" >/dev/null 2>&1 && nft insert rule inet fw4 serverchan_dstnat meta nfproto $1 $ip_version saddr @${ipset_name} tcp dport $src_port counter dnat to "$dst_ip:$dst_port" comment \"\!serverchan DNAT rule\" >/dev/null 2>&1
-			! nft list ruleset|grep "$ip_version daddr $dst_ip tcp dport $dst_port counter .* snat $ip_version to $src_ip comment \"\!serverchan SNAT rule\"" >/dev/null 2>&1 && nft insert rule inet fw4 serverchan_srcnat $ip_version daddr $dst_ip tcp dport $dst_port counter snat to $src_ip comment \"\!serverchan SNAT rule\" >/dev/null 2>&1
+			! nft list ruleset|grep "$ip_version saddr @${ipset_name} tcp dport $src_port counter .* dnat $ip_version to $dst_ip:$dst_port comment \"\!wechatpush DNAT rule\"" >/dev/null 2>&1 && nft insert rule inet fw4 wechatpush_dstnat meta nfproto $1 $ip_version saddr @${ipset_name} tcp dport $src_port counter dnat to "$dst_ip:$dst_port" comment \"\!wechatpush DNAT rule\" >/dev/null 2>&1
+			! nft list ruleset|grep "$ip_version daddr $dst_ip tcp dport $dst_port counter .* snat $ip_version to $src_ip comment \"\!wechatpush SNAT rule\"" >/dev/null 2>&1 && nft insert rule inet fw4 wechatpush_srcnat $ip_version daddr $dst_ip tcp dport $dst_port counter snat to $src_ip comment \"\!wechatpush SNAT rule\" >/dev/null 2>&1
 		else
 			${ip_version}tables -t nat -C PREROUTING -m set --match-set $ipset_name src -p tcp --dport $src_port -j DNAT --to-destination "$dst_ip:$dst_port" >/dev/null 2>&1 || ${ip_version}tables -t nat -I PREROUTING -m set --match-set $ipset_name src -p tcp --dport $src_port -j DNAT --to-destination "$dst_ip:$dst_port" >/dev/null 2>&1
 			${ip_version}tables -t nat -C POSTROUTING -m set --match-set $ipset_name src -p tcp -d $dst_ip --dport $dst_port -j SNAT --to-source $src_ip >/dev/null 2>&1 || ${ip_version}tables -t nat -I POSTROUTING -m set --match-set $ipset_name src -p tcp -d $dst_ip --dport $dst_port -j SNAT --to-source $src_ip >/dev/null 2>&1
@@ -1358,22 +1293,22 @@ function init_ip_white() {
 
 # 初始化黑名单规则
 function init_ip_black(){
-	[ -n "$web_login_black" ] && [ "$web_login_black" -eq "1" ] || return
+	[ -n "$login_web_black" ] && [ "$login_web_black" -eq "1" ] || return
 	# 设置 IP 版本变量
-	if [ $1=="ipv4" ]; then
-		ipset_name="serverchan_blacklist"
+	if [ $1 == "ipv4" ]; then
+		ipset_name="wechatpush_blacklist"
 		ip_version="ip"
-	elif [ $1=="ipv6" ]; then
-		ipset_name="serverchan_blacklistv6"
+	elif [ $1 == "ipv6" ]; then
+		ipset_name="wechatpush_blacklistv6"
 		ip_version="ip6"
 		nat_table_cmd="family inet6"
 	fi
 	
 	if ( opkg list-installed|grep -w -q ^firewall4 ); then
-		! nft list set inet fw4 ${ipset_name} >/dev/null 2>&1 && nft add set inet fw4 ${ipset_name} { type ${1}_addr\; flags timeout\; timeout ${ip_black_timeout}s\; }
-		! nft list ruleset|grep "$ip_version saddr @${ipset_name} counter .* comment \"\!serverchan Drop rule\"" >/dev/null 2>&1 && nft insert rule inet fw4 input $ip_version saddr @${ipset_name} counter drop comment \"\!serverchan Drop rule\" >/dev/null 2>&1
+		! nft list set inet fw4 ${ipset_name} >/dev/null 2>&1 && nft add set inet fw4 ${ipset_name} { type ${1}_addr\; flags timeout\; timeout ${login_ip_black_timeout}s\; }
+		! nft list ruleset|grep "$ip_version saddr @${ipset_name} counter .* comment \"\!wechatpush Drop rule\"" >/dev/null 2>&1 && nft insert rule inet fw4 input $ip_version saddr @${ipset_name} counter drop comment \"\!wechatpush Drop rule\" >/dev/null 2>&1
 	else
-		ipset list $ipset_name >/dev/null 2>&1 || ipset create ${ipset_name} hash:ip timeout ${ip_black_timeout} ${nat_table_cmd} >/dev/null 2>&1
+		ipset list $ipset_name >/dev/null 2>&1 || ipset create ${ipset_name} hash:ip timeout ${login_ip_black_timeout} ${nat_table_cmd} >/dev/null 2>&1
 		${ip_version}tables -C INPUT -m set --match-set ${ipset_name} src -j DROP >/dev/null 2>&1 || ${ip_version}tables -I INPUT -m set --match-set ${ipset_name} src -j DROP >/dev/null 2>&1
 	fi
 }
@@ -1382,16 +1317,16 @@ function init_ip_black(){
 function add_ip_black(){
 	[ ! "$1" ] && return
 	# 检查 IP 版本
-	( echo "$1"|grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$' ) && ipset_name="serverchan_blacklist"
-	( echo "$1"|grep -Eq '^([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}$' ) && ipset_name="serverchan_blacklistv6"
+	( echo "$1"|grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$' ) && ipset_name="wechatpush_blacklist"
+	( echo "$1"|grep -Eq '^([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}$' ) && ipset_name="wechatpush_blacklistv6"
 	[ -z "$ipset_name" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【!!!】黑名单添加失败，IP 格式错误" >> ${logfile} && return
 
-	! cat ${ip_blacklist_path}|grep -q -w -i ${1} && echo "$1 timeout ${ip_black_timeout}" >> ${ip_blacklist_path}
+	! cat ${ip_blacklist_path}|grep -q -w -i ${1} && echo "$1 timeout ${login_ip_black_timeout}" >> ${ip_blacklist_path}
 
 	( opkg list-installed|grep -w -q ^firewall4 ) && nft add element inet fw4 ${ipset_name} { $1 } >/dev/null 2>&1
 	( opkg list-installed|grep -w -q ^firewall4 ) && return
 
-	ipset -exist add $ipset_name ${1} timeout ${ip_black_timeout}
+	ipset -exist add $ipset_name ${1} timeout ${login_ip_black_timeout}
 }
 
 # 移出黑名单
@@ -1400,8 +1335,8 @@ function del_ip_black(){
 	sed -i "/^${1}/d" ${ip_blacklist_path}
 	
 	# 检查 IP 版本
-	( echo "$1"|grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$' ) && ipset_name="serverchan_blacklist"
-	( echo "$1"|grep -Eq '^([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}$' ) && ipset_name="serverchan_blacklistv6"
+	( echo "$1"|grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$' ) && ipset_name="wechatpush_blacklist"
+	( echo "$1"|grep -Eq '^([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}$' ) && ipset_name="wechatpush_blacklistv6"
 	[ -z "$ipset_name" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【!!!】黑名单删除失败，IP 格式错误" >> ${logfile} && return
 	
 	( opkg list-installed|grep -w -q ^firewall4 ) && nft delete element inet fw4 ${ipset_name} { $1 } >/dev/null 2>&1
@@ -1434,12 +1369,12 @@ function set_ip_black(){
 # 发送定时数据
 function send(){
 	echo "`date "+%Y-%m-%d %H:%M:%S"` 【定时数据】创建定时任务" >> ${logfile}
-	serverchan_disturb;local send_disturb=$?
+	disturb;local send_disturb=$?
 	get_config "send_title" "send_notification"
 	
 	cpuload=`getcpu`
-	service_status=$(ubus call service list '{"name": "serverchan"}' | grep -o '"running": true')
-	[ -z "$1" ] && ( echo "$send_notification"|grep -q "client_list" ) && > ${dir}send_enable.lock && [ -z "$service_status" ] && serverchan_first &
+	service_status=$(ubus call service list '{"name": "wechatpush"}' | grep -o '"running": true')
+	[ -z "$1" ] && ( echo "$send_notification"|grep -q "client_list" ) && > ${dir}send_enable.lock && [ -z "$service_status" ] && first &
 	if [ -z "$1" ] && ( echo "$send_notification"|grep -q "router_status" ); then
 		cat /proc/loadavg|awk '{print $1" "$2" "$3}' > "$output_dir/systemload" &
 		free -m|sed -n '2p'|awk '{printf "%.2f%%\n",($3/$2)*100}' > "$output_dir/ramload" &
@@ -1453,7 +1388,7 @@ function send(){
 		getip wanipv4 > "$output_dir/send_wanIP" &
 		getip hostipv4|jq -r '.IP' > "$output_dir/send_hostIP" &
 		waninfo_enable="1"
-		if [ ! -z "$serverchan_ipv6" ] && [ "$serverchan_ipv6" -ne "0" ]; then
+		if [ "$get_ipv6_mode" -ne "0" ]; then
 			getip wanipv6 > "$output_dir/send_wanIPv6" &
 			getip hostipv6|jq -r '.IP' > "$output_dir/send_hostIPv6" &
 			ipv6_enable="1"
@@ -1542,16 +1477,17 @@ done
 unset i
 
 # 载入在线设备
-serverchan_init;[ $? -eq 1 ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】读取设置出错，请检查设置项 " >> ${logfile} && exit
+init;[ $? -eq 1 ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】读取设置出错，请检查设置项 " >> ${logfile} && exit
 echo "`date "+%Y-%m-%d %H:%M:%S"` 【初始化】载入在线设备..." >> ${logfile}
-> ${dir}send_enable.lock && serverchan_first && deltemp
+> ${dir}send_enable.lock && first && deltemp
 echo "`date "+%Y-%m-%d %H:%M:%S"` 【初始化】初始化完成" >> ${logfile}
 
 # 循环
-while [ "$serverchan_enable" -eq "1" ]; do
+while [ "$enable" -eq "1" ]; do
 	deltemp
 	usage update
-	serverchan_disturb;disturb=$?
+	disturb;disturb=$?
+	device_aliases=`cat /usr/share/wechatpush/api/device_aliases.list` 2>/dev/null
 
 	[ -f ${dir}ipAddress ] && ipAddress_logrow=$(grep -c "" ${dir}ipAddress) || ipAddress_logrow="0";
 	if [ $ipAddress_logrow -ne "0" ]; then
@@ -1562,7 +1498,7 @@ while [ "$serverchan_enable" -eq "1" ]; do
 	fi
 
 	# 网络状态与 IP 变动
-	if [ "$serverchan_ipv4" -ne "0" ] || [ "$serverchan_ipv6" -ne "0" ]; then
+	if [ "$get_ipv4_mode" -ne "0" ] || [ "$get_ipv6_mode" -ne "0" ]; then
 		rand_geturl
 		ip_changes
 	fi
@@ -1571,7 +1507,7 @@ while [ "$serverchan_enable" -eq "1" ]; do
 	if [ ! -f "${dir}send_enable.lock" ]; then
 		[ ! -z "$title" ] && echo "$title" > ${dir}title
 		[ ! -z "$content" ] && echo "$content" > ${dir}content
-		serverchan_first
+		first
 		[ -f "${dir}title" ] && title=`cat ${dir}title` && rm -f ${dir}title >/dev/null 2>&1
 		[ -f "${dir}content" ] && content=`cat ${dir}content` && rm -f ${dir}content >/dev/null 2>&1
 	fi
