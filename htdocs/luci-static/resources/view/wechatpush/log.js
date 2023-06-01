@@ -60,10 +60,10 @@ return view.extend({
 				'src': L.resource(['icons/loading.gif']),
 				'alt': _('Loading...'),
 				'style': 'vertical-align:middle'
-			}, _('数据收集中...'))
+			}, _('Collecting data ...'))
 		);
 
-		var log_path = '/tmp/serverchan/serverchan.log';
+		var log_path = '/tmp/wechatpush/wechatpush.log';
 
 		var clear_log_button = E('div', {}, [
 			E('button', {
@@ -72,13 +72,13 @@ return view.extend({
 					ev.preventDefault();
 					var button = ev.target;
 					button.disabled = true;
-					button.textContent = _('清除日志...');
-					fs.exec_direct('/usr/libexec/serverchan-call', ['clear_log'])
+					button.textContent = _('Clear Logs...');
+					fs.exec_direct('/usr/libexec/wechatpush-call', ['clear_log'])
 						.then(function () {
-							button.textContent = _('日志清除成功！');
+							button.textContent = _('Logs cleared successfully!');
 							setTimeout(function () {
 								button.disabled = false;
-								button.textContent = _('清除日志');
+								button.textContent = _('Clear Logs');
 							}, 5000);
 							// 立即刷新日志显示框
 							var log = E('pre', { 'wrap': 'pre' }, [_('Log is clean.')]);
@@ -88,11 +88,11 @@ return view.extend({
 							button.textContent = _('Failed to clear log.');
 							setTimeout(function () {
 								button.disabled = false;
-								button.textContent = _('清除日志');
+								button.textContent = _('Clear Logs');
 							}, 5000);
 						});
 				}
-			}, _('清除日志'))
+			}, _('Clear Logs'))
 		]);
 
 
@@ -121,7 +121,7 @@ return view.extend({
 			E('div', { 'class': 'cbi-section' }, [
 				clear_log_button,
 				log_textarea,
-				E('small', {}, _('每 5 秒刷新一次 ').format(L.env.pollinterval)),
+				E('small', {}, _('Refresh every 5 seconds.').format(L.env.pollinterval)),
 				E('div', { 'class': 'cbi-section-actions cbi-section-actions-right' })
 			])
 		]);
