@@ -1506,6 +1506,7 @@ process_login() {
 		unset login_counts["$login_ip"]
 		[ "$2" == "web_login_counts" ] && echo "${login_ip}" >> ${dir}web_login
 		[ "$2" == "ssh_login_counts" ] && echo "${login_ip}" >> ${dir}ssh_login
+		[ "${#login_counts[@]}" -gt "100" ] && login_counts=("${login_counts[@]: -100}")
 	fi
 }
 
@@ -1519,17 +1520,26 @@ if [ -n "$web_logged" ] || [ -n "$ssh_logged" ] || [ -n "$web_login_failed" ] ||
 	[ -n "$child_pid" ] && kill $child_pid
 	(
 	logread -f -p notice | while IFS= read -r line; do
-		[ -n "$web_logged" ] && web_login_ip=$(echo "$line" | grep -i "accepted login" | awk '{print $NF}')
-		[ -n "$ssh_logged" ] && ssh_login_ip=$(echo "$line" | grep -i "Password auth succeeded\|Pubkey auth succeeded" | awk '{print $NF}' | sed -nr 's#^(.*):.[0-9]{1,5}#\1#gp' | sed -e 's/%.*//')
-		[ -n "$web_login_failed" ] && web_failed_ip=$(echo "$line" | grep -i "failed login"|awk '{print $NF}')
-		[ -n "$ssh_login_failed" ] && ssh_failed_ip=$(echo "$line" | grep -i "Bad password attempt\|Login attempt for nonexistent user from" | awk '{print $NF}' | sed -nr 's#^(.*):.[0-9]{1,5}#\1#gp' | sed -e 's/%.*//')
-		[ -n "$ssh_login_failed" ] && ssh_failed_num=$(echo "$line" | sed -n 's/.*authpriv\.warn dropbear\[\([0-9]\+\)\]: Login attempt for nonexistent user/\1/p')
-		[ -n "$ssh_failed_num" ] && ssh_failed_ip=$(logread notice | grep "authpriv\.info dropbear\[${failed_user_id}\].*Child connection from" | awk '{print $NF}' | sed -nr 's#^(.*):.[0-9]{1,5}#\1#gp' | sed -e 's/%.*//')
+		[ -n "$web_logged" ] && {
+			web_login_ip=$(echo "$line" | grep -i "accepted login" | awk '{print $NF}')
+			[ -n "$web_login_ip" ] && process_login "$web_login_ip" web_login_counts
+		}
 
-		[ -n "$web_login_ip" ] && process_login "$web_login_ip" web_login_counts
-		[ -n "$ssh_login_ip" ] && process_login "$ssh_login_ip" ssh_login_counts
-		[ -n "$web_failed_ip" ] && process_login "$web_failed_ip" web_failed_counts
-		[ -n "$ssh_failed_ip" ] && process_login "$ssh_failed_ip" ssh_failed_counts
+		[ -n "$ssh_logged" ] && {
+			ssh_login_ip=$(echo "$line" | grep -i "Password auth succeeded\|Pubkey auth succeeded" | awk '{print $NF}' | sed -nr 's#^(.*):.[0-9]{1,5}#\1#gp' | sed -e 's/%.*//')
+			[ -n "$ssh_login_ip" ] && process_login "$ssh_login_ip" ssh_login_counts
+		}
+		
+		[ -n "$web_login_failed" ] && {
+			web_failed_ip=$(echo "$line" | grep -i "failed login"|awk '{print $NF}')
+			[ -n "$web_failed_ip" ] && process_login "$web_failed_ip" web_failed_counts
+		}
+
+		[ -n "$ssh_login_failed" ] && {
+			ssh_failed_ip=$(echo "$line" | grep -i "Bad password attempt\|Login attempt for nonexistent user from" | awk '{print $NF}' | sed -nr 's#^(.*):.[0-9]{1,5}#\1#gp' | sed -e 's/%.*//')
+			[ -z "$ssh_failed_ip" ] && ssh_failed_num=$(echo "$line" | sed -n 's/.*authpriv\.warn dropbear\[\([0-9]\+\)\]: Login attempt for nonexistent user/\1/p') && [ -n "$ssh_failed_num" ] && ssh_failed_ip=$(logread notice | grep "authpriv\.info dropbear\[${failed_user_id}\].*Child connection from" | awk '{print $NF}' | sed -nr 's#^(.*):.[0-9]{1,5}#\1#gp' | sed -e 's/%.*//')
+			[ -n "$ssh_failed_ip" ] && process_login "$ssh_failed_ip" ssh_failed_counts
+		}
 	done
 	) &
 	# 分离子shell，避免影响 wait
