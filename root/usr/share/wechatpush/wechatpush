@@ -1682,7 +1682,7 @@ while [ "$enable" -eq "1" ]; do
 	[ ! -f "${dir}send_enable.lock" ] && cpu_load
 
 	# 硬盘检测
-	[ ! -f "${dir}send_enable.lock" ] && get_disk
+	#[ ! -f "${dir}send_enable.lock" ] && get_disk
 
 	# 异常流量检测
 	[ ! -f "${dir}send_enable.lock" ] && get_client_usage
