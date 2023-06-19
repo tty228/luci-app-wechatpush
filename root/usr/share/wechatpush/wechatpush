@@ -1150,16 +1150,16 @@ function get_disk() {
 		if [ -f "${file_path}" ] && ( ! cat "${file_path}" | grep -q -v "STANDBY" ); then
 			disk_name=$(awk '/Device Model/{print $NF}' "$file_path")
 			[[ -n $disk_name && $disk_name != null && $disk_name != 0 ]] && {
-				[ $(length_str "$disk_name") -gt "20" ] && disk_name=$(echo "$disk_name" | awk '{print $1, $NF}')
-				[ $(length_str "$disk_name") -gt "20" ] && disk_name=$(cut_str "$disk_name" "20")
+				disk_name=$(cut_str "$disk_name" "20")
+				disk_name="${disk_name}_$(eval ${tmp_command} lsblk -o NAME,SIZE | awk "/^${all_disk_names[i]}/ {print \$NF}")"
 			}
 			printf "\n${str_title_start} 硬盘名称：${disk_name}${disk_type}${str_title_end}\n${str_tab}硬盘休眠中" >> "$output_dir/get_disk"
 		elif [ -f "${file_path}" ]; then
 			# 硬盘名称
 			disk_name=$(jq -r .model_name ${file_path})
 			[[ -n $disk_name && $disk_name != null && $disk_name != 0 ]] && {
-				[ $(length_str "$disk_name") -gt "20" ] && disk_name=$(echo "$disk_name" | awk '{print $1, $NF}')
-				[ $(length_str "$disk_name") -gt "20" ] && disk_name=$(cut_str "$disk_name" "20")
+				disk_name=$(cut_str "$disk_name" "20")
+				disk_name="${disk_name}_$(eval ${tmp_command} lsblk -o NAME,SIZE | awk "/^${all_disk_names[i]}/ {print \$NF}")"
 			}
 			printf "\n${str_title_start} 硬盘名称：${disk_name}${disk_type}${str_title_end}" >> "$output_dir/get_disk"
 			# 硬盘错误
