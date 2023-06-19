@@ -1177,12 +1177,12 @@ function get_disk() {
 			# 通电时间
 			disk_time=$(jq -r .power_on_time.hours ${file_path})
 			[[ -n $disk_time && $disk_time != null ]] && printf "\n${str_tab}通电时间：${disk_time}h" >> "$output_dir/get_disk"
-			# 使用空间
-			disk_use=$(df -h | grep -w "^/dev/${tmp_name}" | awk '{print $5}' | sort -u)
-			[ -n "$disk_use" ] && [ -n "${disk_use// }" ] && echo -e -n "\n${str_tab}使用空间：${disk_use}" >> "$output_dir/get_disk"
-			# 使用寿命
+			# 空间使用
+			disk_use=$(eval ${tmp_command} lsblk -o NAME,FSUSE%,TYPE | awk -v part_name="${all_disk_names[i]}" '$NF == "part" && $1 ~ part_name && NF > 2 {sub(".*" part_name, part_name, $1); printf "%s: %s  ", $1, $2} END {print ""}')
+			[ -n "$disk_use" ] && [ -n "${disk_use// }" ] && echo -e -n "\n${str_tab}空间使用：${disk_use}" >> "$output_dir/get_disk"
+			# 寿命使用
 			disk_health=$(jq -r .nvme_smart_health_information_log.percentage_used ${file_path})
-			[[ -n $disk_health && $disk_health != null ]] && echo -e -n "\n${str_tab}使用寿命：${disk_health}%" >> "$output_dir/get_disk"
+			[[ -n $disk_health && $disk_health != null ]] && echo -e -n "\n${str_tab}寿命使用：${disk_health}%" >> "$output_dir/get_disk"
 		fi
 	done
 }
@@ -1533,15 +1533,29 @@ function send(){
 	fi
 
 	if [ -n "$waninfo_enable" ]; then
-		send_content="${send_content}${str_splitline}${str_title_start} WAN 口信息${str_title_end}${str_linefeed}${str_tab}接口 IPv4:${send_wanIP}"
-		send_content="${send_content}${str_linefeed}${str_tab}外网 IPv4:${send_hostIP}"
+		send_content="${send_content}${str_splitline}${str_title_start} WAN 口信息${str_title_end}"
+		if [ "$send_wanIP" == "$send_hostIP" ]; then
+			send_content="${send_content}${str_linefeed}${str_tab}IPv4: ${send_wanIP}"
+		elif [ "$get_ipv4_mode" -eq "1" ]; then
+			send_content="${send_content}${str_linefeed}${str_tab}接口 IPv4: ${send_wanIP}"
+			[ -n "$send_hostIP" ] && send_content="${send_content}${str_linefeed}${str_tab}外网 IPv4: ${send_hostIP}"
+		elif [ "$get_ipv4_mode" -eq "2" ]; then
+			[ -n "$send_wanIP" ] && send_content="${send_content}${str_linefeed}${str_tab}接口 IPv4: ${send_wanIP}"
+			send_content="${send_content}${str_linefeed}${str_tab}外网 IPv4: ${send_hostIP}"
+		fi
 		if [ -n "$ipv6_enable" ]; then
-			send_content="${send_content}${str_linefeed}${str_tab}接口 IPv6:${send_wanIPv6}"
-			send_content="${send_content}${str_linefeed}${str_tab}外网 IPv6:${send_hostIPv6}"
+			if [ "$send_wanIPv6" == "$send_hostIPv6" ]; then
+				send_content="${send_content}${str_linefeed}${str_tab}IPv6: ${send_wanIPv6}"
+			elif [ "$get_ipv6_mode" -eq "1" ]; then
+				send_content="${send_content}${str_linefeed}${str_tab}接口 IPv6: ${send_wanIPv6}"
+				[ -n "$send_hostIPv6" ] && send_content="${send_content}${str_linefeed}${str_tab}外网 IPv6: ${send_hostIPv6}"
+			elif [ "$get_ipv6_mode" -eq "2" ]; then
+				[ -n "$send_wanIPv6" ] && send_content="${send_content}${str_linefeed}${str_tab}接口 IPv6: ${send_wanIPv6}"
+				send_content="${send_content}${str_linefeed}${str_tab}外网 IPv6: ${send_hostIPv6}"
+			fi
 		fi
 		interfaceuptime=`getinterfaceuptime`
 		[ ! -z "$interfaceuptime" ] && wanstatustime=$(printf "在线时间：%d天%d时%d分%d秒" $((interfaceuptime / 86400)) $(((interfaceuptime % 86400) / 3600)) $(((interfaceuptime % 3600) / 60)) $((interfaceuptime % 60)))
-		( ! echo "$send_wanIP"|grep -q -w ${send_hostIP} ) && send_content="${send_content}${str_linefeed}${str_tab}外网 IP 与接口 IP 不一致，你的 IP 可能不是公网 IP"
 		send_content="${send_content}${str_linefeed}${str_tab}${wanstatustime}"
 	fi
 
