@@ -1099,7 +1099,7 @@ function get_disk() {
 	pve_disk_names=()
 
 	# 查询本地硬盘名
-	local_disk_names=($(df -h | awk '/\/dev\/sd/ {print $1}' | awk -F '/' '{print $NF}' | sort -u))
+	local_disk_names=($(lsblk | awk '$NF=="disk" {print $1}' | sort -u))
 	local_disk_tags=($(for _ in "${local_disk_names[@]}"; do echo "local"; done))
 
 	# 查询远程硬盘名
@@ -1116,6 +1116,7 @@ function get_disk() {
 	for i in "${!all_disk_names[@]}"; do
 		tmp_name=${all_disk_names[i]}
 		tmp_tag=${all_disk_tags[i]}
+		error_pattern="No such device|Unable to detect device type|Unknown USB bridge|QEMU HARDDISK"
 		unset tmp_command disk_type
 
 		# 判断硬盘类型
@@ -1124,22 +1125,26 @@ function get_disk() {
 			disk_type="_pve"
 		fi
 		file_path="${dir}disk_info/${tmp_name}${disk_type}"
-		
+
+		# 如果不能获取值，使用分区名重试（因为不清楚是 OpenWrt 的原因还是 smartctl 版本的原因，使用出错重试的方式）
+		eval ${tmp_command} smartctl -i -n standby "/dev/${tmp_name}" | grep -qE "$error_pattern" && {
+			tmp_name=$(df -h | awk "/^\\/dev\\/${tmp_name}/ {print \$1}" | awk -F '/' '{print $NF}' | head -n1)
+			[ -z "$tmp_name" ] && continue
+		}
+
 		# 手上的硬盘不能休眠，不确定命令是否会唤醒硬盘，每天只运行一次
 		last_disk_time=$(date -r "${file_path}" +%s 2>/dev/null) || last_disk_time=0
 
 		if [ $(( $(date +%s) - $last_disk_time )) -gt 86000 ]; then
 			disk_info=$(eval ${tmp_command} smartctl -i -n standby "/dev/${tmp_name}")
-			echo "$disk_info" | grep "No such device\|Unknown USB bridge\|QEMU HARDDISK" && {
+			echo "$disk_info" | grep -qE "$error_pattern" && {
 				continue
 			} || \
-			echo "$disk_info" | grep "STANDBY" && {
+			echo "$disk_info" | grep -q "STANDBY" && {
 				echo "$disk_info" > "${file_path}"
 			} || \
 			eval ${tmp_command} smartctl -a -j /dev/${tmp_name} > ${file_path}
 		fi
-
-		
 
 		# 硬盘状态
 		if [ -f "${file_path}" ] && ( ! cat "${file_path}" | grep -q -v "STANDBY" ); then
