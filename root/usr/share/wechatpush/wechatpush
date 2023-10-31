@@ -838,6 +838,11 @@ function ip_changes(){
 	[ "$get_ipv6_mode" -eq "1" ] && local IPv6=`getip wanipv6` && local IPv6_URL="网络接口"
 	[ "$get_ipv6_mode" -eq "2" ] && local IPv6=`getip hostipv6` && local IPv6_URL=`echo ${IPv6}|jq -r '.URL'` && local IPv6=`echo ${IPv6}|jq -r '.IP'`
 
+	if [ "$1" ] && [ $1 == "getip" ]; then
+		echo "IPv4 $IPv4    接口：$IPv4_URL <br/>IPv6 $IPv6    接口：$IPv6_URL"
+		return
+	fi
+
 	# 存在临时文件
 	if [ -f ${dir}ip ]; then
 		local last_IPv4=$(cat "${dir}ip"|grep IPv4|awk '{print $2}'|grep -v "^$"|sort -u|head -n1)
@@ -1618,6 +1623,12 @@ function send(){
 if [ "$1" ] ;then
 	[ $1 == "soc" ] && get_config "soc_code" "server_host" "server_port"
 	[ $1 == "soc" ] && soc_temp && exit $?
+	[ $1 == "getip" ] && {
+		get_config "get_ipv4_mode" "ipv4_interface" "get_ipv6_mode" "ipv6_interface"
+		ipv4_urllist=`cat /usr/share/wechatpush/api/ipv4.list` 2>/dev/null
+		ipv6_urllist=`cat /usr/share/wechatpush/api/ipv6.list` 2>/dev/null
+		ip_changes getip && exit $?
+		}
 	read_config
 	[ $1 == "send" ] && send && exit $?
 	[ $1 == "test" ] && send test && exit $?
