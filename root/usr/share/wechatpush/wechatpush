@@ -235,8 +235,10 @@ function getip(){
 # 获取接口信息
 function getinterfacelist(){
 	[ `ubus list|grep -w -i "network.interface.wan"|wc -l` -ge "1" ] && ubus call network.interface.wan status && return
-	local ubuslist=`ubus list|grep -i "network.interface."|grep -v "loopback"|grep -v -i "wan6"|grep -v -i "lan6"|grep -v -i "ipsec.*"|grep -v -i "VPN.*"|grep -v -i "DOCKER.*"`
-	[ `echo "${ubuslist}" |wc -l` -eq "1" ] && ubus call ${ubuslist} status && return
+	[ ! -z "$ipv4_interface" ] && local device_name=$ipv4_interface || [ ! -z "$ipv6_interface" ] && local device_name=$ipv6_interface
+	[ ! -z "$device_name" ] && local interface_name=`ubus call network.interface dump | jq -r --arg intf "$device_name" '.interface[] | select(.device == $intf and (.interface | endswith("6") | not)) | .interface'`
+	[ -z "$interface_name" ] && local interface_name=`ubus list | grep -i "network.interface." | grep -v "loopback" | grep -v -i "wan6" | grep -v -i "lan6" | grep -v -i "ipsec.*" | grep -v -i "VPN.*" | grep -v -i "DOCKER.*" | awk -F '.' '{print $3}'`
+	[ `echo "${interface_name}" |wc -l` -eq "1" ] && ubus call network.interface.${interface_name} status && return
 }
 
 # 获取接口在线时间
