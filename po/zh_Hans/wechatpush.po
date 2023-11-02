@@ -380,6 +380,10 @@ msgstr "设备报警只会在连续五分钟超过设定值时才会推送，一
 msgid "Load alert threshold"
 msgstr "负载报警阈值"
 
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:451
+msgid "In general, when the load value is lower than the number of logical cores, you typically don\'t need to pay much attention to it"
+msgstr "通常情况下，负载值低于逻辑核心数量时，你不需要关注它"
+
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:433
 msgid "Please enter a numeric value only"
 msgstr "请输入纯数字"
@@ -683,6 +687,22 @@ msgstr "设备在线免打扰列表"
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:662
 msgid "Do Not Disturb device offline list"
 msgstr "设备离线免打扰列表"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:682
+msgid "When CPU temperature or load exceeds the threshold continuously for (s) seconds."
+msgstr "当 CPU 温度或负载超过阈值持续超过（秒）"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:686
+msgid "If set to 0, it\'s a single check without considering duration."
+msgstr "如果设置为 0，则为单次检测，不考虑持续时间"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:688
+msgid "CPU alarm quiet time (seconds)"
+msgstr "CPU 报警免打扰时间（秒）"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:692
+msgid "No repeat notifications within the set time after the initial push notification."
+msgstr "首次推送通知后，在设定时间内不再重复提醒"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:667
 msgid "Do Not Disturb for Login Reminders"
