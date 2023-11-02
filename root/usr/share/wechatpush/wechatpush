@@ -193,8 +193,8 @@ function getip(){
 		function get_hostipv4()
 		{
 			local ipv4_URL=`echo "$ipv4_urllist"| sed -n "${1}p"|sed -e 's/\r//g'`
-			[ ! -z "$ipv4_interface" ] && local tmp_hostIP=$(eval "curl -k -s -4 --interface ${ipv4_interface} -m 5 ${ipv4_URL}") || local tmp_hostIP=$(eval "curl -k -s -4 -m 5 ${ipv4_URL}")
-			[ -z "$tmp_hostIP" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】IP 获取失败，当前使用的 API 为 $ipv4_URL，接口为：${ipv4_interface}" >> ${logfile}
+			[ ! -z "$ipv4_interface" ] && local tmp_hostIP=$(eval "curl --connect-timeout 2 -m 2 -k -s -4 --interface ${ipv4_interface} -m 5 ${ipv4_URL}") || local tmp_hostIP=$(eval "curl --connect-timeout 2 -m 2 -k -s -4 -m 5 ${ipv4_URL}")
+			[ -z "$tmp_hostIP" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】IP 获取失败，当前使用的 API 为 $ipv4_URL & ${ipv4_interface}" >> ${logfile}
 			local tmp_hostIP=`echo $tmp_hostIP|grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'|head -n1`
 			echo "{\"IP\":\"${tmp_hostIP}\", \"URL\":\"${ipv4_URL}\"}"
 		}
@@ -218,8 +218,8 @@ function getip(){
 		function get_hostipv6()
 		{
 			local ipv6_URL=`echo "$ipv6_urllist"| sed -n "${1}p"|sed -e 's/\r//g'`
-			[ ! -z "$ipv6_interface" ] && local tmp_hostIPv6=$(eval "curl -k -s -6 --interface ${ipv6_interface} -m 5 ${ipv6_URL}") || local tmp_hostIPv6=$(eval "curl -k -s -6 -m 5 ${ipv6_URL}")
-			[ -z "$tmp_hostIPv6" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】IP 获取失败，当前使用的 API 为 $ipv6_URL，接口为：${ipv6_interface}" >> ${logfile}
+			[ ! -z "$ipv6_interface" ] && local tmp_hostIPv6=$(eval "curl --connect-timeout 2 -m 2 -k -s -6 --interface ${ipv6_interface} -m 5 ${ipv6_URL}") || local tmp_hostIPv6=$(eval "curl --connect-timeout 2 -m 2 -k -s -6 -m 5 ${ipv6_URL}")
+			[ -z "$tmp_hostIPv6" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】IP 获取失败，当前使用的 API 为 $ipv6_URL & ${ipv6_interface}" >> ${logfile}
 			local tmp_hostIPv6=`echo $tmp_hostIPv6|grep -oE "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}"|head -n1`
 			echo "{\"IP\":\"${tmp_hostIPv6}\", \"URL\":\"${ipv6_URL}\"}"
 		}
@@ -833,10 +833,26 @@ function rand_geturl(){
 
 # 检测 ip 状况
 function ip_changes(){
-	[ "$get_ipv4_mode" -eq "1" ] && local IPv4=`getip wanipv4` && local IPv4_URL="网络接口"
-	[ "$get_ipv4_mode" -eq "2" ] && local IPv4=`getip hostipv4` && local IPv4_URL=`echo ${IPv4}|jq -r '.URL'` && local IPv4=`echo ${IPv4}|jq -r '.IP'`
-	[ "$get_ipv6_mode" -eq "1" ] && local IPv6=`getip wanipv6` && local IPv6_URL="网络接口"
-	[ "$get_ipv6_mode" -eq "2" ] && local IPv6=`getip hostipv6` && local IPv6_URL=`echo ${IPv6}|jq -r '.URL'` && local IPv6=`echo ${IPv6}|jq -r '.IP'`
+	[ "$get_ipv4_mode" -eq 1 ] && {
+		getip wanipv4 > "$output_dir/IPv4" &
+		local IPv4_URL="网络接口"
+	}
+	[ "$get_ipv6_mode" -eq 1 ] && {
+		getip wanipv6 > "$output_dir/IPv6" &
+		local IPv6_URL="网络接口"
+	}
+	[ "$get_ipv4_mode" -eq 2 ] && getip hostipv4 > "$output_dir/IPv4" &
+	[ "$get_ipv6_mode" -eq 2 ] && getip hostipv6 > "$output_dir/IPv6" &
+	wait_and_cat
+	[ "$get_ipv4_mode" -eq 2 ] && {
+		echo ${IPv4}|jq -r '.URL' > "$output_dir/IPv4_URL" &
+		echo ${IPv4}|jq -r '.IP' > "$output_dir/IPv4" &
+	}
+	[ "$get_ipv6_mode" -eq 2 ] && {
+		echo ${IPv6}|jq -r '.URL' > "$output_dir/IPv6_URL" &
+		echo ${IPv6}|jq -r '.IP' > "$output_dir/IPv6" &
+	}
+	wait_and_cat
 
 	if [ "$1" ] && [ $1 == "getip" ]; then
 		echo "IPv4：$IPv4<br/>地址：$(get_ip_attribution $IPv4)<br/>接口：$IPv4_URL<br/>IPv6：$IPv6<br/>地址：$(get_ip_attribution $IPv6)<br/>接口：$IPv6_URL"
@@ -1218,18 +1234,24 @@ function get_disk() {
 	done
 }
 
-
 # 查询 IP 归属地
 function get_ip_attribution(){
 	ip="$1"
 	[ -f ${dir}ipAddress ] && ( cat ${dir}ipAddress|grep -q -w -i "$ip" ) && echo "本地局域网" && return
 	ip_attribution_urls=$(cat /usr/share/wechatpush/api/ip_attribution.list)
-	while IFS= read -r ip_attribution_command; do
-		local login_ip_attribution=$(eval "$ip_attribution_command" 2>/dev/null)
-		[ "$login_ip_attribution" == "null" ] && unset login_ip_attribution
-		[ -n "$login_ip_attribution" ] && break
-	done <<< "$ip_attribution_urls"
-	echo "$login_ip_attribution"
+	local url_number=`echo "$ip_attribution_urls"|wc -l`
+	local rand_number=`rand 1 $url_number`
+	function get_attribution()
+	{
+		local ip_attribution_url=`echo "$ip_attribution_urls"| sed -n "${1}p"|sed -e 's/\r//g'`
+		local login_ip_attribution=$(eval curl --connect-timeout 2 -m 2 -k -s "$ip_attribution_url" 2>/dev/null)
+		#logfile=logfile="${dir}wechatpush.log"
+		#[ -z "$login_ip_attribution" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】归属地获取超时，当前使用的 API 为 $ip_attribution_url" >> ${logfile}
+		echo "$login_ip_attribution"
+	}
+	local ip_attribution=`get_attribution ${rand_number}`
+	[ -z "$ip_attribution" ] && local rand_number=`expr $rand_number + 1` && [ $rand_number -gt $url_number ] && local rand_number=1;[ -z "$ip_attribution" ] && local ip_attribution=`get_attribution ${rand_number}`
+	echo "$ip_attribution"
 }
 
 # 登录提醒通知
@@ -1653,6 +1675,8 @@ if [ "$1" ] ;then
 		get_config "get_ipv4_mode" "ipv4_interface" "get_ipv6_mode" "ipv6_interface"
 		ipv4_urllist=`cat /usr/share/wechatpush/api/ipv4.list` 2>/dev/null
 		ipv6_urllist=`cat /usr/share/wechatpush/api/ipv6.list` 2>/dev/null
+		dir="/tmp/wechatpush/" && mkdir -p ${dir}
+		output_dir="${dir}json_output" && mkdir -p "$output_dir"
 		ip_changes getip && exit $?
 		}
 	read_config
