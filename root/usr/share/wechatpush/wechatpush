@@ -144,18 +144,22 @@ function diy_send(){
 	local content_type=`jq -r '.content_type' ${3}`
 	! jq "$type" ${3} > ${tempjsonpath} && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】type:{ } 字段转义变量后格式错误，请检查 type:{ } 字段内是否有特殊符号未转义或语法错误" >> ${logfile} && return 1
 
-	[ $4 ] && echo '{"url":"'${diyurl}'","content_type":"'${content_type}'","type":'`jq "$type" ${3}`'}' > ${dir}debug_send_json
-	[ $4 ] && echo -e "${send_title}" "${send_content}" > ${dir}debug_send_content
-	[ $4 ] && cat ${tempjsonpath} > ${dir}debug_send_data
-	[ $4 ] && ! jq -r '.' ${dir}debug_send_json && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】转义变量后格式错误，请检查 ${dir}debug_send_json 字段内是否有特殊符号未转义或语法错误" >> ${logfile}
-	[ $4 ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【debug】json 文件已保存至：${dir}debug_send_json"  >> ${logfile}
-	[ $4 ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【debug】推送内容预览文件保存至：${dir}debug_send_content" >> ${logfile}
-	[ $4 ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【debug】如果收不到信息，请检查 ${dir}debug_send_data 文件，或使用下列命令手动测试返回值 (可能需要关闭日志自动刷新方便选中)" >> ${logfile}
-	[ $4 ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【debug】"'curl -X POST -H "'$content_type'" -d "@'${dir}debug_send_data'" "'${diyurl}'"  ' >> ${logfile}
-
-	curl --connect-timeout 30 -m 60 -X POST -H "$content_type" -d "$data" "${diyurl}"
+	curl --connect-timeout 30 -m 60 --retry 1 -X POST -H "$content_type" -d "$data" "${diyurl}"
 	local RETVAL=$?
-	[ $RETVAL -ne "0" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】网络错误或 URL 错误，推送失败，curl 返回值为 ${RETVAL}" >> ${logfile} && return 1 || return 0
+	if [ -n "$4" ] || [ $RETVAL -ne "0" ]; then
+		echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】网络错误或 URL 错误，推送失败，curl 返回值为 ${RETVAL}，请参考如下调试信息进行排查" >> ${logfile}
+		echo '{"url":"'${diyurl}'","content_type":"'${content_type}'","type":'`jq "$type" ${3}`'}' > ${dir}debug_send_json
+		echo -e "${send_title}" "${send_content}" > ${dir}debug_send_content
+		cat ${tempjsonpath} > ${dir}debug_send_data
+		! jq -r '.' ${dir}debug_send_json && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】转义变量后格式错误，请检查 ${dir}debug_send_json 字段内是否有特殊符号未转义或语法错误" >> ${logfile}
+		echo "`date "+%Y-%m-%d %H:%M:%S"` 【debug】json 文件已保存至：${dir}debug_send_json"  >> ${logfile}
+		echo "`date "+%Y-%m-%d %H:%M:%S"` 【debug】推送内容预览文件保存至：${dir}debug_send_content" >> ${logfile}
+		echo "`date "+%Y-%m-%d %H:%M:%S"` 【debug】如果收不到信息，请检查 ${dir}debug_send_data 文件，或使用下列命令手动测试返回值 (可能需要关闭日志自动刷新方便选中)" >> ${logfile}
+		echo "`date "+%Y-%m-%d %H:%M:%S"` 【debug】"'curl -X POST -H "'$content_type'" -d "@'${dir}debug_send_data'" "'${diyurl}'"  ' >> ${logfile}
+		return 1
+	else
+	  return 0
+	fi
 }
 
 # 清理临时文件
