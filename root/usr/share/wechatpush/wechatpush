@@ -837,26 +837,13 @@ function rand_geturl(){
 
 # 检测 ip 状况
 function ip_changes(){
-	[ "$get_ipv4_mode" -eq 1 ] && {
-		getip wanipv4 > "$output_dir/IPv4" &
-		local IPv4_URL="网络接口"
-	}
-	[ "$get_ipv6_mode" -eq 1 ] && {
-		getip wanipv6 > "$output_dir/IPv6" &
-		local IPv6_URL="网络接口"
-	}
-	[ "$get_ipv4_mode" -eq 2 ] && getip hostipv4 > "$output_dir/IPv4" &
-	[ "$get_ipv6_mode" -eq 2 ] && getip hostipv6 > "$output_dir/IPv6" &
+	local IPv4_URL="网络接口"
+	local IPv6_URL="网络接口"
+	[ "$get_ipv4_mode" -eq "1" ] && getip wanipv4 > "$output_dir/IPv4" &
+	[ "$get_ipv6_mode" -eq "1" ] && getip wanipv6 > "$output_dir/IPv6" &
 	wait_and_cat
-	[ "$get_ipv4_mode" -eq 2 ] && {
-		echo ${IPv4}|jq -r '.URL' > "$output_dir/IPv4_URL" &
-		echo ${IPv4}|jq -r '.IP' > "$output_dir/IPv4" &
-	}
-	[ "$get_ipv6_mode" -eq 2 ] && {
-		echo ${IPv6}|jq -r '.URL' > "$output_dir/IPv6_URL" &
-		echo ${IPv6}|jq -r '.IP' > "$output_dir/IPv6" &
-	}
-	wait_and_cat
+	[ "$get_ipv4_mode" -eq "2" ] && local IPv4=`getip hostipv4` && local IPv4_URL=`echo ${IPv4}|jq -r '.URL'` && local IPv4=`echo ${IPv4}|jq -r '.IP'`
+	[ "$get_ipv6_mode" -eq "2" ] && local IPv6=`getip hostipv6` && local IPv6_URL=`echo ${IPv6}|jq -r '.URL'` && local IPv6=`echo ${IPv6}|jq -r '.IP'`
 
 	if [ "$1" ] && [ $1 == "getip" ]; then
 		echo "IPv4：$IPv4<br/>地址：$(get_ip_attribution $IPv4)<br/>接口：$IPv4_URL<br/>IPv6：$IPv6<br/>地址：$(get_ip_attribution $IPv6)<br/>接口：$IPv6_URL"
