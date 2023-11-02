@@ -31,7 +31,7 @@ wait_and_cat() {
 # 初始化设置信息
 function read_config(){
 	get_config \
-	"enable" "lite_enable" "device_name" "sleeptime" "oui_data" "reset_regularly" "debuglevel" \
+	"enable" "lite_enable" "device_name" "proxy_address" "sleeptime" "oui_data" "reset_regularly" "debuglevel" \
 	"jsonpath" "sckey" "corpid" "userid" "agentid" "corpsecret" "mediapath" "wxpusher_apptoken" "wxpusher_uids" "wxpusher_topicIds" "pushplus_token" "tg_token" "chat_id" \
 	"get_ipv4_mode" "ipv4_interface" "get_ipv6_mode" "ipv6_interface" "auto_update_ip_list" \
 	"device_notification" "cpu_notification" "cpu_load_threshold" "temperature_threshold" \
@@ -145,9 +145,10 @@ function diy_send(){
 	local content_type=`jq -r '.content_type' ${3}`
 	! jq "$type" ${3} > ${tempjsonpath} && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】type:{ } 字段转义变量后格式错误，请检查 type:{ } 字段内是否有特殊符号未转义或语法错误" >> ${logfile} && return 1
 
-	curl --connect-timeout 30 -m 60 --retry 1 -X POST -H "$content_type" -d "$data" "${diyurl}"
+	[ -n "$proxy_address" ] && local proxy_cmd="-x $proxy_address"
+	curl $proxy_cmd --connect-timeout 30 -m 60 --retry 1 -X POST -H "$content_type" -d "$data" "${diyurl}"
 	local RETVAL=$?
-	if [ -n "$4" ] || [ $RETVAL -ne "0" ]; then
+	if [ -n "$4" ] || [ $RETVAL -ne 0 ]; then
 		echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】网络错误或 URL 错误，推送失败，curl 返回值为 ${RETVAL}，请参考如下调试信息进行排查" >> ${logfile}
 		echo '{"url":"'${diyurl}'","content_type":"'${content_type}'","type":'`jq "$type" ${3}`'}' > ${dir}debug_send_json
 		echo -e "${send_title}" "${send_content}" > ${dir}debug_send_content
@@ -157,6 +158,7 @@ function diy_send(){
 		echo "`date "+%Y-%m-%d %H:%M:%S"` 【debug】推送内容预览文件保存至：${dir}debug_send_content" >> ${logfile}
 		echo "`date "+%Y-%m-%d %H:%M:%S"` 【debug】如果收不到信息，请检查 ${dir}debug_send_data 文件，或使用下列命令手动测试返回值 (可能需要关闭日志自动刷新方便选中)" >> ${logfile}
 		echo "`date "+%Y-%m-%d %H:%M:%S"` 【debug】"'curl -X POST -H "'$content_type'" -d "@'${dir}debug_send_data'" "'${diyurl}'"  ' >> ${logfile}
+		[ -n "$4" ] && [ $RETVAL -eq 0 ] && return 0
 		return 1
 	else
 	  return 0
@@ -1555,8 +1557,8 @@ function send(){
 	disturb;local send_disturb=$?
 	get_config "send_title" "send_notification"
 
-	cpuload=`getcpu`
-	service_status=$(ubus call service list '{"name": "wechatpush"}' | grep -o '"running": true')
+	[ -z "$1" ] && cpuload=`getcpu`
+	[ -z "$1" ] && service_status=$(ubus call service list '{"name": "wechatpush"}' | grep -o '"running": true')
 	[ -z "$1" ] && ( echo "$send_notification"|grep -q "client_list" ) && > ${dir}send_enable.lock && [ -z "$service_status" ] && first &
 	if [ -z "$1" ] && ( echo "$send_notification"|grep -q "router_status" ); then
 		cat /proc/loadavg|awk '{print $1" "$2" "$3}' > "$output_dir/systemload" &
@@ -1582,11 +1584,11 @@ function send(){
 	#[ -z "$1" ] && ( echo "$send_notification"|grep -q "disk_info" ) && get_disk &
 	[ -z "$1" ] && get_disk &
 
-	[ -z "$send_title" ] && send_title="路由状态："
+	[ -z "$1" ] && send_title="路由状态："
 	[ ! -z "$1" ] && send_title="发送测试：" && send_content="${str_splitline}${str_title_start}内容1${str_title_end}${str_linefeed}${str_tab}设备1${str_linefeed}${str_tab}设备2${str_splitline}${str_title_start}内容2${str_title_end}${str_linefeed}${str_tab}设备3${str_linefeed}${str_tab}设备4"
 
 	wait_and_cat
-	if [ -n "$systeminfo_enable" ]; then
+	if [ -z "$1" ] && [ -n "$systeminfo_enable" ]; then
 		[[ $Qwai -eq 200 || $Qwai -eq 301 || $Qwai -eq 302 ]] && Qwai_status="已连通！" || Qwai_status="已断开！"
 		send_content="${send_content}${str_splitline}${str_title_start} 系统运行状态${str_title_end}"
 		send_content="${send_content}${str_linefeed}${str_tab}平均负载：${systemload}"
@@ -1606,7 +1608,7 @@ function send(){
 		send_content="${send_content}${get_disk}"
 	fi
 
-	if [ -n "$waninfo_enable" ]; then
+	if [ -z "$1" ] && [ -n "$waninfo_enable" ]; then
 		send_content="${send_content}${str_splitline}${str_title_start} WAN 口信息${str_title_end}"
 		if [ "$send_wanIP" == "$send_hostIP" ]; then
 			send_content="${send_content}${str_linefeed}${str_tab}IPv4: ${send_wanIP}"
