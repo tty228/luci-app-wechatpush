@@ -974,11 +974,11 @@ function down(){
 	else
 		local tmp_name=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
 		local tmp_mac=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
-		if [ ${ip_name// /_} != ${tmp_name} ] || [ ${ip_mac} != ${tmp_mac} ]; then
+		if [ "${ip_name// /_}" != "${tmp_name}" ] || [ "${ip_mac}" != "${tmp_mac}" ]; then
 			LockFile lock
 			olduptime=$(cat ${dir}ipAddress|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1)
 			sed -i "/^${1} /d" ${dir}ipAddress
-			[ ${ip_mac} != ${tmp_mac} ] && ip_name="unknown" # MAC 变化时应删除主机名重新获取
+			[ "${ip_mac}" != "${tmp_mac}" ] && ip_name="unknown" # MAC 变化时应删除主机名重新获取
 			echo "$1  ${ip_mac} ${ip_name// /_} ${olduptime} ${ip_interface}" >> ${dir}ipAddress
 			LockFile unlock
 		fi
