@@ -25,7 +25,9 @@ wait_and_cat() {
 		local variable_value=$(cat "$file")
 		eval "${variable_name}='${variable_value}'"
 	done
-	rm "$output_dir"/*
+	if [ ! -f "${dir}/send.lock" ]; then
+		rm "$output_dir"/*
+	fi
 }
 
 # 初始化设置信息
@@ -1550,6 +1552,7 @@ function set_ip_black(){
 # 发送定时数据
 function send(){
 	echo "`date "+%Y-%m-%d %H:%M:%S"` 【定时数据】创建定时任务" >> ${logfile}
+	touch "${dir}/send.lock"
 	disturb;local send_disturb=$?
 	get_config "send_title" "send_notification"
 
@@ -1654,6 +1657,7 @@ function send(){
 	RETVAL=$?
 	[ $RETVAL -eq 1 ] && [ "$send_disturb" -eq "0" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！】定时推送失败，请检查网络或设置信息" >> ${logfile} || echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}定时推送任务完成" >> ${logfile}
 	deltemp
+	rm -f "${dir}/send.lock"
 	return $RETVAL
 }
 
