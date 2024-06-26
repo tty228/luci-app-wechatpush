@@ -794,8 +794,9 @@ function check_connect(){
 		local urls=(http://connect.rom.miui.com/generate_204 http://www.apple.com/library/test/success.html http://www.gstatic.com/generate_204)
 
 		for url in "${urls[@]}"; do
-			local status_code=$(curl -o /dev/null -sI -w "%{http_code}" "$url")
-			[ "$status_code" -eq 204 || "$status_code" -eq 200 ] return 0 || echo "$url 访问失败，尝试下一个." >> ${logfile}
+			local status_code
+			status_code=$(curl -o /dev/null -sI -w "%{http_code}" "$url")
+			[[ "$status_code" -eq 204 || "$status_code" -eq 200 ]] && return 0 || echo "$url 访问失败，尝试下一个."  >> ${logfile}
 		done
 
 		return 1 
@@ -803,7 +804,7 @@ function check_connect(){
 
 	while [ true ]; do
 
-		if is_online(); then
+		if is_online; then
 			[ ! -z "$network_state" ] && [ "$network_state" == "down" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【网络状态】网络恢复正常.." >> ${logfile}
 			local network_state="up"
 		else
