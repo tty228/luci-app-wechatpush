@@ -74,7 +74,6 @@ function read_config(){
 	mark_mac_list=`echo "$mark_mac_list"|sed 's/ /\n/g'|sed 's/-/ /'` 2>/dev/null
 	ipv4_urllist=`cat /usr/share/wechatpush/api/ipv4.list` 2>/dev/null
 	ipv6_urllist=`cat /usr/share/wechatpush/api/ipv6.list` 2>/dev/null
-	User_Agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36 Edg/112.0.1722.58"
 	[ -z "$get_ipv4_mode" ] && get_ipv4_mode=0
 	[ -z "$get_ipv6_mode" ] && get_ipv6_mode=0
 	[ -z "$sleeptime" ] && sleeptime="60"
@@ -789,23 +788,28 @@ function unattended(){
 }
 
 # 检测网络状态
-function rand_geturl(){
+function check_connect(){
 	# 获取网络状态
-	function getcheck(){
-		local urllist="https://www.163.com https://www.qq.com https://www.baidu.com https://www.qidian.com https://www.douban.com"
-		local url_number=`expr $(echo "$urllist"|grep -o ' '|wc -l) + 1`
-		local url_str=`echo "$urllist"|awk -v i=$(rand 1 $url_number) '{print $i}'`
-		echo `curl -k -s -w "%{http_code}" -m 5 ${url_str} -A "${User_Agent}" -o /dev/null`
+	is_online() {
+		local urls=(http://connect.rom.miui.com/generate_204 http://www.apple.com/library/test/success.html http://www.gstatic.com/generate_204)
+
+		for url in "${urls[@]}"; do
+			local status_code
+			status_code=$(curl -o /dev/null -sI -w "%{http_code}" "$url")
+			[[ "$status_code" -eq 204 || "$status_code" -eq 200 ]] && return 0 || echo "$url 访问失败，尝试下一个."  >> ${logfile}
+		done
+
+		return 1 
 	}
-	local check=`getcheck`
-	while [ -z "$check" ] || [[ $check -ne 200 && $check -ne 202 && $check -ne 301 && $check -ne 302 ]]; do
-		local check=`getcheck`
-		if [ ! -z "$check" ] && [[ $check -eq 200 || $check -eq 202 || $check -eq 301 || $check -eq 302 ]]; then
-			[ ! -z "$network_enable" ] && [ "$network_enable" -eq "404" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【网络状态】网络恢复正常.." >> ${logfile}
-			local network_enable="200"
+
+	while [ true ]; do
+
+		if is_online; then
+			[ ! -z "$network_state" ] && [ "$network_state" == "down" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【网络状态】网络恢复正常.." >> ${logfile}
+			local network_state="up"
 		else
-			[ -z "$network_enable" ] || [ "$network_enable" -eq "200" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】当前网络不通！停止检测！ " >> ${logfile}
-			local network_enable="404"
+			[ -z "$network_state" ] || [ "$network_state" == "up" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】当前网络不通！停止检测！ " >> ${logfile}
+			local network_state="down"
 			# 无人值守、待弃用或改进
 			[ -z "$network_unattended_time" ] && network_unattended_time=`date +%s`
 			if [ ! -z "$network_disconnect_event" ] && [ "$((`date +%s`-$network_unattended_time))" -ge "300" ]; then
@@ -1789,7 +1793,7 @@ while [ "$enable" -eq "1" ]; do
 
 	# 网络状态与 IP 变动
 	if [ "$get_ipv4_mode" -ne "0" ] || [ "$get_ipv6_mode" -ne "0" ]; then
-		rand_geturl
+		check_connect
 		ip_changes
 	fi
 
