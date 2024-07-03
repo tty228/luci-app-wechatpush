@@ -325,8 +325,8 @@ msgstr "从以上列表中随机访问地址<br />文本框请使用「保存」
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:315
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:366
-msgid "Typically, it should be WAN or br-lan interface. For multi-wan environments, please choose accordingly."
-msgstr "一般应为 WAN 或 br-lan 接口。多拨环境请自行选择。"
+msgid "Typically, it should be pppoe-wan or WAN interface. For multi-wan environments, please choose accordingly."
+msgstr "一般应为 pppoe-wan 或 WAN 接口。多拨环境请自行选择。"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:321
 msgid "IPv4 API List"
