@@ -215,8 +215,8 @@ function getip(){
 
 	# 从接口获取 IPv6
 	elif [ $1 == "wanipv6" ] ;then
-		[ ! -z "$ipv6_interface" ] && local wanIPv6=$(ip -6 addr show dev ${ipv6_interface}|grep "inet6"|grep "global dynamic noprefixroute"|awk '{print $2, $4}'|sort -k3 -n|head -n 1|awk '{print $1}'|grep -oE "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}")
-		[ -z "$ipv6_interface" ] && local wanIPv6=$(ip -6 addr show|grep "inet6"|grep "global dynamic noprefixroute"|awk '{print $2, $4}'|sort -k3 -n|head -n 1|awk '{print $1}'|grep -oE "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}")
+		[ ! -z "$ipv6_interface" ] && local wanIPv6=$(ip -6 addr show dev ${ipv6_interface} | grep "inet6" | grep "global dynamic noprefixroute" | awk '{print $2}' | grep -Ev "^(fc|fd)" | tail -n 1 | grep -oE "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}")
+		[ -z "$ipv6_interface" ] && local wanIPv6=$(ip -6 addr show | grep "inet6" | grep "global dynamic noprefixroute" | awk '{print $2}' | grep -Ev "^(fc|fd)" | tail -n 1 | grep -oE "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}")
 		echo "$wanIPv6"
 
 	# 从 URL 获取 IPv6
