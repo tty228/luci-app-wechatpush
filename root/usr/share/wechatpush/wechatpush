@@ -1085,7 +1085,7 @@ function cpu_load(){
 			unset temperaturecd_time
 		fi
 	fi
-$(time_for_humans $cpu_notification_delay)
+
 	if [ -n "$notification_load" ] && [ -n "$cpu_load_threshold" ]; then
 		[ -z "$cpu_last_overload_time" ] && cpu_last_overload_time=`date +%s`
 		local cpu_fuzai=`cat /proc/loadavg|awk '{print $1}'` 2>/dev/null
