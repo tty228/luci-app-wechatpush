@@ -791,12 +791,13 @@ function unattended(){
 function check_connect(){
 	# 获取网络状态
 	is_online() {
-		local urls=(http://connect.rom.miui.com/generate_204 http://www.apple.com/library/test/success.html http://www.gstatic.com/generate_204)
+		local urls=(http://connect.rom.miui.com/generate_204 http://wifi.vivo.com.cn/generate_204 http://connectivitycheck.platform.hicloud.com/generate_204 http://www.apple.com/library/test/success.html)
+		local shuffled_urls=($(for i in "${urls[@]}"; do echo "$i"; done | awk 'BEGIN {srand()} {print rand(), $0}' | sort -n | cut -d' ' -f2-))
 
-		for url in "${urls[@]}"; do
+		for url in "${shuffled_urls[@]}"; do
 			local status_code
 			status_code=$(curl -o /dev/null -sI -w "%{http_code}" "$url")
-			[[ "$status_code" -eq 204 || "$status_code" -eq 200 ]] && return 0 || echo "$url 访问失败，尝试下一个."  >> ${logfile}
+			[[ "$status_code" -eq 204 || "$status_code" -eq 200 ]] && return 0
 		done
 
 		return 1 
@@ -817,7 +818,7 @@ function check_connect(){
 				geterrdevicealiases
 				if [ "$?" -eq "0" ]; then
 					[ -f /usr/share/wechatpush/autoreboot_count ] && retry_count=`cat /usr/share/wechatpush/autoreboot_count` && rm -f /usr/share/wechatpush/autoreboot_count >/dev/null 2>&1
-					[ ! -z "${retry_count}" ] && retry_count=0
+					[ -z "${retry_count}" ] && retry_count=0
 					retry_count=$((retry_count + 1))
 					if [ "$network_disconnect_event" -eq "1" ] ;then
 						if [ "$retry_count" -lt "3" ] ;then
