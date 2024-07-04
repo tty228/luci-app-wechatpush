@@ -1832,6 +1832,9 @@ while [ "$enable" -eq "1" ]; do
 	# 登录提醒通知
 	#[ ! -f "${dir}send_enable.lock" ] && login_send
 	# 因修改为实时推送，白名单设备并不会再更新时间，暂时性修复
+	# 修改为实时推送后，防火墙列表读取和设置需单独列出，移除黑名单无法实时，待改善
+	set_ip_black
+
 	tmp_ip_list=`echo "$login_ip_white_list"|grep -v "^$"|sort -u`
 	while IFS= read -r tmp_ip; do
 		[ -n "$tmp_ip" ] && add_ip_white "$tmp_ip" "0"
