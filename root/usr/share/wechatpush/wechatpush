@@ -1621,7 +1621,11 @@ function send(){
 
 	if [ -z "$1" ] && ( echo "$send_notification"|grep -q "client_list" ); then
 		wait
-		awk '{ lines[i++] = $0 } END { for (j = i-1; j >= 0; j--) print lines[j] }' "${dir}ipAddress" > "${dir}tmp_sort_file"
+		# 按在线时间（短到长）
+		#awk '{ lines[i++] = $0 } END { for (j = i-1; j >= 0; j--) print lines[j] }' "${dir}ipAddress" > "${dir}tmp_sort_file"
+		# 按 IP 顺序
+		sort -V -k 1,1 "${dir}ipAddress" > "${dir}tmp_sort_file"
+
 		logrow=$(awk 'END {print NR}' ${dir}ipAddress)
 		send_content="${send_content}${str_splitline}${str_title_start} 现有在线设备 ${logrow} 台${str_title_end}"
 		[ "$logrow" -eq "0" ] && send_content="${send_content}${str_splitline}${str_title_start} 当前无在线设备${str_title_end}"
