@@ -898,7 +898,7 @@ function up(){
 	if [ "$ping_online" -eq "0" ]; then
 		LockFile lock
 		time_up=`date +%s`
-		[ -f "${dir}client/${ip}" ] && local http_access=`jq -r '.http_access' "${dir}${ip}"` || local http_access=`check_http_access ${ip}`
+		[ -f "${dir}client/${ip}" ] && local http_access=`jq -r '.http_access' "${dir}client/${ip}"` || local http_access=`check_http_access ${ip}`
 		echo "{\"ip\": \"${ip}\", \"mac\": \"${ip_mac}\", \"name\": \"${ip_name}\", \"uptime\": \"${time_up}\", \"interface\": \"${ip_interface}\", \"usage\": \"\", \"http_access\": \"${http_access}\"}" > ${dir}client/${ip}
 
 		# 从离线二次验证区恢复信息
@@ -909,7 +909,7 @@ function up(){
 		# up
 		else
 			usage down ${ip}
-			echo "${ip} ${ip_mac} ${ip_name// /_} `date +%s` ${ip_interface}" >> ${dir}ipAddress
+			echo "${ip} ${ip_mac} ${ip_name// /_} $(date +%s) ${ip_interface}" >> ${dir}ipAddress
 			blackwhitelist ${ip_mac};local ip_blackwhite=$?
 			[ -f "${dir}send_enable.lock" ] || [ -z "$notification_online" ] || [ -z "$ip_blackwhite" ] && LockFile unlock && return
 			[ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne "0" ] && LockFile unlock && return
@@ -940,6 +940,7 @@ function down(){
 	local ip="$1"
 	local ip_mac=`getmac ${ip}`
 	local ip_name=`getname ${ip} ${ip_mac}`
+	local time_up=$(cat ${dir}ipAddress|grep -w ${ip}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1)
 	local ip_interface=`getinterface ${ip_mac}`
 
 	tmp_timeout=$down_timeout && tmp_retry_count=$timeout_retry_count
@@ -958,14 +959,14 @@ function down(){
 		local tmp_name=`cat ${dir}ipAddress|grep -w ${ip}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
 		local tmp_mac=`cat ${dir}ipAddress|grep -w ${ip}|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
 		if [ "${ip_name// /_}" != "${tmp_name}" ] || [ "${ip_mac}" != "${tmp_mac}" ]; then
-			local time_up=$(cat ${dir}ipAddress|grep -w ${ip}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1)
-			sed -i "/^${ip} /d" ${dir}ipAddress
 			[ "${ip_mac}" != "${tmp_mac}" ] && ip_name="unknown" # MAC 变化时应删除主机名重新获取
-			echo "${ip}  ${ip_mac} ${ip_name// /_} ${time_up} ${ip_interface}" >> ${dir}ipAddress
-			[ -f "${dir}client/${ip}" ] && local http_access=`jq -r '.http_access' "${dir}${ip}"` || local http_access=`check_http_access ${ip}`
-			echo "{\"ip\": \"${ip}\", \"mac\": \"${ip_mac}\", \"name\": \"${ip_name}\", \"uptime\": \"${time_up}\", \"interface\": \"${ip_interface}\", \"usage\": \"`usage get $ip_mac`\", \"http_access\": \"${http_access}\"}" > ${dir}client/${ip}
+			sed -i "/^${ip} /d" ${dir}ipAddress
+			echo "${ip} ${ip_mac} ${ip_name// /_} ${time_up} ${ip_interface}" >> ${dir}ipAddress
+			rm -f ${dir}client/${ip} >/dev/null 2>&1
 		fi
-		local ip_total=`usage get $ip_mac` && [ ! -z "$ip_total" ] && jq --arg new_usage "$usage_date" '.usage = $new_usage' ${dir}client/${ip} > ${dir}tmp.json && mv ${dir}tmp.json ${dir}client/${ip}
+		# 客户端列表文件不存在或需要更新
+		[ -f "${dir}client/${ip}" ] && local ip_total=`usage get $ip_mac` && [ ! -z "$ip_total" ] && jq -c --arg new_usage "$ip_total" '.usage = $new_usage' "${dir}client/${ip}" > "${dir}tmp.json" && mv "${dir}tmp.json" "${dir}client/${ip}"
+		[ ! -f "${dir}client/${ip}" ] && echo "{\"ip\": \"${ip}\", \"mac\": \"${ip_mac}\", \"name\": \"${ip_name}\", \"uptime\": \"${time_up}\", \"interface\": \"${ip_interface}\", \"usage\": \"`usage get $ip_mac`\", \"http_access\": \"${http_access}\"}" > ${dir}client/${ip}
 		LockFile unlock
 	fi
 }
