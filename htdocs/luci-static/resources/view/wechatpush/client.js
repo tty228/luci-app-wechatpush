@@ -16,6 +16,24 @@ return view.extend({
         var visibleColumns = [];
         var hasData = false;
 
+        // Set default sorting column and direction
+        var defaultSortColumn = 'ip';
+        var defaultSortDirection = 'asc';
+
+        // Sort devices array by default column and direction
+        devices.sort(function (a, b) {
+            var value1 = ipToNumber(a[defaultSortColumn]);
+            var value2 = ipToNumber(b[defaultSortColumn]);
+
+            if (value1 < value2) {
+                return defaultSortDirection === 'asc' ? -1 : 1;
+            } else if (value1 > value2) {
+                return defaultSortDirection === 'asc' ? 1 : -1;
+            }
+            return 0;
+        });
+
+        // Determine visible columns based on data availability
         for (var i = 0; i < columns.length; i++) {
             var column = columns[i];
             var hasColumnData = false;
@@ -149,6 +167,16 @@ return view.extend({
         container.appendChild(createTable());
         container.appendChild(document.createElement('style')).textContent = style;
 
+        container.addEventListener('click', function (event) {
+            if (
+                event.target.tagName === 'TH' &&
+                event.target.parentNode.rowIndex === 0
+            ) {
+                var columnIndex = event.target.cellIndex;
+                sortTable(columns[columnIndex]);
+            }
+        });
+
         function sortTable(column) {
             var table = container.querySelector('.device-table');
             var tbody = table.querySelector('tbody');
@@ -161,8 +189,13 @@ return view.extend({
             }
 
             rows.sort(function (row1, row2) {
-                var value1 = row1.querySelector('td:nth-of-type(' + (visibleColumns.indexOf(column) + 1) + ')').textContent.toLowerCase();
-                var value2 = row2.querySelector('td:nth-of-type(' + (visibleColumns.indexOf(column) + 1) + ')').textContent.toLowerCase();
+                var value1 = row1.querySelector('td:nth-of-type(' + (visibleColumns.indexOf(columns.indexOf(column)) + 1) + ')').textContent.toLowerCase();
+                var value2 = row2.querySelector('td:nth-of-type(' + (visibleColumns.indexOf(columns.indexOf(column)) + 1) + ')').textContent.toLowerCase();
+
+                if (column === 'ip') {
+                    value1 = ipToNumber(value1);
+                    value2 = ipToNumber(value2);
+                }
 
                 if (value1 < value2) {
                     return isAscending ? -1 : 1;
@@ -188,45 +221,6 @@ return view.extend({
             table.dataset.sortColumn = column;
         }
 
-        container.addEventListener('click', function (event) {
-            if (
-                event.target.tagName === 'TH' &&
-                event.target.parentNode.rowIndex === 0
-            ) {
-                var columnIndex = event.target.cellIndex;
-                var table = container.querySelector('.device-table');
-                var tbody = table.querySelector('tbody');
-                var rows = Array.from(tbody.querySelectorAll('tr'));
-
-                rows.sort(function (row1, row2) {
-                    var value1 = row1.cells[columnIndex].textContent.trim();
-                    var value2 = row2.cells[columnIndex].textContent.trim();
-
-                    if (columnIndex === 0) {
-                        return value1.length - value2.length;
-                    } else if (columnIndex === 1) {
-                        value1 = ipToNumber(value1);
-                        value2 = ipToNumber(value2);
-                    } else if (columnIndex === 4) {
-                        value1 = parseOnlineTime(value1);
-                        value2 = parseOnlineTime(value2);
-                    }
-
-                    if (value1 < value2) {
-                        return -1;
-                    } else if (value1 > value2) {
-                        return 1;
-                    }
-
-                    return 0;
-                });
-
-                rows.forEach(function (row) {
-                    tbody.appendChild(row);
-                });
-            }
-        });
-
         function ipToNumber(ipAddress) {
             var parts = ipAddress.split('.');
             var number = 0;
@@ -238,24 +232,6 @@ return view.extend({
             return number;
         }
 
-        function parseOnlineTime(time) {
-            var regex = /(\d+)\s+(小时|分钟|秒)/g;
-            var matches = time.matchAll(regex);
-            var minutes = 0;
-
-            for (var match of matches) {
-                var value = parseInt(match[1]);
-                var unit = match[2];
-
-                if (unit === '小时') {
-                    minutes += value * 60;
-                } else if (unit === '分钟') {
-                    minutes += value;
-                }
-            }
-
-            return minutes;
-        }
         return container;
     },
     handleSave: null,
