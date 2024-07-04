@@ -9,7 +9,6 @@ return view.extend({
         return L.resolveDefault(fs.exec_direct('/usr/libexec/wechatpush-call', ['get_client'], 'json'), { devices: [] });
     },
     render: function (data) {
-
         var devices = data.devices;
         var totalDevices = devices.length;
         var headers = [_('Hostname'), _('IPv4 address'), _('MAC address'), _('Interfaces'), _('Online time'), _('Details')];
@@ -155,6 +154,12 @@ return view.extend({
                             poll.add(L.bind(function () {
                                 cell.textContent = calculateUptime(device['uptime']);
                             }));
+                        } else if (columns[i] === 'ip' && device['http_access']) {
+                            var link = document.createElement('a');
+                            link.href = `${device['http_access']}://${device['ip']}`;
+                            link.textContent = device['ip'];
+                            link.target = '_blank';
+                            cell.appendChild(link);
                         } else {
                             cell.textContent = device[columns[i]];
                         }

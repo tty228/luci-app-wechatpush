@@ -305,6 +305,19 @@ function getname(){
 	echo "$tmp_name" | tr -d '\n\r' | awk '$1=$1' | sed 's/_/ /g' | sort -u | head -n1
 }
 
+#  查询 http/https 端口
+function check_http_access() {
+    local ip=$1
+
+    curl --head --silent --fail --connect-timeout 2 "http://$ip" >/dev/null
+	[ $? -eq 0 ] && echo "http" && return
+
+    curl --head --silent --fail --connect-timeout 2 "https://$ip" >/dev/null
+	[ $? -eq 0 ] && echo "https" && return
+
+    echo "" && return 1
+}
+
 # 从光猫处获取设备信息
 function getgateway(){
 	[ -z "$gateway_info_enable" ] && return
@@ -423,7 +436,7 @@ function soc_temp(){
 }
 # 流量数据
 function usage(){
-	[ ! -f "/usr/sbin/wrtbwmon" ] || [ ! "$1" ] && return
+	[ ! -f "/usr/sbin/wrtbwmon" ] || [ ! "$1" ] && echo "" && return
 	# 更新
 	if [ $1 == "update" ] ;then
 		function version_le() { test "$(echo "$@"|tr " " "\n"|sort -n|head -n 1)" == "$1"; }
@@ -576,8 +589,6 @@ function cut_str {
 	echo "$(echo -n "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | cut -c -$temp_length).."
 }
 
-
-
 # 随机数
 function rand(){
 	local min=$1
@@ -615,33 +626,6 @@ function first(){
 		}&
 	done
 	wait
-
-	[ -z "$passive_mode" ] && return
-	[ "$passive_mode" -ne "1" ] && return
-	for ip in $IPLIST; do
-		if ( ! echo "$IPLIST_ipAddress"|grep -q -i -w $ip ); then
-			ip_mac=`getmac $ip`
-			ip_name=`getname ${ip} ${ip_mac}`
-			ip_interface=`getinterface ${ip_mac}`
-			time_up=`date +%s`
-			echo "{'ip': '${ip}','mac': '${ip_mac}','name': '${ip_name}','uptime': '${time_up}','interface': '${ip_interface}','usage': ''}" > ${dir}client/${ip}
-			usage down ${ip}
-			echo "${ip} ${ip_mac} ${ip_name// /_} `date +%s` ${ip_interface}" >> ${dir}ipAddress
-		fi
-	done
-	for ip in $IPLIST_ipAddress; do
-		if ( echo "$IPLIST"|grep -q -i -w $ip ); then
-			[ ! -f "/usr/sbin/wrtbwmon" ] && continue
-			ip_mac=`getmac $ip`
-			ip_name=`getname ${ip} ${ip_mac}`
-			ip_interface=`getinterface ${ip_mac}`
-			time_up=`cat ${dir}ipAddress|grep -w ${ip}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`
-			echo "{'ip': '${ip}','mac': '${ip_mac}','name': '${ip_name}','uptime': '${time_up}','interface': '${ip_interface}','usage': '`usage get $ip_mac`'}" > ${dir}client/${ip}
-		else
-			sed -i "/^${ip} /d" ${dir}ipAddress
-			rm -f ${dir}client/${ip} >/dev/null 2>&1
-		fi
-	done
 }
 
 # 创建计划任务
@@ -905,39 +889,32 @@ function ip_changes(){
 function up(){
 	[ -f ${dir}ipAddress ] && ( cat ${dir}ipAddress|grep -q -w $1 ) && return
 
-	local ip_mac=`getmac $1`
-	local ip_name=`getname ${1} ${ip_mac}`
+	local ip="$1"
+	local ip_mac=`getmac $ip`
+	local ip_name=`getname ${ip} ${ip_mac}`
 	local ip_interface=`getinterface ${ip_mac}`
-	getping ${1} ${ip_mac} ${up_timeout} "1";local ping_online=$?
+	getping ${ip} ${ip_mac} ${up_timeout} "1";local ping_online=$?
 
 	# 连通
 	if [ "$ping_online" -eq "0" ]; then
 		LockFile lock
+		# 忽略名单
 		[ ! -z "$up_down_push_blacklist" ] && local tmp_mac=`echo "${up_down_push_blacklist}"|grep -w -i ${ip_mac}`
+		# 仅推送名单
 		[ ! -z "$up_down_push_whitelist" ] && local tmp_mac=`echo "${up_down_push_whitelist}"|grep -w -i ${ip_mac}`
 		time_up=`date +%s`
-		echo "{'ip': '${1}','mac': '${ip_mac}','name': '${ip_name}','uptime': '${time_up}','interface': '${ip_interface}','usage': ''}" > ${dir}client/${1}
-		# ？？？
-		if [ ! -z "$tmp_mac" ] && ( cat ${dir}ipAddress|grep -q -w -i ${tmp_mac} ); then
-			usage down ${1}
-			echo "${1} ${ip_mac} ${ip_name// /_} `date +%s` ${ip_interface}" >> ${dir}ipAddress
-			LockFile unlock && return
-		# ？？？
-		elif [ ! -z "$tmp_mac" ] && [ -f "${dir}tmp_downlist" ] && ( cat ${dir}tmp_downip|grep -q -w -i ${tmp_mac} ); then
-			local tmp_downip=`cat ${dir}tmp_downlist|grep -w -i ${tmp_mac}|awk '{print $1}'|grep -v "^$"|sort -u|head -n1`
-			usage down $tmp_downip
-			sed -i "/^${tmp_downip} /d" ${dir}tmp_downlist
-			LockFile unlock && return
-		fi
+		local http_access=`check_http_access $ip`
+		echo "{\"ip\": \"${ip}\", \"mac\": \"${ip_mac}\", \"name\": \"${ip_name}\", \"uptime\": \"${time_up}\", \"interface\": \"${ip_interface}\", \"usage\": \"\", \"http_access\": \"${http_access}\"}" > ${dir}client/${ip}
+
 		# 从离线二次验证区恢复信息
-		[ -f "${dir}tmp_downlist" ] && local tmp_downip=`cat ${dir}tmp_downlist|grep -w ${1}|grep -v "^$"|sort -u|head -n1`
+		[ -f "${dir}tmp_downlist" ] && local tmp_downip=`cat ${dir}tmp_downlist|grep -w ${ip}|grep -v "^$"|sort -u|head -n1`
 		if [ ! -z "$tmp_downip" ]; then
-			cat ${dir}tmp_downlist|grep -w ${1}|grep -v "^$"|sort -u|head -n1 >> ${dir}ipAddress
-			sed -i "/^${1} /d" ${dir}tmp_downlist
+			cat ${dir}tmp_downlist|grep -w ${ip}|grep -v "^$"|sort -u|head -n1 >> ${dir}ipAddress
+			sed -i "/^${ip} /d" ${dir}tmp_downlist
 		# up
 		else
-			usage down $1
-			echo "$1 ${ip_mac} ${ip_name// /_} `date +%s` ${ip_interface}" >> ${dir}ipAddress
+			usage down ${ip}
+			echo "${ip} ${ip_mac} ${ip_name// /_} `date +%s` ${ip_interface}" >> ${dir}ipAddress
 			blackwhitelist ${ip_mac};local ip_blackwhite=$?
 			[ -f "${dir}send_enable.lock" ] || [ -z "$notification_online" ] || [ -z "$ip_blackwhite" ] && LockFile unlock && return
 			[ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne "0" ] && LockFile unlock && return
@@ -946,15 +923,15 @@ function up(){
 			[ -f "${dir}content" ] && local content=`cat ${dir}content`
 			if [ -z "$title" ]; then
 				local title="$ip_name 连接了你的路由器"
-				local content="${str_splitline}${str_title_start} 新设备连接${str_title_end}${str_linefeed}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${ip_name}${str_linefeed}${str_tab}客户端IP： ${str_space}${str_space}${str_space}${str_space}${1}${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${ip_mac}${str_linefeed}${str_tab}网络接口：${str_space}${str_space}${str_space}${str_space}${str_space}${ip_interface}"
+				local content="${str_splitline}${str_title_start} 新设备连接${str_title_end}${str_linefeed}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${ip_name}${str_linefeed}${str_tab}客户端IP： ${str_space}${str_space}${str_space}${str_space}${ip}${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${ip_mac}${str_linefeed}${str_tab}网络接口：${str_space}${str_space}${str_space}${str_space}${str_space}${ip_interface}"
 			elif ( echo ${title}|grep -q "连接了你的路由器" ); then
 				local title="${ip_name} ${title}"
-				local content="${str_splitline}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${ip_name}${str_linefeed}${str_tab}客户端IP： ${str_space}${str_space}${str_space}${str_space}${1}${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${ip_mac}${str_linefeed}${str_tab}网络接口：${str_space}${str_space}${str_space}${str_space}${str_space}${ip_interface}"
+				local content="${str_splitline}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${ip_name}${str_linefeed}${str_tab}客户端IP： ${str_space}${str_space}${str_space}${str_space}${ip}${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${ip_mac}${str_linefeed}${str_tab}网络接口：${str_space}${str_space}${str_space}${str_space}${str_space}${ip_interface}"
 			else
 				local title="设备状态变化"
-				local content="${str_splitline}${str_title_start} 新设备连接${str_title_end}${str_linefeed}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${ip_name}${str_linefeed}${str_tab}客户端IP： ${str_space}${str_space}${str_space}${str_space}${1}${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${ip_mac}${str_linefeed}${str_tab}网络接口：${str_space}${str_space}${str_space}${str_space}${str_space}${ip_interface}"
+				local content="${str_splitline}${str_title_start} 新设备连接${str_title_end}${str_linefeed}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${ip_name}${str_linefeed}${str_tab}客户端IP： ${str_space}${str_space}${str_space}${str_space}${ip}${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${ip_mac}${str_linefeed}${str_tab}网络接口：${str_space}${str_space}${str_space}${str_space}${str_space}${ip_interface}"
 			fi
-			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}新设备 ${ip_name} ${1} 连接了">> ${logfile}
+			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}新设备 ${ip_name} ${ip} 连接了">> ${logfile}
 			#[ ! -z "$up_down_push_blacklist" ] && local title="你偷偷关注的设备上线了"
 			[ ! -z "$title" ] && echo "$title" >${dir}title
 			[ ! -z "$content" ] && echo -n "$content" >>${dir}content
@@ -965,34 +942,37 @@ function up(){
 
 # 检测设备离线
 function down(){
-	local ip_mac=`getmac $1`
-	local ip_name=`getname ${1} ${ip_mac}`
+	local ip="$1"
+	local ip_mac=`getmac ${ip}`
+	local ip_name=`getname ${ip} ${ip_mac}`
 	local ip_interface=`getinterface ${ip_mac}`
 
 	tmp_timeout=$down_timeout && tmp_retry_count=$timeout_retry_count
 	[ -n "$only_timeout_push" ] && blackwhitelist ${ip_mac};local ip_blackwhite=$? && [ "$ip_blackwhite" -ne "0" ] && tmp_timeout=10 && tmp_retry_count=2
-	getping ${1} ${ip_mac} ${tmp_timeout} ${tmp_retry_count};local ping_online=$?
+	getping ${ip} ${ip_mac} ${tmp_timeout} ${tmp_retry_count};local ping_online=$?
 	# 离线，置入二次验证区
 	if [ "$ping_online" -eq "1" ]; then
 		LockFile lock
-		[ ! -f "${dir}send_enable.lock" ] && cat ${dir}ipAddress|grep -w ${1}|grep -v "^$"|sort -u|head -n1 >> ${dir}tmp_downlist
-		sed -i "/^${1} /d" ${dir}ipAddress
-		rm -f ${dir}client/${1} >/dev/null 2>&1
+		[ ! -f "${dir}send_enable.lock" ] && cat ${dir}ipAddress|grep -w ${ip}|grep -v "^$"|sort -u|head -n1 >> ${dir}tmp_downlist
+		sed -i "/^${ip} /d" ${dir}ipAddress
+		rm -f ${dir}client/${ip} >/dev/null 2>&1
 		LockFile unlock
 	# 更新主机名或 MAC
 	else
-		local tmp_name=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
-		local tmp_mac=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
+		local tmp_name=`cat ${dir}ipAddress|grep -w ${ip}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
+		local tmp_mac=`cat ${dir}ipAddress|grep -w ${ip}|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
 		if [ "${ip_name// /_}" != "${tmp_name}" ] || [ "${ip_mac}" != "${tmp_mac}" ]; then
 			LockFile lock
-			olduptime=$(cat ${dir}ipAddress|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1)
-			sed -i "/^${1} /d" ${dir}ipAddress
+			olduptime=$(cat ${dir}ipAddress|grep -w ${ip}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1)
+			sed -i "/^${ip} /d" ${dir}ipAddress
 			[ "${ip_mac}" != "${tmp_mac}" ] && ip_name="unknown" # MAC 变化时应删除主机名重新获取
-			echo "$1  ${ip_mac} ${ip_name// /_} ${olduptime} ${ip_interface}" >> ${dir}ipAddress
+			echo "${ip}  ${ip_mac} ${ip_name// /_} ${olduptime} ${ip_interface}" >> ${dir}ipAddress
 			LockFile unlock
 		fi
-		local time_up=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`
-		echo "{'ip': '${1}','mac': '${ip_mac}','name': '${ip_name}','uptime': '${time_up}','interface': '${ip_interface}','usage': '`usage get $ip_mac`'}" > ${dir}client/${1}
+		local time_up=`cat ${dir}ipAddress|grep -w ${ip}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`
+		local http_access=`cat ${dir}ipAddress|grep -w ${ip}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`
+		[ -f "${dir}${ip}" ] && local http_access=`jq -r '.http_access' "${dir}${ip}"` || local http_access=`check_http_access ${ip}`
+		echo "{\"ip\": \"${ip}\", \"mac\": \"${ip_mac}\", \"name\": \"${ip_name}\", \"uptime\": \"${time_up}\", \"interface\": \"${ip_interface}\", \"usage\": \"`usage get $ip_mac`\", \"http_access\": \"${http_access}\"}" > ${dir}client/${ip}
 	fi
 }
 
@@ -1006,9 +986,6 @@ function down_send(){
 		blackwhitelist ${ip_mac};local ip_blackwhite=$?
 		[ -z "$notification_offline" ] || [ -z "$ip_blackwhite" ] && continue
 		[ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne "0" ] && continue
-		[ ! -z "$up_down_push_blacklist" ] && local tmp_mac=`echo "${up_down_push_blacklist}"|grep -w -i ${ip_mac}`
-		[ ! -z "$up_down_push_whitelist" ] && local tmp_mac=`echo "${up_down_push_whitelist}"|grep -w -i ${ip_mac}`
-		[ ! -z "$tmp_mac" ] && ( cat ${dir}ipAddress|grep -q -w -i ${tmp_mac} ) && continue
 
 		local ip_name=`getname ${ip} ${ip_mac}`
 		local time_up=`cat ${dir}tmp_downlist|grep -w ${ip}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`
