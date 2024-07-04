@@ -314,7 +314,7 @@ function check_http_access(){
 	curl --head --silent --fail --connect-timeout 2 "https://$ip" >/dev/null
 	[ $? -eq 0 ] && echo "https" && return
 
-	echo "" && return 1
+	return 1
 }
 
 # 从光猫处获取设备信息
@@ -435,7 +435,7 @@ function soc_temp(){
 }
 # 流量数据
 function usage(){
-	[ ! -f "/usr/sbin/wrtbwmon" ] || [ ! "$1" ] && echo "" && return
+	[ ! -f "/usr/sbin/wrtbwmon" ] || [ ! "$1" ] && return
 	# 更新
 	if [ $1 == "update" ] ;then
 		function version_le() { test "$(echo "$@"|tr " " "\n"|sort -n|head -n 1)" == "$1"; }
@@ -898,7 +898,7 @@ function up(){
 	# 连通
 	if [ "$ping_online" -eq "0" ]; then
 		LockFile lock
-		time_up=`date +%s`
+		local time_up=`date +%s`
 		[ -f "${dir}client/${ip}" ] && local http_access=`jq -r '.http_access' "${dir}client/${ip}"` || local http_access=`check_http_access ${ip}`
 		echo "{\"ip\": \"${ip}\", \"mac\": \"${ip_mac}\", \"name\": \"${ip_name}\", \"uptime\": \"${time_up}\", \"interface\": \"${ip_interface}\", \"usage\": \"\", \"http_access\": \"${http_access}\"}" > ${dir}client/${ip}
 
@@ -929,8 +929,8 @@ function up(){
 			fi
 			echo "`date "+%Y-%m-%d %H:%M:%S"` ${disturb_text}新设备 ${ip_name} ${ip} 连接了">> ${logfile}
 			#[ ! -z "$up_down_push_blacklist" ] && local title="你偷偷关注的设备上线了"
-			[ ! -z "$title" ] && echo "$title" >${dir}title
-			[ ! -z "$content" ] && echo -n "$content" >>${dir}content
+			[ ! -z "$title" ] && echo "$title" > ${dir}title
+			[ ! -z "$content" ] && echo -n "$content" >> ${dir}content
 		fi
 	fi
 	LockFile unlock
