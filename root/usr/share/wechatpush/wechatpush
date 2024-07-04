@@ -898,10 +898,6 @@ function up(){
 	# 连通
 	if [ "$ping_online" -eq "0" ]; then
 		LockFile lock
-		# 忽略名单
-		[ ! -z "$up_down_push_blacklist" ] && local tmp_mac=`echo "${up_down_push_blacklist}"|grep -w -i ${ip_mac}`
-		# 仅推送名单
-		[ ! -z "$up_down_push_whitelist" ] && local tmp_mac=`echo "${up_down_push_whitelist}"|grep -w -i ${ip_mac}`
 		time_up=`date +%s`
 		local http_access=`check_http_access $ip`
 		echo "{\"ip\": \"${ip}\", \"mac\": \"${ip_mac}\", \"name\": \"${ip_name}\", \"uptime\": \"${time_up}\", \"interface\": \"${ip_interface}\", \"usage\": \"\", \"http_access\": \"${http_access}\"}" > ${dir}client/${ip}
