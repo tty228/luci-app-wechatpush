@@ -623,20 +623,20 @@ function first(){
 			ip_mac=`getmac $ip`
 			ip_name=`getname ${ip} ${ip_mac}`
 			ip_interface=`getinterface ${ip_mac}`
-			echo "{'ip': '${ip}','mac': '${ip_mac}','name': '${ip_name}','uptime': '0秒','interface': '${ip_interface}','usage': ''}" > ${dir}client/${ip}
+			time_up=`date +%s`
+			echo "{'ip': '${ip}','mac': '${ip_mac}','name': '${ip_name}','uptime': '${time_up}','interface': '${ip_interface}','usage': ''}" > ${dir}client/${ip}
 			usage down ${ip}
 			echo "${ip} ${ip_mac} ${ip_name// /_} `date +%s` ${ip_interface}" >> ${dir}ipAddress
 		fi
 	done
 	for ip in $IPLIST_ipAddress; do
 		if ( echo "$IPLIST"|grep -q -i -w $ip ); then
+			[ ! -f "/usr/sbin/wrtbwmon" ] && continue
 			ip_mac=`getmac $ip`
 			ip_name=`getname ${ip} ${ip_mac}`
 			ip_interface=`getinterface ${ip_mac}`
 			time_up=`cat ${dir}ipAddress|grep -w ${ip}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`
-			time1=`date +%s`
-			time1=$(time_for_humans `expr ${time1} - ${time_up}`)
-			echo "{'ip': '${ip}','mac': '${ip_mac}','name': '${ip_name}','uptime': '${time1}','interface': '${ip_interface}','usage': '`usage get $ip_mac`'}" > ${dir}client/${ip}
+			echo "{'ip': '${ip}','mac': '${ip_mac}','name': '${ip_name}','uptime': '${time_up}','interface': '${ip_interface}','usage': '`usage get $ip_mac`'}" > ${dir}client/${ip}
 		else
 			sed -i "/^${ip} /d" ${dir}ipAddress
 			rm -f ${dir}client/${ip} >/dev/null 2>&1
@@ -915,7 +915,8 @@ function up(){
 		LockFile lock
 		[ ! -z "$up_down_push_blacklist" ] && local tmp_mac=`echo "${up_down_push_blacklist}"|grep -w -i ${ip_mac}`
 		[ ! -z "$up_down_push_whitelist" ] && local tmp_mac=`echo "${up_down_push_whitelist}"|grep -w -i ${ip_mac}`
-		echo "{'ip': '${1}','mac': '${ip_mac}','name': '${ip_name}','uptime': '0秒','interface': '${ip_interface}','usage': ''}" > ${dir}client/${1}
+		time_up=`date +%s`
+		echo "{'ip': '${1}','mac': '${ip_mac}','name': '${ip_name}','uptime': '${time_up}','interface': '${ip_interface}','usage': ''}" > ${dir}client/${1}
 		# ？？？
 		if [ ! -z "$tmp_mac" ] && ( cat ${dir}ipAddress|grep -q -w -i ${tmp_mac} ); then
 			usage down ${1}
@@ -991,9 +992,7 @@ function down(){
 			LockFile unlock
 		fi
 		local time_up=`cat ${dir}ipAddress|grep -w ${1}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`
-		local time1=`date +%s`
-		local time1=$(time_for_humans `expr ${time1} - ${time_up}`)
-		echo "{'ip': '${1}','mac': '${ip_mac}','name': '${ip_name}','uptime': '${time1}','interface': '${ip_interface}','usage': '`usage get $ip_mac`'}" > ${dir}client/${1}
+		echo "{'ip': '${1}','mac': '${ip_mac}','name': '${ip_name}','uptime': '${time_up}','interface': '${ip_interface}','usage': '`usage get $ip_mac`'}" > ${dir}client/${1}
 	fi
 }
 
