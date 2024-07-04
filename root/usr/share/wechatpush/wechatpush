@@ -808,11 +808,10 @@ function check_connect(){
 	local network_state="unknown"
 	while true; do
 		if is_online; then
-			[ ! -z "$network_state" ] && [ "$network_state" == "down" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【网络状态】网络恢复正常.." >> ${logfile}
-			local network_state="up"
+			[ "$network_state" == "down" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【网络状态】网络恢复正常.." >> ${logfile}
 			break
 		else
-			[ -z "$network_state" ] || [ "$network_state" == "up" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】当前网络不通！停止检测！ " >> ${logfile}
+			[ "$network_state" == "unknown" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【！！！！】当前网络不通！停止检测！ " >> ${logfile}
 			local network_state="down"
 			# 无人值守、待弃用或改进
 			[ -z "$network_unattended_time" ] && network_unattended_time=`date +%s`
