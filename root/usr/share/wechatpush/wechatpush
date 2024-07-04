@@ -732,10 +732,10 @@ function geterrdevicealiases(){
 	[ -z "$unattended_device_aliases" ] && return
 	[ -f ${dir}ipAddress ] && local logrow=$(grep -c "" ${dir}ipAddress) || local logrow="0";[ $logrow -eq "0" ] && return
 
-	local MACLIST=`cat ${dir}ipAddress|awk '{print $2}'|grep -v "^$"|sort -u`
-	for mac in $MACLIST; do
-		[ -z "$unattended_mac" ] && [ ! -z "$mac" ] && local unattended_mac=`echo "$unattended_device_aliases"|grep -i $mac|grep -v "^$"|sort -u|head -n1`
+	for mac in $unattended_device_aliases; do
+		[ ! -z "$mac" ] && local unattended_mac=$(cat ${dir}ipAddress|awk '{print $2}'|grep -i $mac|grep -v "^$"|sort -u|head -n1) && break
 	done
+
 	# 进入免打扰时间已经超过一小时
 	if [ ! -z "$sheep_starttime" ] && [ "$((`date +%s`-$sheep_starttime))" -ge "3600" ]; then
 		> ${dir}sheep_usage
@@ -744,8 +744,8 @@ function geterrdevicealiases(){
 			[ ! -z "$mac" ] && local tmptotal=`usage get ${mac} bytes`
 			[ ! -z "$tmptotal" ] && awk 'BEGIN{printf "%.0f\n",'$tmptotal'/'204800'}' 2>/dev/null >> ${dir}sheep_usage
 		done <<< "$MACLIST"
-		old_sheep_usage=`cat ${dir}old_sheep_usage` 2>/dev/null
-		sheep_usage=`cat ${dir}sheep_usage` 2>/dev/null
+		[ -f ${dir}old_sheep_usage ] && local old_sheep_usage=`cat ${dir}old_sheep_usage` 2>/dev/null || local old_sheep_usage=""
+		[ -f ${dir}sheep_usage ] && local sheep_usage=`cat ${dir}sheep_usage` 2>/dev/null || local sheep_usage=""
 		[ "$old_sheep_usage" == "$sheep_usage" ] && [ -z "$sheep_nousage_starttime" ] && sheep_nousage_starttime=`date +%s`
 		[ "$old_sheep_usage" != "$sheep_usage" ] && unset sheep_nousage_starttime && cat ${dir}sheep_usage 2>/dev/null > ${dir}old_sheep_usage
 		[ ! -z "$sheep_nousage_starttime" ] && [ "$((`date +%s`-$sheep_nousage_starttime))" -ge "300" ] && unset unattended_mac
@@ -898,7 +898,7 @@ function up(){
 	if [ "$ping_online" -eq "0" ]; then
 		LockFile lock
 		time_up=`date +%s`
-		local http_access=`check_http_access $ip`
+		[ -f "${dir}client/${ip}" ] && local http_access=`jq -r '.http_access' "${dir}${ip}"` || local http_access=`check_http_access ${ip}`
 		echo "{\"ip\": \"${ip}\", \"mac\": \"${ip_mac}\", \"name\": \"${ip_name}\", \"uptime\": \"${time_up}\", \"interface\": \"${ip_interface}\", \"usage\": \"\", \"http_access\": \"${http_access}\"}" > ${dir}client/${ip}
 
 		# 从离线二次验证区恢复信息
@@ -954,20 +954,19 @@ function down(){
 		LockFile unlock
 	# 更新主机名或 MAC
 	else
+		LockFile lock
 		local tmp_name=`cat ${dir}ipAddress|grep -w ${ip}|awk '{print $3}'|grep -v "^$"|sort -u|head -n1`
 		local tmp_mac=`cat ${dir}ipAddress|grep -w ${ip}|awk '{print $2}'|grep -v "^$"|sort -u|head -n1`
 		if [ "${ip_name// /_}" != "${tmp_name}" ] || [ "${ip_mac}" != "${tmp_mac}" ]; then
-			LockFile lock
-			olduptime=$(cat ${dir}ipAddress|grep -w ${ip}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1)
+			local time_up=$(cat ${dir}ipAddress|grep -w ${ip}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1)
 			sed -i "/^${ip} /d" ${dir}ipAddress
 			[ "${ip_mac}" != "${tmp_mac}" ] && ip_name="unknown" # MAC 变化时应删除主机名重新获取
-			echo "${ip}  ${ip_mac} ${ip_name// /_} ${olduptime} ${ip_interface}" >> ${dir}ipAddress
-			LockFile unlock
+			echo "${ip}  ${ip_mac} ${ip_name// /_} ${time_up} ${ip_interface}" >> ${dir}ipAddress
+			[ -f "${dir}client/${ip}" ] && local http_access=`jq -r '.http_access' "${dir}${ip}"` || local http_access=`check_http_access ${ip}`
+			echo "{\"ip\": \"${ip}\", \"mac\": \"${ip_mac}\", \"name\": \"${ip_name}\", \"uptime\": \"${time_up}\", \"interface\": \"${ip_interface}\", \"usage\": \"`usage get $ip_mac`\", \"http_access\": \"${http_access}\"}" > ${dir}client/${ip}
 		fi
-		local time_up=`cat ${dir}ipAddress|grep -w ${ip}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`
-		local http_access=`cat ${dir}ipAddress|grep -w ${ip}|awk '{print $4}'|grep -v "^$"|sort -u|head -n1`
-		[ -f "${dir}${ip}" ] && local http_access=`jq -r '.http_access' "${dir}${ip}"` || local http_access=`check_http_access ${ip}`
-		echo "{\"ip\": \"${ip}\", \"mac\": \"${ip_mac}\", \"name\": \"${ip_name}\", \"uptime\": \"${time_up}\", \"interface\": \"${ip_interface}\", \"usage\": \"`usage get $ip_mac`\", \"http_access\": \"${http_access}\"}" > ${dir}client/${ip}
+		local ip_total=`usage get $ip_mac` && [ ! -z "$ip_total" ] && jq --arg new_usage "$usage_date" '.usage = $new_usage' ${dir}client/${ip} > ${dir}tmp.json && mv ${dir}tmp.json ${dir}client/${ip}
+		LockFile unlock
 	fi
 }
 
