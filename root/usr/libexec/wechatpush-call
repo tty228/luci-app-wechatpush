@@ -29,11 +29,7 @@ function down_oui(){
 	fi
 }
 	
-if [ "$1" == "get_client" ]; then
-	# 生成在线设备列表，沿用 LUA 版本生成的临时文件
-	devices=$(find /tmp/wechatpush/client -type f -print0 | xargs -0 cat | sed "s/'/\"/g" | tr '\n' ',')
-	echo "{\"devices\": [${devices%,}]}"
-elif [ "$1" == "clear_log" ]; then
+if [ "$1" == "clear_log" ]; then
 	# 清空日志
 	> /tmp/wechatpush/wechatpush.log
 elif [ "$1" == "update_list" ]; then

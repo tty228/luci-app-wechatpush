@@ -6,9 +6,44 @@
 
 return view.extend({
     load: function () {
-        return L.resolveDefault(fs.exec_direct('/usr/libexec/wechatpush-call', ['get_client'], 'json'), { devices: [] });
+        var self = this;
+        // 清除 localStorage 中的排序设置
+        localStorage.removeItem('sortColumn');
+        localStorage.removeItem('sortDirection');
+        return this.fetchAndRenderDevices().then(function () {
+            self.setupAutoRefresh();
+        });
     },
+
+    fetchAndRenderDevices: function () {
+        var self = this;
+        return this.fetchDevices().then(function (data) {
+            var container = self.render(data);
+            self.switchContent(container);
+        }).catch(function (error) {
+            console.error('Error fetching or rendering devices:', error);
+        });
+    },
+
+    fetchDevices: function () {
+        return fs.list('/tmp/wechatpush/client').then(function (files) {
+            var promises = files.map(function (file) {
+                return fs.read('/tmp/wechatpush/client/' + file.name).then(function (content) {
+                    return JSON.parse(content);
+                });
+            });
+
+            return Promise.all(promises).then(function (devices) {
+                return { devices: devices };
+            });
+        });
+    },
+
     render: function (data) {
+        if (!data || !data.devices || !Array.isArray(data.devices)) {
+            console.error('Invalid data format:', data);
+            return document.createElement('div');
+        }
         var devices = data.devices;
         var totalDevices = devices.length;
         var headers = [_('Hostname'), _('IPv4 address'), _('MAC address'), _('Interfaces'), _('Online time'), _('Details')];
@@ -20,14 +55,21 @@ return view.extend({
         var defaultSortColumn = 'ip';
         var defaultSortDirection = 'asc';
 
+        // 获取存储的排序设置，如果没有则使用默认设置
+        var storedSortColumn = localStorage.getItem('sortColumn');
+        var storedSortDirection = localStorage.getItem('sortDirection');
+
+        var currentSortColumn = storedSortColumn || defaultSortColumn;
+        var currentSortDirection = storedSortDirection || defaultSortDirection;
+
         devices.sort(function (a, b) {
-            var value1 = ipToNumber(a[defaultSortColumn]);
-            var value2 = ipToNumber(b[defaultSortColumn]);
+            var value1 = getValueForSorting(a, currentSortColumn);
+            var value2 = getValueForSorting(b, currentSortColumn);
 
             if (value1 < value2) {
-                return defaultSortDirection === 'asc' ? -1 : 1;
+                return currentSortDirection === 'asc' ? -1 : 1;
             } else if (value1 > value2) {
-                return defaultSortDirection === 'asc' ? 1 : -1;
+                return currentSortDirection === 'asc' ? 1 : -1;
             }
             return 0;
         });
@@ -133,6 +175,9 @@ return view.extend({
                 if (visibleColumns.includes(i)) {
                     th.classList.add('sortable');
                     th.dataset.column = columns[i];
+                    if (columns[i] === currentSortColumn) {
+                        th.classList.add(currentSortDirection === 'asc' ? 'asc' : 'desc');
+                    }
                 } else {
                     th.classList.add('hide');
                 }
@@ -151,9 +196,6 @@ return view.extend({
                         var cell = document.createElement('td');
                         if (columns[i] === 'uptime') {
                             cell.textContent = calculateUptime(device['uptime']);
-                            poll.add(L.bind(function () {
-                                cell.textContent = calculateUptime(device['uptime']);
-                            }));
                         } else if (columns[i] === 'ip' && device['http_access']) {
                             var link = document.createElement('a');
                             link.href = `${device['http_access']}://${device['ip']}`;
@@ -196,27 +238,15 @@ return view.extend({
             }
         }
 
-        function calculateUptimeInSeconds(uptime) {
-            // 转换时间格式以排序
-            var parts = uptime.split(' ');
-            var totalSeconds = 0;
-
-            for (var i = 0; i < parts.length; i += 2) {
-                var value = parseInt(parts[i]);
-                var unit = parts[i + 1];
-
-                if (unit === '天') {
-                    totalSeconds += value * 24 * 3600;
-                } else if (unit === '小时') {
-                    totalSeconds += value * 3600;
-                } else if (unit === '分钟') {
-                    totalSeconds += value * 60;
-                } else if (unit === '秒') {
-                    totalSeconds += value;
-                }
+        function getValueForSorting(device, column) {
+            var value = device[column];
+            if (column === 'uptime') {
+                // 使用时间戳排序
+                return parseInt(device['uptime']);
+            } else if (column === 'ip') {
+                return ipToNumber(value);
             }
-
-            return totalSeconds;
+            return value;
         }
 
         function ipToNumber(ipAddress) {
@@ -236,64 +266,67 @@ return view.extend({
         container.appendChild(document.createElement('style')).textContent = style;
 
         container.addEventListener('click', function (event) {
-            if (
-                event.target.tagName === 'TH' &&
-                event.target.parentNode.rowIndex === 0
-            ) {
+            if (event.target.tagName === 'TH' && event.target.parentNode.rowIndex === 0) {
                 var columnIndex = event.target.cellIndex;
-                sortTable(columns[columnIndex]);
+                var column = columns[columnIndex];
+                var direction = 'asc';
+                if (column === currentSortColumn) {
+                    direction = currentSortDirection === 'asc' ? 'desc' : 'asc';
+                }
+                sortTable(column, direction, container);
             }
         });
 
-        function sortTable(column) {
-            var table = container.querySelector('.device-table');
-            var tbody = table.querySelector('tbody');
-            var rows = Array.from(tbody.querySelectorAll('tr'));
-
-            var isAscending = true;
-
-            if (table.classList.contains('sorted') && table.dataset.sortColumn === column) {
-                isAscending = !table.classList.contains('asc');
-            }
-
-            rows.sort(function (row1, row2) {
-                var value1 = row1.querySelector('td:nth-of-type(' + (visibleColumns.indexOf(columns.indexOf(column)) + 1) + ')').textContent;
-                var value2 = row2.querySelector('td:nth-of-type(' + (visibleColumns.indexOf(columns.indexOf(column)) + 1) + ')').textContent;
-
-                if (column === 'uptime') {
-                    value1 = calculateUptimeInSeconds(row1.querySelector('td:nth-of-type(' + (visibleColumns.indexOf(columns.indexOf(column)) + 1) + ')').textContent);
-                    value2 = calculateUptimeInSeconds(row2.querySelector('td:nth-of-type(' + (visibleColumns.indexOf(columns.indexOf(column)) + 1) + ')').textContent);
-                } else if (column === 'ip') {
-                    value1 = ipToNumber(value1);
-                    value2 = ipToNumber(value2);
+        function sortTable(column, direction, container) {
+            // 判断是否为 MAC 地址、接口或在线时间列，并设置默认排序方向为倒序
+            if (column === 'mac' || column === 'uptime') {
+                    direction = 'desc';
                 }
+            devices.sort(function (a, b) {
+                var value1 = getValueForSorting(a, column);
+                var value2 = getValueForSorting(b, column);
 
                 if (value1 < value2) {
-                    return isAscending ? -1 : 1;
+                    return direction === 'asc' ? -1 : 1;
                 } else if (value1 > value2) {
-                    return isAscending ? 1 : -1;
+                    return direction === 'asc' ? 1 : -1;
                 }
-
                 return 0;
             });
 
-            tbody.innerHTML = '';
+            currentSortColumn = column;
+            currentSortDirection = direction;
 
-            rows.forEach(function (row) {
-                tbody.appendChild(row);
-            });
+            // 存储排序设置
+            localStorage.setItem('sortColumn', currentSortColumn);
+            localStorage.setItem('sortDirection', currentSortDirection);
 
-            table.classList.remove('sorted', 'asc', 'desc');
-            if (isAscending) {
-                table.classList.add('sorted', 'asc');
-            } else {
-                table.classList.add('sorted', 'desc');
-            }
-            table.dataset.sortColumn = column;
+            container.innerHTML = '';
+            container.appendChild(document.createElement('h2')).textContent = _('当前共 ') + totalDevices + _(' 台设备在线');
+            container.appendChild(createTable());
+            container.appendChild(document.createElement('style')).textContent = style;
         }
 
         return container;
     },
+
+    setupAutoRefresh: function () {
+        var self = this;
+        poll.add(L.bind(function () {
+            self.fetchAndRenderDevices();
+        }));
+    },
+
+    switchContent: function (newContent) {
+        var existingContainer = document.querySelector('#view');
+        if (!existingContainer) {
+            console.error('Table container not found.');
+            return;
+        }
+        existingContainer.innerHTML = '';
+        existingContainer.appendChild(newContent);
+    },
+
     handleSave: null,
     handleSaveApply: null,
     handleReset: null
