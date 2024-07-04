@@ -1547,13 +1547,15 @@ function set_ip_black(){
 	[ -z "$nftables_version" ] && fw_info_blacklist=$(ipset list wechatpush_blacklist | grep "timeout" 2>/dev/null)
 	[ -z "$nftables_version" ] && fw_info_blacklistv6=$(ipset list wechatpush_blacklistv6 | grep "timeout" 2>/dev/null)
 
-	fw_info_blacklist="${fw_info_blacklist}\n${fw_info_blacklistv6}"
+	[ -n "$fw_info_blacklist" ] && [ -n "$fw_info_blacklistv6" ] && combined_fw_info_blacklist="${fw_info_blacklist}\n${fw_info_blacklistv6}"
+	[ -z "$fw_info_blacklist" ] && combined_fw_info_blacklist="${fw_info_blacklistv6}" || combined_fw_info_blacklist="${fw_info_blacklist}"
+	
 	while IFS= read -r ip_black_info; do
 		ip_black=$(echo "$ip_black_info"|grep -Eo "[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}")
 		[ -z "$ip_black" ] && ip_black=$(echo "$ip_black_info"|grep -Eo "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}")
 		[ -z "$ip_black" ] && continue
 		cat ${ip_blacklist_path}|grep -q -w -i ${ip_black} && sed -i "/^${ip_black}/d" ${ip_blacklist_path} && echo ${ip_black_info} >> ${ip_blacklist_path} || del_ip_black ${ip_black}
-	done <<< "$fw_info_blacklist"
+	done <<< "$combined_fw_info_blacklist"
 }
 
 # 发送定时数据
