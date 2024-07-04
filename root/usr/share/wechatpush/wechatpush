@@ -1132,24 +1132,43 @@ function cputop(){
 function get_disk() {
 	mkdir -p "${dir}disk_info"
 	local_disk_names=()
-	pve_disk_names=()
+	remote_disk_names=()
 
 	# 查询本地硬盘名
-	local_disk_names=($(lsblk 2>/dev/null | awk '$NF=="disk" {print $1}' | sort -u))
+	local_disk_names=($(lsblk -dno NAME,TYPE | awk '$2=="disk" {print $1}' | sort -u))
 	# 如未安装 lsblk，查找以 /dev/ 开头，但挂载点不是根目录 / 的设备，然后提取硬盘的名称(准确性较低)
-	[ -z "$local_disk_names" ] && local_disk_names=($(df -h 2>/dev/null | awk '$1 ~ /^\/dev/ {if ($NF ~ /^\/[a-zA-Z0-9]/) { sub("/dev/", "", $1); sub(/[0-9]+$/, "", $1); print $1 }}' | sort -u))
+	[ -z "$local_disk_names" ] && local_disk_names=($(df -h 2>/dev/null | awk '$1 ~ /^\/dev/ && !/^\/dev\/(mtd|ubiblock)/ {if ($NF ~ /^\/[a-zA-Z0-9]/) { sub("/dev/", "", $1); sub(/[0-9]+$/, "", $1); print $1 }}' | sort -u))
 	local_disk_tags=($(for _ in "${local_disk_names[@]}"; do echo "local"; done))
 
 	# 查询远程硬盘名
 	if [ -n "$server_host" ]; then
 		ssh_command="ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -i /root/.ssh/id_rsa root@${server_host} -p ${server_port}"
-		pve_disk_names=($(eval ${ssh_command} lsblk | awk '$NF=="disk" {print $1}' | sort -u))
-		pve_disk_tags=($(for _ in "${pve_disk_names[@]}"; do echo "pve"; done))
+		remote_disk_names=($(eval ${ssh_command} lsblk -dno NAME,TYPE | awk '$2=="disk" {print $1}' | sort -u))
+		[ -z "$remote_disk_names" ] && remote_disk_names=($(eval ${ssh_command} df -h 2>/dev/null | awk '$1 ~ /^\/dev/ {if ($NF ~ /^\/[a-zA-Z0-9]/) { sub("/dev/", "", $1); sub(/[0-9]+$/, "", $1); print $1 }}' | sort -u))
+		remote_disk_tags=($(for _ in "${remote_disk_names[@]}"; do echo "remote"; done))
+	fi
+	
+# 获取磁盘名称函数
+get_disk_names() {
+	local disk_names=($(lsblk -dno NAME,TYPE 2>/dev/null | awk '$2=="disk" {print $1}' | sort -u))
+	[ -z "$disk_names" ] && disk_names=($(df -h 2>/dev/null | awk '$1 ~ /^\/dev/ {if ($NF ~ /^\/[a-zA-Z0-9]/) { sub("/dev/", "", $1); sub(/[0-9]+$/, "", $1); print $1 }}' | sort -u))
+	echo "${disk_names[@]}"
+}
+
+	# 查询本地硬盘名
+	local_disk_names=($(get_disk_names))
+	local_disk_tags=($(for _ in "${local_disk_names[@]}"; do echo "local"; done))
+
+	# 查询远程硬盘名
+	if [ -n "$server_host" ]; then
+		ssh_command="ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -i /root/.ssh/id_rsa root@${server_host} -p ${server_port}"
+		remote_disk_names=($(eval ${ssh_command} "$(declare -f get_disk_names); get_disk_names"))
+		remote_disk_tags=($(for _ in "${remote_disk_names[@]}"; do echo "remote"; done))
 	fi
 
 	# 合并本地和远程硬盘名及标记
-	all_disk_names=("${local_disk_names[@]}" "${pve_disk_names[@]}")
-	all_disk_tags=("${local_disk_tags[@]}" "${pve_disk_tags[@]}")
+	all_disk_names=("${local_disk_names[@]}" "${remote_disk_names[@]}")
+	all_disk_tags=("${local_disk_tags[@]}" "${remote_disk_tags[@]}")
 
 	for i in "${!all_disk_names[@]}"; do
 		tmp_name=${all_disk_names[i]}
@@ -1158,9 +1177,9 @@ function get_disk() {
 		unset tmp_command disk_type disk_err
 
 		# 判断硬盘类型
-		if [ "$tmp_tag" == "pve" ]; then
+		if [ "$tmp_tag" == "remote" ]; then
 			tmp_command="$ssh_command"
-			disk_type="_pve"
+			disk_type="_remote"
 		fi
 		file_path="${dir}disk_info/${tmp_name}${disk_type}"
 
