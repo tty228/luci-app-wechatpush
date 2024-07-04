@@ -967,6 +967,7 @@ function down(){
 		fi
 		# 客户端列表文件不存在或需要更新
 		[ -f "${dir}client/${ip}" ] && local ip_total=`usage get $ip_mac` && [ ! -z "$ip_total" ] && jq -c --arg new_usage "$ip_total" '.usage = $new_usage' "${dir}client/${ip}" > "${dir}tmp.json" && mv "${dir}tmp.json" "${dir}client/${ip}"
+		[ ! -f "${dir}client/${ip}" ] && local http_access=`check_http_access ${ip}`
 		[ ! -f "${dir}client/${ip}" ] && echo "{\"ip\": \"${ip}\", \"mac\": \"${ip_mac}\", \"name\": \"${ip_name}\", \"uptime\": \"${time_up}\", \"interface\": \"${ip_interface}\", \"usage\": \"`usage get $ip_mac`\", \"http_access\": \"${http_access}\"}" > ${dir}client/${ip}
 		LockFile unlock
 	fi
