@@ -41,7 +41,7 @@ function renderStatus(isRunning) {
 }
 
 var cbiRichListValue = form.ListValue.extend({
-	renderWidget: function(section_id, option_index, cfgvalue) {
+	renderWidget: function (section_id, option_index, cfgvalue) {
 		var choices = this.transformChoices();
 		var widget = new ui.Dropdown((cfgvalue != null) ? cfgvalue : this.default, choices, {
 			id: this.cbid(section_id),
@@ -56,12 +56,12 @@ var cbiRichListValue = form.ListValue.extend({
 		return widget.render();
 	},
 
-	value: function(value, title, description) {
+	value: function (value, title, description) {
 		if (description) {
 			form.ListValue.prototype.value.call(this, value, E([], [
-				E('span', { 'class': 'hide-open' }, [ title ]),
+				E('span', { 'class': 'hide-open' }, [title]),
 				E('div', { 'class': 'hide-close', 'style': 'min-width:25vw' }, [
-					E('strong', [ title ]),
+					E('strong', [title]),
 					E('br'),
 					E('span', { 'style': 'white-space:normal' }, description)
 				])
@@ -425,17 +425,17 @@ return view.extend({
 			});
 		}
 		o.depends('get_ipv6_mode', '2');
-		
+
 		o = s.taboption('content', form.Flag, 'auto_update_ip_list', _('Automatically update API list'));
 		o.description = _('When multiple IP retrieval attempts fail, try to automatically update the list file from GitHub');
 		o.depends('get_ipv4_mode', '2');
 		o.depends('get_ipv6_mode', '2');
-		
+
 		o = s.taboption('content', form.MultiValue, 'device_notification', _('Device Online/Offline Notification'));
 		o.value('online', _('Online Notification'));
 		o.value('offline', _('Offline Notification'));
 		o.modalonly = true;
-		
+
 		o = s.taboption('content', form.MultiValue, 'cpu_notification', _('CPU Alert'));
 		o.value('load', _('Load Alert'));
 		o.value('temp', _('Temperature Alert'));
@@ -613,7 +613,7 @@ return view.extend({
 		o.value('device', _('Simplify the current device list'));
 		o.value('nowtime', _('Simplify the current time'));
 		o.value('content', _('Push only the title'));
-		
+
 		o = s.taboption('disturb', cbiRichListValue, 'do_not_disturb_mode', _('Do Not Disturb time setting'));
 		o.value('', _('Close'),
 			_(' '));

@@ -280,8 +280,8 @@ return view.extend({
         function sortTable(column, direction, container) {
             // 判断是否为 MAC 地址、接口或在线时间列，并设置默认排序方向为倒序
             if (column === 'mac' || column === 'uptime') {
-                    direction = 'desc';
-                }
+                direction = 'desc';
+            }
             devices.sort(function (a, b) {
                 var value1 = getValueForSorting(a, column);
                 var value2 = getValueForSorting(b, column);
