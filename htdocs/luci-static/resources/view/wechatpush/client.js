@@ -3,6 +3,7 @@
 'require fs';
 'require ui';
 'require poll';
+'require uci';
 
 return view.extend({
     load: function () {
@@ -10,6 +11,7 @@ return view.extend({
         // 清除 localStorage 中的排序设置
         localStorage.removeItem('sortColumn');
         localStorage.removeItem('sortDirection');
+        uci.load('wechatpush')
         return this.fetchAndRenderDevices().then(function () {
             self.setupAutoRefresh();
         });
@@ -41,7 +43,6 @@ return view.extend({
 
     render: function (data) {
         if (!data || !data.devices || !Array.isArray(data.devices)) {
-            console.error('Invalid data format:', data);
             return document.createElement('div');
         }
         var devices = data.devices;
@@ -51,9 +52,10 @@ return view.extend({
         var visibleColumns = [];
         var hasData = false;
 
-        // 将 IP 列设置为默认排序列
-        var defaultSortColumn = 'ip';
-        var defaultSortDirection = 'asc';
+        // 获取配置中的默认排序列
+        var defaultSortColumn = uci.get('wechatpush', 'config', 'defaultSortColumn') || 'ip';
+        var defaultSortDirection = (defaultSortColumn === 'uptime') ? 'desc' : 'asc';
+        //console.log("defaultSortColumn:", defaultSortColumn);
 
         // 获取存储的排序设置，如果没有则使用默认设置
         var storedSortColumn = localStorage.getItem('sortColumn');
@@ -281,6 +283,7 @@ return view.extend({
 
         function sortTable(column, direction, container) {
             // 判断是否为 MAC 地址、接口或在线时间列，并设置默认排序方向为倒序
+            //console.log("column:", column);
             if (column === 'mac' || column === 'uptime') {
                 direction = 'desc';
             }

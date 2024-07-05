@@ -117,6 +117,12 @@ return view.extend({
 		o.rmempty = false;
 		o.description = _("Do not change the setting value for low-performance devices, or reduce the parameters as appropriate.")
 
+		o = s.option(form.ListValue, "defaultSortColumn", _("Client list sorting method"))
+		o.default = "ip"
+		o.value("ip", _("IP"))
+		o.value("uptime", _("Online time"))
+		o.description = _("This will change the sorting method for both the online device list page and the sorting order in the push content.")
+	
 		o = s.option(form.Value, "soc_code", _('Custom temperature reading command'))
 		o.rmempty = true
 		o.value("", _("Default"))

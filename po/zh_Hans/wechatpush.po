@@ -824,6 +824,14 @@ msgstr "最大并发进程数"
 msgid "Do not change the setting value for low-performance devices, or reduce the parameters as appropriate."
 msgstr "低性能设备请勿更改设置值，或酌情减少参数"
 
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:120
+msgid "Client list sorting method"
+msgstr "客户端列表排序方式"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:52
+msgid "This will change the sorting method for both the online device list page and the sorting order in the push content."
+msgstr "这将会同时改变在线设备列表页面和推送内容中的排序方式"
+
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:58
 msgid "Custom temperature reading command"
 msgstr "自定义温度读取命令"
