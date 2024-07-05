@@ -333,7 +333,7 @@ return view.extend({
 			_('May fail due to server stability and frequent connections.<br/>If the interface can obtain the IP address properly, it is not recommended to use this method.'));
 
 		o = s.taboption('content', widgets.DeviceSelect, 'ipv4_interface', _("Device"));
-		o.description = _('Typically, it should be pppoe-wan or WAN interface. For multi-wan environments, please choose accordingly.');
+		o.description = _('Generally, it should be the pppoe-wan or WAN interface. For multi-dial environments, please select the appropriate interface yourself.');
 		o.modalonly = true;
 		o.multiple = false;
 		o.default = 'pppoe-wan';
@@ -384,7 +384,7 @@ return view.extend({
 			_('May fail due to server stability and frequent connections.<br/>If the interface can obtain the IP address properly, it is not recommended to use this method.'));
 
 		o = s.taboption('content', widgets.DeviceSelect, 'ipv6_interface', _("Device"));
-		o.description = _('Typically, it should be WAN or br-lan interface. For multi-wan environments, please choose accordingly.');
+		o.description = _('Generally, it should be the pppoe-wan or WAN interface. For multi-dial environments, please select the appropriate interface yourself.');
 		o.modalonly = true;
 		o.multiple = false;
 		o.default = 'WAN';
