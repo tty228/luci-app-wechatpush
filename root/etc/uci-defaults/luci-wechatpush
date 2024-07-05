@@ -2,4 +2,4 @@
 
 dir="/tmp/wechatpush/" && mkdir -p ${dir} && mkdir -p ${dir}/client
 rm -f ${dir}client/* >/dev/null 2>&1
-rm -rf /tmp/luci-*' >/dev/null 2>&1 &
+rm -rf /tmp/luci-* >/dev/null 2>&1
