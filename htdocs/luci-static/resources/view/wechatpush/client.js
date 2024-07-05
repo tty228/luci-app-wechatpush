@@ -145,15 +145,17 @@ return view.extend({
                 display: none;
             }
             @media (max-width: 767px) {
+				.device-table th:nth-of-type(3),
+                .device-table td:nth-of-type(3) {
+                    display: none;
+                }
                 .device-table th:nth-of-type(4),
                 .device-table td:nth-of-type(4) {
                     display: none;
                 }
                 .device-table th,
                 .device-table td {
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
+                    padding: 0.35rem;
                 }
                 .device-table td:first-child {
                     max-width: 150px;
