@@ -1190,7 +1190,7 @@ function get_disk() {
 
 	# 获取磁盘名称函数
 	get_disk_names() {
-		local disk_names=($(lsblk -dno NAME,TYPE | awk '$2=="disk" && $1 !~ /^mtd/ && $1 !~ /^ubiblock/ {print $1}' | sort -u))
+		local disk_names=($(lsblk -dno NAME,TYPE 2>/dev/null | awk '$2=="disk" && $1 !~ /^mtd/ && $1 !~ /^ubiblock/ {print $1}' | sort -u))
 		[ -z "$disk_names" ] && disk_names=($(df -h 2>/dev/null | awk '$1 ~ /^\/dev/ && !/^\/dev\/(mtd|ubiblock)/ {if ($NF ~ /^\/[a-zA-Z0-9]/) { sub("/dev/", "", $1); sub(/[0-9]+$/, "", $1); print $1 }}' | sort -u))
 		echo "${disk_names[@]}"
 	}
@@ -1202,7 +1202,8 @@ function get_disk() {
 	# 查询远程硬盘名
 	if [ -n "$server_host" ]; then
 		ssh_command="ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -i /root/.ssh/id_rsa root@${server_host} -p ${server_port}"
-		remote_disk_names=($(eval ${ssh_command} "$(declare -f get_disk_names); get_disk_names"))
+		remote_disk_names=$($ssh_command "$(declare -f get_disk_names); get_disk_names" | tr -d '\r')
+		remote_disk_names=($remote_disk_names)
 		remote_disk_tags=($(for _ in "${remote_disk_names[@]}"; do echo "remote"; done))
 	fi
 
