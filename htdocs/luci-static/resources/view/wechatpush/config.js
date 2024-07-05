@@ -451,9 +451,9 @@ return view.extend({
 			if (!isNaN(floatValue) && floatValue.toString() === value) {
 				return true;
 			}
-			return 'Please enter a numeric value only';
+			return _('Please enter a numeric value only');
 		};
-		o.description = _('In general, when the load value is lower than the number of logical cores, you typically don\'t need to pay much attention to it');
+		o.description = _('In general, when the load value is lower than the number of logical cores, you typically don\'t need to pay much attention to it.');
 
 		o = s.taboption('content', form.Value, 'temperature_threshold', _('Temperature alert threshold'));
 		o.rmempty = false;

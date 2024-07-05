@@ -41,7 +41,7 @@ function read_config() {
 		"login_notification" "login_max_num" "login_web_black" "login_ip_black_timeout" "login_ip_white_list" "port_knocking_enable" "login_ip_white_timeout" "login_port_white" "login_port_forward_list" \
 		"crontab_regular_time" "crontab_interval_time" \
 		"do_not_disturb_mode" "do_not_disturb_starttime" "do_not_disturb_endtime" "up_down_push_whitelist" "up_down_push_blacklist" "up_down_push_interface" "mac_online_list" "mac_offline_list" "cpu_threshold_duration" "cpu_notification_delay" "login_disturb" "login_notification_delay" "login_log_enable" \
-		"up_timeout" "down_timeout" "timeout_retry_count" "only_timeout_push" "passive_mode" "thread_num" "soc_code" "server_host" "server_port" \
+		"up_timeout" "down_timeout" "timeout_retry_count" "always_check_ip_list" "only_timeout_push" "passive_mode" "thread_num" "soc_code" "server_host" "server_port" \
 		"unattended_enable" "zerotier_helper" "unattended_only_on_disturb_time" "unattended_device_aliases" "network_disconnect_event" "unattended_autoreboot_mode" "autoreboot_system_uptime" "autoreboot_network_uptime" \
 		"device_info_helper" "gateway_host_url" "gateway_info_url" "gateway_logout_url" "gateway_username_id" "gateway_password_id" "gateway_username" "gateway_password" "scan_ip_range" "device_info_helper_sleeptime"
 
@@ -349,6 +349,7 @@ function scanlocalip() {
 	[ -z "$scan_ip_range" ] && return
 	[ -z "$last_scan_ip_time" ] && last_scan_ip_time=0
 	if [ $(expr $(date +%s) - $last_scan_ip_time) -gt "$device_info_helper_sleeptime" ]; then
+		last_scan_ip_time=$(date +%s)
 		start_ip=$(echo "$scan_ip_range" | cut -d "-" -f 1)
 		end_ip=$(echo "$scan_ip_range" | cut -d "-" -f 2)
 
@@ -361,6 +362,7 @@ function scanlocalip() {
 			i=$((i + 1))
 		done
 		scan_iplist=$(cat ${dir}scan_info)
+		rm -f ${dir}scan_info >/dev/null 2>&1
 	else
 		unset scan_iplist
 	fi
@@ -605,7 +607,6 @@ function first() {
 	[ -f "${dir}ipAddress" ] && local IPLIST_ipAddress=$(cat ${dir}ipAddress | awk '{print $1}' | grep -v "^$" | sort -u)
 	getgateway
 	scanlocalip
-	last_scan_ip_time=$(date +%s)
 	for ip in $IPLIST_ipAddress; do
 		[ -n "$passive_mode" ] && [ "$passive_mode" -eq "1" ] && break
 		read -u 5
@@ -620,7 +621,7 @@ function first() {
 	[ -n "$IP_INFO" ] && local SUBNET=$(echo $IP_INFO | cut -d'/' -f1 | cut -d'.' -f1-3)
 	[ -n "$SUBNET" ] && local IPLIST=$(cat /proc/net/arp | grep "0x2\|0x6" | awk '{print $1}' | grep -v "^169.254." | grep -v "^$" | sort -u | grep -oE "${SUBNET}\.[0-9]{1,3}") || local IPLIST=$(cat /proc/net/arp | grep "0x2\|0x6" | awk '{print $1}' | grep -v "^169.254." | grep -v "^$" | sort -u | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
 
-	local IPLIST=$(echo -e "${IPLIST}\n${gateway_iplist}\n${scan_iplist}" | grep -v "^$" | sort -u)
+	local IPLIST=$(echo -e "${IPLIST}\n${gateway_iplist}\n${scan_iplist}\n${always_check_ip_list}" | grep -v "^$" | sort -u)
 	for ip in $IPLIST; do
 		[ -n "$passive_mode" ] && [ "$passive_mode" -eq "1" ] && break
 		read -u 5

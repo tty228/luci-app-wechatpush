@@ -401,7 +401,7 @@ msgid "Load alert threshold"
 msgstr "负载报警阈值"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:451
-msgid "In general, when the load value is lower than the number of logical cores, you typically don't need to pay much attention to it"
+msgid "In general, when the load value is lower than the number of logical cores, you typically don't need to pay much attention to it."
 msgstr "通常情况下，负载值低于逻辑核心数量时，你不需要关注它"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:433
@@ -796,10 +796,17 @@ msgstr "若设备信号强度良好，无息屏 WiFi 休眠问题，可以减少
 msgid "Offline timeout applies only to the devices that receive push notifications"
 msgstr "离线超时只针对推送设备"
 
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:95
+msgid "IP address to always scan"
+msgstr "始终扫描的 IP"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:95
+msgid "The IPs in the list are always subjected to online detection regardless of whether they exist in the ARP list, suitable for secondary routing scenarios."
+msgstr "列表中的 IP 始终进行在线检测，无论它是否存在于 ARP 列表，适用于二级路由等情况"
+
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:45
 msgid "When this option is selected, the offline timeout and offline detection count apply only to the devices that require push notifications. Other devices will use default values, which can significantly reduce the time required for detection. However, it may result in inaccurate online time displayed in the online devices list. It is recommended to enable this option only when there are many devices and frequent offline occurrences are observed for specific devices of interest."
 msgstr "选中此项后，离线超时时间和离线检测次数只针对需要推送的设备，其余设备使用默认值，可有效减少检测所需的时间，但会造成在线设备列表中的在线时间不准确，仅建议设备较多且关注的设备离线频繁时使用"
-
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:47
 msgid "Disable active detection"
