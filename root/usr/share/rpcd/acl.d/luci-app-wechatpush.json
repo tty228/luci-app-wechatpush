@@ -4,6 +4,7 @@
 		"read": {
 			"file": {
 				"/etc/init.d/wechatpush": [ "exec" ],
+				"/proc/net/arp": [ "read" ],
 				"/usr/share/wechatpush/wechatpush": [ "exec" ],
 				"/tmp/wechatpush/*": [ "read" ],
 				"/usr/share/wechatpush/api/*": [ "read" ],
