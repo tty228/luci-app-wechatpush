@@ -1,7 +1,7 @@
 #!/bin/sh
 
 logfile="/tmp/wechatpush/wechatpush.log"
-dir="/tmp/wechatpush/" && mkdir -p "${dir}" && mkdir -p "${dir}/client"
+dir="/tmp/wechatpush/" && mkdir -p "${dir}"
 oui_base="${dir}oui_base.txt"
 oui_data=$(uci get wechatpush.config.oui_data 2>/dev/null)
 oui_url="https://standards-oui.ieee.org/oui/oui.txt"
@@ -45,6 +45,6 @@ elif [ "$1" == "update_list" ]; then
 	echo "$(date "+%Y-%m-%d %H:%M:%S") 【info】${2} API 列表更新成功" >>"${logfile}"
 elif [ "$1" == "down_oui" ]; then
 	# 更新 MAC 信息列表
-	[ $(file_date "${oui_base}") -lt 86400 ] && echo "$(date "+%Y-%m-%d %H:%M:%S") 【info】MAC 信息文件无需更新" >>"${logfile}" && exit 2
+	[ $(file_date "$oui_base") -lt 86400 ] && echo "$(date "+%Y-%m-%d %H:%M:%S") 【info】MAC 信息文件无需更新" >>"${logfile}" && exit 2
 	down_oui >/dev/null 2>&1 &
 fi

@@ -42,6 +42,7 @@ For devices that do not declare hostnames, devices connected via optical modem d
 - Use device name remarks.
 - Configure to obtain the hostname from the optical modem in advanced settings.
 - Enable MAC device database.
+- Install samba*-server or samba*-client to enable the program to query hostnames via NetBIOS.
 
 
 **Regarding Device Online Status:**

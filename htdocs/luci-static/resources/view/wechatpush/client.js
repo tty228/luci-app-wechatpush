@@ -28,16 +28,14 @@ return view.extend({
     },
 
     fetchDevices: function () {
-        return fs.list('/tmp/wechatpush/client').then(function (files) {
-            var promises = files.map(function (file) {
-                return fs.read('/tmp/wechatpush/client/' + file.name).then(function (content) {
-                    return JSON.parse(content);
-                });
-            });
-
-            return Promise.all(promises).then(function (devices) {
-                return { devices: devices };
-            });
+        return fs.read('/tmp/wechatpush/devices.json').then(function (content) {
+            try {
+                var data = JSON.parse(content);
+                return { devices: data.devices };
+            } catch (e) {
+                console.error('Error parsing JSON:', e);
+                return { devices: [] };
+            }
         });
     },
 
@@ -45,7 +43,7 @@ return view.extend({
         if (!data || !data.devices || !Array.isArray(data.devices)) {
             return document.createElement('div');
         }
-        var devices = data.devices;
+        var devices = data.devices.filter(device => device.status === 'online');
         var totalDevices = devices.length;
         var headers = [_('Hostname'), _('IPv4 address'), _('MAC address'), _('Interfaces'), _('Online time'), _('Details')];
         var columns = ['name', 'ip', 'mac', 'interface', 'uptime', 'usage'];
