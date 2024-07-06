@@ -3,7 +3,7 @@
 # 读取设置文件
 function get_config() {
 	while [[ "$*" != "" ]]; do
-		eval ${1}='`uci get wechatpush.config.$1`' 2>/dev/null
+		eval "${1}='$(uci get wechatpush.config.$1 2>/dev/null)'"
 		shift
 	done
 }
@@ -28,6 +28,12 @@ wait_and_cat() {
 	if [ ! -f "${dir}/send.lock" ]; then
 		rm "$output_dir"/*
 	fi
+}
+
+# 在调试模式下隐藏输出
+# 不能直接包裹 var=$(echo $ssh_command) 等命令，待完善
+function silent_run() {
+	"$@" >/dev/null 2>&1
 }
 
 # 初始化设置信息
@@ -66,7 +72,7 @@ function read_config() {
 	login_port_forward_list=$(echo "$login_port_forward_list" | sed 's/ /\n/g') 2>/dev/null
 	up_down_push_blacklist=$(echo "$up_down_push_blacklist" | sed 's/ /\n/g') 2>/dev/null
 	up_down_push_whitelist=$(echo "$up_down_push_whitelist" | sed 's/ /\n/g') 2>/dev/null
-	device_aliases=$(cat /usr/share/wechatpush/api/device_aliases.list) 2>/dev/null
+	device_aliases_path="/usr/share/wechatpush/api/device_aliases.list"
 	unattended_device_aliases=$(echo "$unattended_device_aliases" | sed 's/ /\n/g') 2>/dev/null
 	client_usage_whitelist=$(echo "$client_usage_whitelist" | sed 's/ /\n/g') 2>/dev/null
 	login_ip_white_list=$(echo "$login_ip_white_list" | sed 's/ /\n/g') 2>/dev/null
@@ -177,7 +183,7 @@ function deltemp() {
 
 # 检测程序开关
 function enable_detection() {
-	[ ! "$1" ] && local time_n=1
+	[ -z "$1" ] && local time_n=1
 	for i in $(seq 1 $time_n); do
 		get_config enable
 		[ -z "$enable" ] || [ "$enable" -eq "0" ] && exit || sleep 1
@@ -186,7 +192,7 @@ function enable_detection() {
 
 # 获取 ip
 function getip() {
-	[ ! "$1" ] && return
+	[ -z "$1" ] && return
 
 	# 从接口获取 IPv4
 	if [ $1 == "wanipv4" ]; then
@@ -256,60 +262,141 @@ function getinterfaceuptime() {
 	getinterfacelist | awk -F'\"uptime\": ' '/uptime/ { gsub(/,/, "", $2); print $2 }'
 }
 
+# 处理并检查 tmp_name 的通用函数
+function process_and_check() {
+	[ -z "$1" ] && return 1
+	local value=$(echo "$1" | tr -d '\n\r' | awk '$1=$1' | sed 's/_/ /g' | grep -v "^$" | sort -u | head -n1)
+	[ "$value" = "unknown" ] && value=""
+	[ -n "$value" ] && echo "$value" && return 0
+	return 1
+}
+
+# 查询 NetBIOS
+function nmblookup_timeout() {
+	local ip_address="$1"
+	local query_type="$2" # "name" or "mac"
+	local max_wait_time="$3"
+	local result=""
+	[ -z "$ip_address" ] && return 1
+	[ -z "$query_type" ] && return 1
+	[ -z "$max_wait_time" ] && return 1
+
+	{
+		if [ "$query_type" == "name" ]; then
+			result=$(nmblookup -A ${ip_address} 2>/dev/null | awk '/<00>/ && !/<GROUP>/ {print $1}')
+		elif [ "$query_type" == "mac" ]; then
+			result=$(nmblookup -A ${ip_address} 2>/dev/null | grep -oE 'MAC\s+Address\s+=\s+([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})' | awk '{print $NF}')
+		fi
+		echo "$result"
+	} &
+	local nmblookup_pid=$!
+
+	# 等待最多5秒，检查结果是否已经获取
+	local wait_time=0
+	while [ $wait_time -lt $max_wait_time ]; do
+		# 检查子进程是否已完成
+		if ! kill -0 $nmblookup_pid >/dev/null 2>&1; then
+			result=$(wait $nmblookup_pid) # 获取子进程的输出
+			break
+		fi
+		sleep 1
+		wait_time=$((wait_time + 1))
+	done
+
+	if kill -0 $nmblookup_pid >/dev/null 2>&1; then
+		kill $nmblookup_pid
+	fi
+
+	echo "$result"
+}
+
 # 查询 MAC 地址
 function getmac() {
-	# 已保存的 MAC
-	[ -f "${dir}ipAddress" ] && local tmp_mac=$(cat ${dir}ipAddress | grep -w ${1} | awk '{print $2}' | grep -v "^$")
-	(echo "$tmp_mac" | grep -q "unknown") && unset tmp_mac                                                   # 为 unknown 时重新读取
-	[ -n "$tmp_mac" ] && [ "$(grep -w -i "${tmp_mac}" "${dir}ipAddress" | wc -l)" -gt "1" ] && unset tmp_mac # 某些路由器中继模式，会进行 MAC 克隆，重复值重新读取
-	[ -f "${dir}tmp_downlist" ] && [ -z "$tmp_mac" ] && local tmp_mac=$(cat ${dir}tmp_downlist | grep -w ${1} | awk '{print $2}' | grep -v "^$" | sort -u | head -n1)
-	# DHCP
-	(echo "$tmp_mac" | grep -q "unknown") && unset tmp_mac # 为 unknown 时重新读取
-	[ -f "/tmp/dhcp.leases" ] && [ -z "$tmp_mac" ] && local tmp_mac=$(cat /tmp/dhcp.leases | grep -w ${1} | awk '{print $2}' | grep -v "^$" | sort -u | head -n1)
-	# arp
-	[ -z "$tmp_mac" ] && local tmp_mac=$(cat /proc/net/arp | grep "0x2\|0x6" | grep -w ${1} | awk '{print $4}' | grep -v "^$" | sort -u | head -n1)
+	local ip="$1"
+	local tmp_mac
+	[ -z "$ip" ] && return 1
 
-	[ -z "$tmp_mac" ] && local tmp_mac="unknown"
-	echo $tmp_mac | tr -d '\n\r'
+	# 已保存的 MAC
+	[ -f "${dir}ipAddress" ] && tmp_mac=$(grep -w "${ip}" "${dir}ipAddress" | awk '{print $2}')
+	process_and_check "$tmp_mac" && return
+
+	[ -f "${dir}tmp_downlist" ] && tmp_mac=$(grep -w "${ip}" "${dir}tmp_downlist" | awk '{print $2}')
+	process_and_check "$tmp_mac" && return
+
+	# 某些路由器中继模式，会进行 MAC 克隆，重复值重新读取
+	[ -n "$tmp_mac" ] && [ "$(awk '{print $2}' "${dir}ipAddress" | grep -wi "${tmp_mac}" | wc -l)" -gt "1" ] && tmp_mac=""
+	process_and_check "$tmp_mac" && return
+
+	# DHCP
+	[ -f "/tmp/dhcp.leases" ] && tmp_mac=$(grep -w "${ip}" "/tmp/dhcp.leases" | awk '{print $2}')
+	process_and_check "$tmp_mac" && return
+
+	# ARP
+	tmp_mac=$(cat /proc/net/arp | grep "0x2\|0x6" | grep -w "${ip}" | awk '{print $4}')
+	process_and_check "$tmp_mac" && return
+
+	# 查询 NetBIOS
+	tmp_mac=$(nmblookup_timeout "${ip}" "mac" "5")
+	process_and_check "$tmp_mac" && return
+
+	# 默认返回 unknown
+	echo "unknown"
 }
 
 # 查询主机名
 function getname() {
-	# 自定义备注
-	local tmp_name=$(echo "$device_aliases" | grep -i -w "^${1}\|^${2}" | awk '{ for(i=2; i<=NF; i++) printf $i " "; print "" }' | grep -v "^$" | sort -u | head -n1)
-	[ -n "$tmp_name" ] && echo "$tmp_name" | tr -d '\n\r' | awk '$1=$1' | sed 's/_/ /g' | sort -u | head -n1 && return
-	echo "$2" | grep -q -w "unknown\|*" && echo "unknown" && return # 当 MAC 获取失败时先不要尝试获取主机名
-	# 已保存的 主机名
-	[ -f "${dir}ipAddress" ] && [ -z "$tmp_name" ] && local tmp_name=$(cat ${dir}ipAddress | grep -w ${1} | awk '{print $3}' | grep -v "^$" | sort -u | head -n1)
-	echo "$tmp_name" | grep -q -w "unknown\|*" && unset tmp_name # 为unknown时重新读取
-	[ -z "$tmp_name" ] && [ -f "${dir}tmp_downlist" ] && local tmp_name=$(cat ${dir}tmp_downlist | grep -w ${1} | awk '{print $3}' | grep -v "^$" | sort -u | head -n1)
-	# 静态地址备注名
-	echo "$tmp_name" | grep -q -w "unknown\|*" && unset tmp_name # 为unknown时重新读取
-	[ -z "$tmp_name" ] && dhcp_config=$(uci show dhcp | grep "ip\|mac\|name")
-	if [ -n "$dhcp_config" ]; then
-		dhcp_ip_n=$(echo "$dhcp_config" | grep -w ^dhcp.@${dhcp_config_str}.*ip=.${1} | sed -nr 's#^dhcp.(.*).ip.*#\1#gp' 2>/dev/null)
-		[ -n "$dhcp_ip_n" ] && [ -z "$tmp_name" ] && tmp_name=$(uci get dhcp.${dhcp_ip_n}.name 2>/dev/null)
-		[ -z "$tmp_name" ] && dhcp_mac_n=$(echo "$dhcp_config" | grep -i ^dhcp.@${dhcp_config_str}.*mac=.${2} | sed -nr 's#^dhcp.(.*).mac.*#\1#gp' 2>/dev/null)
-		[ -n "$dhcp_mac_n" ] && [ -z "$tmp_name" ] && tmp_name=$(uci get dhcp.${dhcp_mac_n}.name 2>/dev/null)
-	fi
-	# DHCP
-	echo "$tmp_name" | grep -q -w "unknown\|*" && unset tmp_name # 为unknown时重新读取
-	[ -z "$tmp_name" ] && [ -f "/tmp/dhcp.leases" ] && local tmp_name=$(cat /tmp/dhcp.leases | grep -w ${1} | awk '{print $4}' | grep -v "^$" | sort -u | head -n1)
-	# 光猫
-	echo "$tmp_name" | grep -q -w "unknown\|*" && unset tmp_name # 为unknown时重新读取
-	[ -z "$tmp_name" ] && [ -f "${dir}gateway_info" ] && gatewayinfo=$(cat ${dir}gateway_info) && local tmp_name=$(cut_str "$(echo "$gatewayinfo" | grep -w ${1} | awk '{print $2}' | sort -u | head -n1)" "30")
-	# MAC设备信息数据库
-	echo "$tmp_name" | grep -q -w "unknown\|*" && unset tmp_name # 为unknown时重新读取
-	[ -z "$tmp_name" ] && [ -f "$oui_base" ] && local tmp_name=$(cat $oui_base | grep -i $(echo "$2" | cut -c 1,2,4,5,7,8) | sed -nr 's#^.*16)..(.*)#\1#gp')
-	[ -z "$tmp_name" ] && [ -n "$oui_data" ] && [ "$oui_data" -eq "4" ] && local tmp_name=$(curl -sS "https://standards-oui.ieee.org/oui/oui.txt" | grep -i $(echo "$2" | cut -c 1,2,4,5,7,8) | sed -nr 's#^.*16)..(.*)#\1#gp')
+	local ip="$1"
+	local mac="$2"
+	local tmp_name
+	[ -z "$ip" ] && return 1
+	[ -z "$mac" ] && return 1
 
-	[ -z "$tmp_name" ] && local tmp_name="unknown"
-	echo "$tmp_name" | tr -d '\n\r' | awk '$1=$1' | sed 's/_/ /g' | sort -u | head -n1
+	# 自定义备注
+	tmp_name=$(cat "$device_aliases_path" 2>/dev/null | grep -i -Ew "^${ip}|^${mac}" | awk '{for(i=2; i<=NF; i++) printf $i " "; print ""}')
+	process_and_check "$tmp_name" && return
+
+	# MAC 获取失败时直接返回 unknown，优先级不能最高，自定义备注可以被 IP 匹配
+	echo "$mac" | grep -q -w "unknown\|*" && echo "unknown" && return
+
+	# 已保存的主机名
+	[ -f "${dir}ipAddress" ] && tmp_name=$(grep -w "${ip}" "${dir}ipAddress" | awk '{print $3}')
+	process_and_check "$tmp_name" && return
+
+	[ -f "${dir}tmp_downlist" ] && tmp_name=$(grep -w "${ip}" "${dir}tmp_downlist" | awk '{print $3}')
+	process_and_check "$tmp_name" && return
+
+	# 静态地址备注名
+	[ -z "$tmp_name" ] && local dhcp_config=$(uci show dhcp | grep -i -w "${ip}\|${mac}" | sed -n 's/\(dhcp\..*\)\..*/\1/p')
+	[ -n "$dhcp_config" ] && tmp_name=$(uci get ${dhcp_config}.name | tr -d '\n\r' | awk '$1=$1' | sed 's/_/ /g' | grep -v "^$" | sort -u | head -n1)
+
+	local dhcp_config=$(uci show dhcp | grep -i -w "${ip}\|${mac}" | sed -n 's/\(dhcp\..*\)\..*/\1/p')
+	[ -n "$dhcp_config" ] && tmp_name=$(uci get ${dhcp_config}.name)
+	process_and_check "$tmp_name" && return
+
+	# DHCP
+	[ -f "/tmp/dhcp.leases" ] && tmp_name=$(grep -w "${ip}" /tmp/dhcp.leases | awk '{print $4}')
+	process_and_check "$tmp_name" && return
+
+	# 光猫
+	[ -f "${dir}gateway_info" ] && tmp_name=$(cut_str "$(grep -w "${ip}" "${dir}gateway_info" | awk '{print $2}')" "30")
+	process_and_check "$tmp_name" && return
+
+	# 查询 NetBIOS
+	tmp_name=$(nmblookup_timeout "${ip}" "name" "5")
+	process_and_check "$tmp_name" && return
+
+	# MAC设备信息数据库
+	[ -f "$oui_base" ] && tmp_name=$(grep -i "$(echo "$mac" | cut -c 1,2,4,5,7,8)" "$oui_base" | sed -nr 's#^.*16)..(.*)#\1#gp')
+	[ -n "$oui_data" ] && [ "$oui_data" -eq "4" ] && tmp_name=$(curl -sS "https://standards-oui.ieee.org/oui/oui.txt" | grep -i "$(echo "$mac" | cut -c 1,2,4,5,7,8)" | sed -nr 's#^.*16)..(.*)#\1#gp')
+	process_and_check "$tmp_name" && return
+
+	echo "unknown"
 }
 
 #  查询 http/https 端口
 function check_http_access() {
-	local ip=$1
+	local ip="$1"
+	[ -z "$ip" ] && return 1
 
 	curl --head --silent --fail --connect-timeout 2 "http://$ip" >/dev/null
 	[ $? -eq 0 ] && echo "http" && return
@@ -370,30 +457,48 @@ function scanlocalip() {
 
 # 查询设备接口
 function getinterface() {
-	[ -z "${1}" ] && return
-	[ "${1}" == "unknown" ] && return
+	local mac=${1}
+	local ip_interface
 
-	[ -f "${dir}ipAddress" ] && local ip_interface=$(cat ${dir}ipAddress | grep -w ${1} | awk '{print $5}' | grep -v "^$" | sort -u | head -n1)
-	[ -f "${dir}tmp_downlist" ] && [ -z "$ip_interface" ] && local ip_interface=$(cat ${dir}tmp_downlist | grep -w ${1} | awk '{print $5}' | grep -v "^$" | sort -u | head -n1)
-	if [ -z "$ip_interface" ] && [ -n "$wlan_interface" ]; then
+	[ -z "$mac" ] && return
+	[ "$mac" == "unknown" ] && return
+
+	# 从已保存的地址中获取接口
+	[ -f "${dir}ipAddress" ] && ip_interface=$(grep -w "$mac" "${dir}ipAddress" | awk '{print $5}')
+	process_and_check "$ip_interface" && return
+
+	[ -f "${dir}tmp_downlist" ] && ip_interface=$(grep -w "$mac" "${dir}tmp_downlist" | awk '{print $5}')
+	process_and_check "$ip_interface" && return
+
+	# 如果定义了 WLAN 接口列表，则查询每个接口
+	if [ -n "$wlan_interface" ]; then
 		for interface in $wlan_interface; do
-			local ip_interface=$(iw dev $interface station dump 2>/dev/null | grep Station | grep -i -w ${1} | sed -nr 's#^.*on (.*))#\1#gp') >/dev/null 2>&1
-			[ -n "$ip_interface" ] && echo "$ip_interface" && return
+			ip_interface=$(iw dev "$interface" station dump 2>/dev/null | grep -i -w "$mac" | sed -nr 's#^.*on (.*))#\1#gp')
+			process_and_check "$ip_interface" && return
 		done
 	fi
-	[ -z "$ip_interface" ] && local ip_interface=$(cat /proc/net/arp | grep "0x2\|0x6" | grep -i -w ${1} | awk '{print $6}' | grep -v "^$" | sort -u | head -n1)
-	echo $ip_interface | tr -d '\n\r'
+
+	# 查询 ARP 表获取接口
+	ip_interface=$(cat /proc/net/arp | grep "0x2\|0x6" | grep -i -w "$mac" | awk '{print $6}')
+	process_and_check "$ip_interface" && return
 }
 
 # ping
 function getping() {
-	ip_interface=$(getinterface ${2})
-	[ "$iw_version" ] && [ "$ip_interface" ] && wlan_online=$(iw dev ${ip_interface} station dump 2>/dev/null | grep -i -w ${2} | grep Station) >/dev/null 2>&1
+	local ip="$1"
+	local mac="$2"
+	local timeout="$3"
+	local retry_count="$4"
+
+	local interface=$(getinterface "$mac")
+	[ "$iw_version" ] && [ "$interface" ] && wlan_online=$(iw dev ${interface} station dump 2>/dev/null | grep -i -w "$mac" | grep Station) >/dev/null 2>&1
 	[ "$wlan_online" ] && return 0
-	arplist=$(cat /proc/net/arp)
-	for i in $(seq 1 ${4}); do
-		[ "$(echo "$arplist" | grep -i -w "${2}" | wc -l)" -eq 1 ] && interface=$(echo "$arplist" | grep -w ${1} | awk '{print $6}' | grep -v "^$" | sort -u | head -n1) && [ -n "$interface" ] && ip_ms=$(arping -I ${interface} -c 20 -f -w ${3} ${1}) 2>/dev/null
-		(! echo "$ip_ms" | grep -q "ms") && ip_ms=$(ping -c 5 -w ${3} ${1} | grep -v '100% packet loss') 2>/dev/null
+
+	interface=$(cat /proc/net/arp | grep -w "$ip" | awk '{print $6}' | grep -v "^$" | sort -u | head -n1)
+	for i in $(seq 1 "$retry_count"); do
+		# arping 应使用 br-lan，有 WiFi 的设备接口为 wlan*，重新获取
+		[ -n "$interface" ] && ip_ms=$(arping -I ${interface} -c 20 -f -w "$timeout" "$ip") 2>/dev/null
+		(! echo "$ip_ms" | grep -q "ms") && ip_ms=$(ping -c 5 -w "$timeout" "$ip" | grep -v '100% packet loss') 2>/dev/null
 		(! echo "$ip_ms" | grep -q "ms") && sleep 1
 	done
 	echo "$ip_ms" | grep -q "ms"
@@ -440,7 +545,7 @@ function soc_temp() {
 }
 # 流量数据
 function usage() {
-	[ ! -f "/usr/sbin/wrtbwmon" ] || [ ! "$1" ] && return
+	[ ! -f "/usr/sbin/wrtbwmon" ] || [ -z "$1" ] && return
 	# 更新
 	if [ $1 == "update" ]; then
 		function version_le() { test "$(echo "$@" | tr " " "\n" | sort -n | head -n 1)" == "$1"; }
@@ -449,13 +554,13 @@ function usage() {
 		[ -n "$wr_version" ] && (version_le "${wr_version}" "1.0.0") || [ -z "$wr_version" ] && wrtbwmon update ${dir}usage.db 2>/dev/null && return
 	# 获取
 	elif [ $1 == "get" ]; then
-		[ ! -f "${dir}usage.db" ] && [ ! "$3" ] && echo $(bytes_for_humans "0") && return
-		[ ! -f "${dir}usage.db" ] && [ "$3" ] && echo "0" && return
+		[ ! -f "${dir}usage.db" ] && [ -z "$3" ] && echo $(bytes_for_humans "0") && return
+		[ ! -f "${dir}usage.db" ] && [ -n "$3" ] && echo "0" && return
 		[ -z "$total_n" ] && total_n=$(cat ${dir}usage.db | head -n1 | grep "total" | sed 's/,/\n/g' | awk '/total/{print NR}') 2>/dev/null
 		[ -z "$total_n" ] && total_n="6"
-		[ "$2" ] && local tmptotal=$(cat ${dir}usage.db | sed 's/,,,/,0,0,/g' | sed 's/,,/,0,/g' | sed 's/,/ /g' | grep -i -w ${2} | awk "{print "'$'$total_n"}" | grep -v "^$" | sort -u | head -n1) 2>/dev/null
+		[ -n "$2" ] && local tmptotal=$(cat ${dir}usage.db | sed 's/,,,/,0,0,/g' | sed 's/,,/,0,/g' | sed 's/,/ /g' | grep -i -w ${2} | awk "{print "'$'$total_n"}" | grep -v "^$" | sort -u | head -n1) 2>/dev/null
 		[ -z "$tmptotal" ] && local tmptotal="0"
-		[ ! "$3" ] && echo $(bytes_for_humans "${tmptotal}") || echo "$tmptotal"
+		[ -z "$3" ] && echo $(bytes_for_humans "${tmptotal}") || echo "$tmptotal"
 	# 剔除
 	elif [ $1 == "down" ]; then
 		[ "$2" ] && sed -i "/,${2},/d" ${dir}usage.db 2>/dev/null
@@ -464,7 +569,7 @@ function usage() {
 
 # 流量数据单位换算
 function bytes_for_humans() {
-	[ ! "$1" ] && return
+	[ -z "$1" ] && return
 	[ "$1" -gt 1073741824 ] && echo "$(awk 'BEGIN{printf "%.2f\n",'$1'/'1073741824'}') GB" && return
 	[ "$1" -gt 1048576 ] && echo "$(awk 'BEGIN{printf "%.2f\n",'$1'/'1048576'}') MB" && return
 	[ "$1" -gt 1024 ] && echo "$(awk 'BEGIN{printf "%.2f\n",'$1'/'1024'}') KB" && return
@@ -527,7 +632,7 @@ function get_client_usage() {
 
 # 时间单位换算
 function time_for_humans() {
-	[ ! "$1" ] && return
+	[ -z "$1" ] && return
 
 	if [ "$1" -lt 60 ]; then
 		echo "${1} 秒"
@@ -553,7 +658,7 @@ function time_for_humans() {
 
 # 计算字符串显示宽度
 function length_str() {
-	[ ! "$1" ] && return
+	[ -z "$1" ] && return
 
 	local length_zh=$(echo "$1" | awk '{print gensub(/[\u4e00-\u9FA5A-Za-z0-9_]/,"","g",$0)}' | awk -F "" '{print NF}')
 	local length_en=$(echo "$1" | awk '{print gensub(/[^\u4e00-\u9FA5A-Za-z0-9_]/,"","g",$0)}' | awk -F "" '{print NF}')
@@ -563,8 +668,8 @@ function length_str() {
 
 # 字符串显示宽度处理
 function cut_str() {
-	[ ! "$1" ] && return
-	[ ! "$2" ] && return
+	[ -z "$1" ] && return
+	[ -z "$2" ] && return
 
 	if [ $(length_str "$1") -le "$2" ]; then
 		echo -n "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
@@ -727,7 +832,7 @@ function LockFile() {
 
 # 检测黑白名单
 function blackwhitelist() {
-	[ ! "$1" ] && return 1
+	[ -z "$1" ] && return 1
 
 	[ -z "$up_down_push_whitelist" ] && [ -z "$up_down_push_blacklist" ] && [ -z "$up_down_push_interface" ] && [ -z "$mac_online_list" ] && [ -z "$mac_offline_list" ] && return 0
 	[ -n "$up_down_push_whitelist" ] && (echo "$up_down_push_whitelist" | grep -q -i -w $1) && return 1
@@ -1357,13 +1462,13 @@ function login_send() {
 				# 登录方式
 				if [[ "$log_type" == "web"* ]]; then
 					# Web 登录、非法登录
-					local login_mode=$(echo "$sys_log" | grep -E ".* $login_time.*$login_ip.*" | awk '{print $13}' | tail -n 1)
+					local login_mode=$(logread notice | grep -E ".* $login_time.*$login_ip.*" | awk '{print $13}' | tail -n 1)
 					[ "$login_mode" = "/" ] && login_mode="/ (首页登录)"
 				elif [ "$log_type" == "ssh_login" ]; then
 					# SSH 登录
-					local login_mode=$(echo "$sys_log" | grep -E ".* $login_time.*$login_ip.*" | awk '{print $8}' | tail -n 1)
+					local login_mode=$(logread notice | grep -E ".* $login_time.*$login_ip.*" | awk '{print $8}' | tail -n 1)
 				else
-					local login_mode=$(echo "$sys_log" awk '{for(i=8;i<NF;i++) if($i=="from") break; else printf $i " "}')
+					local login_mode=$(logread notice | grep -E ".* $login_time.*$login_ip.*" | awk '{for(i=8;i<NF;i++) if($i=="from") break; else printf $i " "}' | tail -n 1)
 				fi
 
 				if [[ "$log_type" == *"failed" ]]; then
@@ -1498,7 +1603,7 @@ function init_ip_black() {
 
 # 添加黑名单
 function add_ip_black() {
-	[ ! "$1" ] && return 1
+	[ -z "$1" ] && return 1
 	echo "$login_ip_white_list" | grep -w -q "$1" && return 1
 	# 检查 IP 版本
 	unset ipset_name
@@ -1516,7 +1621,7 @@ function add_ip_black() {
 
 # 移出黑名单
 function del_ip_black() {
-	[ ! "$1" ] && return
+	[ -z "$1" ] && return
 	sed -i "/^${1}/d" ${ip_blacklist_path}
 
 	# 检查 IP 版本
@@ -1689,12 +1794,12 @@ if [ "$1" ]; then
 		output_dir="${dir}json_output" && mkdir -p "$output_dir"
 		ip_changes getip && exit $?
 	}
-	read_config
+	silent_run read_config
 	[ $1 == "send" ] && send && exit $?
 	[ $1 == "test" ] && send test && exit $?
 	[ $1 == "t1" ] && thread_num=1 || exit
 else
-	read_config
+	silent_run read_config
 fi
 
 # 限制并发进程
@@ -1707,7 +1812,7 @@ for i in $(seq 1 $thread_num); do
 done
 unset i
 
-# 处理登录事件，传递参数 $1：login_ip $2：日志时间(从日志中读取而不是使用当前时间，避免秒对应不上) $3：数组名
+# 处理登录事件，传递参数 $1：ip $2：日志时间(从日志中读取而不是使用当前时间，避免秒对应不上) $3：数组名
 function process_login() {
 	local login_ip=$1
 	local login_time=$2
@@ -1751,7 +1856,7 @@ if [ -n "$web_logged" ] || [ -n "$ssh_logged" ] || [ -n "$web_login_failed" ] ||
 	[ -f ${dir}child_pid ] && child_pid=$(cat ${dir}child_pid)
 	[ -n "$child_pid" ] && kill $child_pid >/dev/null 2>&1
 	(
-		# 监听系统日志，并分类处理
+		# 监听系统日志，-f 表示跟随实时日志，-p 表示日志级别为 notice
 		logread -f -p notice | while IFS= read -r line; do
 			[ -n "$web_logged" ] && {
 				web_login_ip=$(echo "$line" | grep -i "accepted login" | awk '{print $NF}')
@@ -1804,7 +1909,7 @@ while [ "$enable" -eq "1" ]; do
 	usage update
 	disturb
 	disturb=$?
-	device_aliases=$(cat /usr/share/wechatpush/api/device_aliases.list) 2>/dev/null
+	device_aliases=$(cat "$device_aliases_path" 2>/dev/null)
 
 	[ -f ${dir}ipAddress ] && ipAddress_logrow=$(grep -c "" ${dir}ipAddress) || ipAddress_logrow="0"
 	if [ $ipAddress_logrow -ne "0" ]; then
