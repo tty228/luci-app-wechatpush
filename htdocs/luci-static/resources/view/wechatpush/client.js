@@ -43,7 +43,7 @@ return view.extend({
         if (!data || !data.devices || !Array.isArray(data.devices)) {
             return document.createElement('div');
         }
-        var devices = data.devices.filter(device => device.status === 'online');
+        var devices = data.devices.filter(device => device.status === 'online' || device.status === 'unknown');
         var totalDevices = devices.length;
         var headers = [_('Hostname'), _('IPv4 address'), _('MAC address'), _('Interfaces'), _('Online time'), _('Details')];
         var columns = ['name', 'ip', 'mac', 'interface', 'uptime', 'usage'];
