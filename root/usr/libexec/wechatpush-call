@@ -1,8 +1,8 @@
 #!/bin/sh
 
 logfile="/tmp/wechatpush/wechatpush.log"
-dir="/tmp/wechatpush/" && mkdir -p "${dir}"
-oui_base="${dir}oui_base.txt"
+dir="/tmp/wechatpush" && mkdir -p "${dir}"
+oui_base="${dir}/oui_base.txt"
 oui_data=$(uci get wechatpush.config.oui_data 2>/dev/null)
 oui_url="https://standards-oui.ieee.org/oui/oui.txt"
 
@@ -18,16 +18,16 @@ file_date() {
 down_oui() {
 	if [ -n "${oui_data}" ] && [ "${oui_data}" -ne "3" ]; then
 		echo "$(date "+%Y-%m-%d %H:%M:%S") 【info】开始后台更新 MAC 信息文件" >>"${logfile}"
-		curl -fsSL --connect-timeout 15 --max-time 30 -o "${dir}oui.txt" "${oui_url}" >/dev/null 2>&1
+		curl -fsSL --connect-timeout 15 --max-time 30 -o "${dir}/oui.txt" "${oui_url}" >/dev/null 2>&1
 		local RETVAL=$?
 		[ ${RETVAL} -ne 0 ] && echo "$(date "+%Y-%m-%d %H:%M:%S") 【!!!】设备 MAC 信息文件下载失败，返回码为 ${RETVAL}" >>"${logfile}" && return 1
 		echo "$(date "+%Y-%m-%d %H:%M:%S") 【info】设备 MAC 信息文件下载成功，处理中" >>"${logfile}"
 		if [ "${oui_data}" -eq "1" ]; then
-			grep -i -E ".*(base 16).*(apple|aruba|asus|autelan|belkin|bhu|buffalo|cctf|cisco|comba|datang|dell|dlink|dowell|ericsson|fast|feixun|fiberhome|fujitsu|grentech|h3c|hisense|hiwifi|honghai|honghao|hp|htc|huawei|intel|jinli|jse|lenovo|lg|liteon|malata|meizu|mercury|meru|moto|netcore|netgear|nokia|omron|oneplus|oppo|philips|router_unkown|samsung|shanzhai|sony|start_net|sunyuanda|tcl|tenda|texas|tianyu|tp-link|ubq|undefine|VMware|utstarcom|volans|xerox|xiaomi|zdc|zhongxing|smartisan).*" "${dir}oui.txt" | sed -E 's/( Electronic| Technology| Intelligence| TECHNOLOGIES| Device| Systems| TELECOMMUNICATIONS| Instruments| Electronics| Corporation| Telecommunication| Communications| Electrical| Technology| Corporate| Intelligent| Interactive| MOBILE| Solutions| Mobility| Meraki| ELECTRO| VISUAL| Limited| International| Information| LLC|Co$|Co\.|Ltd\.$|Inc\.|B\.V\.$|AB$|,).*$/ /I; s/[[:space:]]*$//; s/ +$//' >"${oui_base}"
+			grep -i -E ".*(base 16).*(apple|aruba|asus|autelan|belkin|bhu|buffalo|cctf|cisco|comba|datang|dell|dlink|dowell|ericsson|fast|feixun|fiberhome|fujitsu|grentech|h3c|hisense|hiwifi|honghai|honghao|hp|htc|huawei|intel|jinli|jse|lenovo|lg|liteon|malata|meizu|mercury|meru|moto|netcore|netgear|nokia|omron|oneplus|oppo|philips|router_unkown|samsung|shanzhai|sony|start_net|sunyuanda|tcl|tenda|texas|tianyu|tp-link|ubq|undefine|VMware|utstarcom|volans|xerox|xiaomi|zdc|zhongxing|smartisan).*" "${dir}/oui.txt" | sed -E 's/( Electronic| Technology| Intelligence| TECHNOLOGIES| Device| Systems| TELECOMMUNICATIONS| Instruments| Electronics| Corporation| Telecommunication| Communications| Electrical| Technology| Corporate| Intelligent| Interactive| MOBILE| Solutions| Mobility| Meraki| ELECTRO| VISUAL| Limited| International| Information| LLC|Co$|Co\.|Ltd\.$|Inc\.|B\.V\.$|AB$|,).*$/ /I; s/[[:space:]]*$//; s/ +$//' >"${oui_base}"
 		elif [ "${oui_data}" -eq "2" ]; then
-			grep -i "(base 16)" "${dir}oui.txt" | sed -E 's/( Electronic| Technology| Intelligence| TECHNOLOGIES| Device| Systems| TELECOMMUNICATIONS| Instruments| Electronics| Corporation| Telecommunication| Communications| Electrical| Technology| Corporate| Intelligent| Interactive| MOBILE| Solutions| Mobility| Meraki| ELECTRO| VISUAL| Limited| International| Information| LLC|Co$|Co\.|Ltd\.$|Inc\.|B\.V\.$|AB$|,).*$/ /I; s/[[:space:]]*$//; s/ +$//' >"${oui_base}"
+			grep -i "(base 16)" "${dir}/oui.txt" | sed -E 's/( Electronic| Technology| Intelligence| TECHNOLOGIES| Device| Systems| TELECOMMUNICATIONS| Instruments| Electronics| Corporation| Telecommunication| Communications| Electrical| Technology| Corporate| Intelligent| Interactive| MOBILE| Solutions| Mobility| Meraki| ELECTRO| VISUAL| Limited| International| Information| LLC|Co$|Co\.|Ltd\.$|Inc\.|B\.V\.$|AB$|,).*$/ /I; s/[[:space:]]*$//; s/ +$//' >"${oui_base}"
 		fi
-		rm -f "${dir}oui.txt" >/dev/null 2>&1
+		rm -f "${dir}/oui.txt" >/dev/null 2>&1
 		echo "$(date "+%Y-%m-%d %H:%M:%S") 【info】设备 MAC 信息文件处理完成" >>"${logfile}"
 	fi
 }
