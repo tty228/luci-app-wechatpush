@@ -317,6 +317,9 @@ getmac() {
 	tmp_mac=$(cat /proc/net/arp | grep "0x2\|0x6" | grep -w "${ip}" | awk '{print $4}')
 	process_and_check "$tmp_mac" && return
 
+	# 定时推送时不查询
+	[ -f "${dir}/send.lock" ] && echo "unknown" && return
+
 	# 因 NetBIOS 查询时间过长，跳过离线设备
 	jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "online") | .ip' "$devices_json" >/dev/null && tmp_mac=$(nmblookup_timeout "${ip}" "mac" "5")
 	process_and_check "$tmp_mac" && return
@@ -354,6 +357,9 @@ getname() {
 	# DHCP
 	[ -f "/tmp/dhcp.leases" ] && tmp_name=$(grep -w "${ip}" /tmp/dhcp.leases | awk '{print $4}')
 	process_and_check "$tmp_name" && return
+
+	# 定时推送时不查询
+	[ -f "${dir}/send.lock" ] && echo "unknown" && return
 
 	# 光猫
 	[ -f "${dir}/gateway_info" ] && tmp_name=$(cut_str "$(grep -w "${ip}" "${dir}/gateway_info" | awk '{print $2}')" "30")
@@ -423,6 +429,7 @@ getgateway() {
 # 扫描范围内 IP
 scanlocalip() {
 	[ -z "$scan_ip_range" ] && return
+	[ -f "${dir}/send.lock" ] && return # 定时推送时不扫描
 	[ -z "$last_scan_ip_time" ] && last_scan_ip_time=0
 
 	local current_time=$(date +%s)
@@ -531,13 +538,13 @@ soc_temp() {
 		"
 	}
 
-	[ -n "$server_host" ] && ssh_command="ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -i /root/.ssh/id_rsa root@${server_host} -p ${server_port}"
-	temperature=$(getsensors "$ssh_command" 2>/dev/null)
+	[ -n "$server_host" ] && local ssh_command="ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -i /root/.ssh/id_rsa root@${server_host} -p ${server_port}"
+	local temperature=$(getsensors "$ssh_command" 2>/dev/null)
 	# 通用（只能取最高温度，不一定是 CPU，特殊设备自行修改）
 	# 将 grep °C 改为温度所在行的特别字符串，如 grep Core 0 等，就可以指定设备了
-	[ -z "$temperature" ] && temperature=$(sensors 2>/dev/null | grep °C | sed -nr 's#^.*:.*\+(.*)°C .*#\1#gp' | sort -nr | head -n1)
+	[ -z "$temperature" ] && local temperature=$(sensors 2>/dev/null | grep °C | sed -nr 's#^.*:.*\+(.*)°C .*#\1#gp' | sort -nr | head -n1)
 	# 将 thermal_zone* 改为 thermal_zone0 thermal_zone1 等，就可以指定设备了
-	[ -z "$temperature" ] && temperature=$(cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | sort -nr | head -n1 | cut -c-2)
+	[ -z "$temperature" ] && local temperature=$(cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | sort -nr | head -n1 | cut -c-2)
 	printf "%.1f" "$temperature"
 }
 # 流量数据
@@ -1346,10 +1353,8 @@ cputop() {
 # 检测硬盘状态
 get_disk() {
 	mkdir -p "${dir}/disk_info"
-	local_disk_names=()
-	remote_disk_names=()
 
-	# 获取磁盘名称函数
+	# 获取磁盘名称
 	get_disk_names() {
 		local disk_names=($(lsblk -dno NAME,TYPE 2>/dev/null | awk '$2=="disk" && $1 !~ /^mtd/ && $1 !~ /^ubiblock/ {print $1}' | sort -u))
 		[ -z "$disk_names" ] && disk_names=($(df -h 2>/dev/null | awk '$1 ~ /^\/dev/ && !/^\/dev\/(mtd|ubiblock)/ {if ($NF ~ /^\/[a-zA-Z0-9]/) { sub("/dev/", "", $1); sub(/[0-9]+$/, "", $1); print $1 }}' | sort -u))
@@ -1357,37 +1362,47 @@ get_disk() {
 	}
 
 	# 查询本地硬盘名
-	local_disk_names=($(get_disk_names))
-	local_disk_tags=($(for _ in "${local_disk_names[@]}"; do echo "local"; done))
+	local local_disk_names=($(get_disk_names))
 
 	# 查询远程硬盘名
 	if [ -n "$server_host" ]; then
-		ssh_command="ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -i /root/.ssh/id_rsa root@${server_host} -p ${server_port}"
-		remote_disk_names=$($ssh_command "$(declare -f get_disk_names); get_disk_names" | tr -d '\r')
-		remote_disk_names=($remote_disk_names)
-		remote_disk_tags=($(for _ in "${remote_disk_names[@]}"; do echo "remote"; done))
+		local ssh_command="ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -i /root/.ssh/id_rsa root@${server_host} -p ${server_port}"
+		local remote_disk_names=$($ssh_command "$(declare -f get_disk_names); get_disk_names" | tr -d '\r')
+		local remote_disk_names=($remote_disk_names)
+		local remote_disk_tags=($(for _ in "${remote_disk_names[@]}"; do echo "remote"; done))
+		# 删除重复的直通硬盘
+		local get_host_disk_uuids=$(eval ${ssh_command} ls -l /dev/disk/by-uuid/ | awk '{print $9}')
+		for uuid in $get_host_disk_uuids; do
+			local fstab_config=$(uci show fstab | grep -i -w "${uuid}" | sed -n 's/\(fstab\..*\)\..*/\1/p')
+			[ -n "$fstab_config" ] && local tmp_target=$(uci get ${fstab_config}.target)
+			[ -n "$tmp_target" ] && local local_dev=$(df -h 2>/dev/null | grep -w "${tmp_target}" | awk '$1 ~ /^\/dev/ && !/^\/dev\/(mtd|ubiblock)/ {if ($NF ~ /^\/[a-zA-Z0-9]/) { sub("/dev/", "", $1); sub(/[0-9]+$/, "", $1); print $1 }}' | sort -u)
+			[ -n "$local_dev" ] && local local_disk_names=(${local_disk_names[@]/$local_dev})
+		done
+		unset uuid
 	fi
 
+	# 先删除重复的直通硬盘，再添加标记
+	local local_disk_tags=($(for _ in "${local_disk_names[@]}"; do echo "local"; done))
+
 	# 合并本地和远程硬盘名及标记
-	all_disk_names=("${local_disk_names[@]}" "${remote_disk_names[@]}")
-	all_disk_tags=("${local_disk_tags[@]}" "${remote_disk_tags[@]}")
+	local all_disk_names=("${local_disk_names[@]}" "${remote_disk_names[@]}")
+	local all_disk_tags=("${local_disk_tags[@]}" "${remote_disk_tags[@]}")
 
 	for i in "${!all_disk_names[@]}"; do
-		tmp_name=${all_disk_names[i]}
-		tmp_tag=${all_disk_tags[i]}
-		error_pattern="No such device|Unable to detect device type|Unknown USB bridge|QEMU HARDDISK"
-		unset tmp_command disk_type disk_err
+		local tmp_name=${all_disk_names[i]}
+		local tmp_tag=${all_disk_tags[i]}
+		local error_pattern="No such device|Unable to detect device type|Unknown USB bridge|QEMU HARDDISK"
 
 		# 判断硬盘类型
 		if [ "$tmp_tag" == "remote" ]; then
-			tmp_command="$ssh_command"
-			disk_type="_remote"
+			local disk_type="_remote"
+			local tmp_command="$ssh_command"
 		fi
-		file_path="${dir}/disk_info/${tmp_name}${disk_type}"
+		local file_path="${dir}/disk_info/${tmp_name}${disk_type}"
 
 		# 如果不能获取值，使用分区名重试（因为不清楚是 OpenWrt 的原因还是 smartctl 版本的原因，使用出错重试的方式）
 		eval ${tmp_command} smartctl -i -n standby "/dev/${tmp_name}" 2>/dev/null | grep -qE "$error_pattern" && {
-			tmp_name=$(eval ${tmp_command} df -h | awk "/^\\/dev\\/${tmp_name}/ {print \$1}" | awk -F '/' '{print $NF}' | head -n1)
+			local tmp_name=$(eval ${tmp_command} df -h | awk "/^\\/dev\\/${tmp_name}/ {print \$1}" | awk -F '/' '{print $NF}' | head -n1)
 			[ -z "$tmp_name" ] && continue
 		}
 
@@ -1395,7 +1410,10 @@ get_disk() {
 		last_disk_time=$(date -r "${file_path}" +%s 2>/dev/null) || last_disk_time=0
 
 		if [ $(($(date +%s) - $last_disk_time)) -gt 86000 ]; then
-			disk_info=$(eval ${tmp_command} smartctl -i -n standby "/dev/${tmp_name}" 2>/dev/null)
+			local disk_info=$(eval ${tmp_command} smartctl -i -n standby "/dev/${tmp_name}" 2>/dev/null)
+			[ -z "$disk_info" ] && {
+				cat /sys/block/"${tmp_name}"/device/model 2>/dev/null | grep -qE "$error_pattern" && continue
+			} ||
 			echo "$disk_info" | grep -qE "$error_pattern" && {
 				continue
 			} ||
@@ -1407,50 +1425,50 @@ get_disk() {
 
 		# 硬盘状态
 		if [ -f "${file_path}" ] && [ -s "${file_path}" ] && (! cat "${file_path}" | grep -q -v "STANDBY"); then
-			disk_name=$(awk '/Device Model/{print $NF}' "$file_path")
+			local disk_name=$(awk '/Device Model/{print $NF}' "$file_path")
 			[[ -n $disk_name && $disk_name != null && $disk_name != 0 ]] && {
-				disk_name=$(cut_str "$disk_name" "20")
-				disk_name="${disk_name}_$(eval ${tmp_command} lsblk -o NAME,SIZE | awk "/^${tmp_name}/ {print \$NF}")"
+				local disk_name=$(cut_str "$disk_name" "20")
+				local disk_name="${disk_name}_$(eval ${tmp_command} lsblk -o NAME,SIZE | awk "/^${tmp_name}/ {print \$NF}")"
 			}
 			printf "${str_linefeed}${str_title_start} 硬盘名称：${disk_name}${disk_type}${str_title_end}${str_linefeed}${str_tab}硬盘休眠中" >>"$output_dir/get_disk"
 		elif [ -f "${file_path}" ]; then
 			# 硬盘名称
-			disk_name=$(jq -r .model_name ${file_path})
-			[ -z "$disk_name" ] && disk_name=$(cat /sys/block/"${tmp_name}"/device/model)
+			local disk_name=$(jq -r .model_name ${file_path})
+			[ -z "$disk_name" ] && local disk_name=$(cat /sys/block/"${tmp_name}"/device/model)
 			[[ -n $disk_name && $disk_name != null && $disk_name != 0 ]] && {
-				disk_name=$(cut_str "$disk_name" "20")
-				disk_size=$(eval ${tmp_command} lsblk -o NAME,SIZE 2>/dev/null | awk "/^${tmp_name}/ {print \$NF}")
+				local disk_name=$(cut_str "$disk_name" "20")
+				local disk_size=$(eval ${tmp_command} lsblk -o NAME,SIZE 2>/dev/null | awk "/^${tmp_name}/ {print \$NF}")
 				[ -z "$disk_size" ] && disk_size=$(eval ${tmp_command} df -h 2>/dev/null | awk -v tmp_disk_name="${tmp_name}" '$1 ~ "^/dev/"tmp_disk_name && !disk_found {print $2; disk_found=1}')
-				disk_name="${disk_name}_${disk_size}"
+				local disk_name="${disk_name}_${disk_size}"
 			}
 			printf "${str_linefeed}${str_title_start} 硬盘名称：${disk_name}${disk_type}${str_title_end}" >>"$output_dir/get_disk"
 			# 硬盘温度
-			disk_temp=$(jq -r .temperature.current ${file_path})
+			local disk_temp=$(jq -r .temperature.current ${file_path})
 			[[ -n $disk_temp && $disk_temp != null && $disk_temp != 0 ]] && printf "${str_linefeed}${str_tab}硬盘温度：${disk_temp}℃" >>"$output_dir/get_disk"
 			# 通电时间
-			disk_time=$(jq -r .power_on_time.hours ${file_path})
+			local disk_time=$(jq -r .power_on_time.hours ${file_path})
 			[[ -n $disk_time && $disk_time != null ]] && printf "${str_linefeed}${str_tab}通电时间：${disk_time}h" >>"$output_dir/get_disk"
 			# 空间使用
-			disk_use=$(eval ${tmp_command} lsblk -o NAME,FSUSE%,TYPE 2>/dev/null | awk -v part_name="${tmp_name}" '$NF == "part" && $1 ~ part_name && NF > 2 {sub(".*" part_name, part_name, $1); printf "%s: %s  ", $1, $2} END {print ""}')
+			local disk_use=$(eval ${tmp_command} lsblk -o NAME,FSUSE%,TYPE 2>/dev/null | awk -v part_name="${tmp_name}" '$NF == "part" && $1 ~ part_name && NF > 2 {sub(".*" part_name, part_name, $1); printf "%s: %s  ", $1, $2} END {print ""}')
 			[ -z "$disk_use" ] && disk_use=$(eval ${tmp_command} df -h 2>/dev/null | awk -v part_name="${tmp_name}" '$1 ~ "^/dev/"part_name && NF > 1 {sub("/dev/", "", $1); if (!seen[$1]) { printf "%s: %s  ", $1, $5; seen[$1] = 1; }} END {print ""}')
 			[ -n "$disk_use" ] && [ -n "${disk_use// /}" ] && echo -e -n "${str_linefeed}${str_tab}空间使用：${disk_use}" >>"$output_dir/get_disk"
 			# 寿命使用
-			disk_health=$(jq -r .nvme_smart_health_information_log.percentage_used ${file_path})
+			local disk_health=$(jq -r .nvme_smart_health_information_log.percentage_used ${file_path})
 			[[ -n $disk_health && $disk_health != null ]] && echo -e -n "${str_linefeed}${str_tab}寿命使用：${disk_health}%" >>"$output_dir/get_disk"
 			# 错误日志
-			disk_log_err=$(jq -r .ata_smart_error_log.summary.count ${file_path})
-			[[ -n $disk_log_err && $disk_log_err != null && $disk_log_err != 0 ]] && disk_err="true" && printf "${str_linefeed}${str_tab}错误日志：${disk_log_err}" >>"$output_dir/get_disk"
+			local disk_log_err=$(jq -r .ata_smart_error_log.summary.count ${file_path})
+			[[ -n $disk_log_err && $disk_log_err != null && $disk_log_err != 0 ]] && local disk_err="true" && printf "${str_linefeed}${str_tab}错误日志：${disk_log_err}" >>"$output_dir/get_disk"
 			# 自检错误
-			disk_test_err=$(jq -r .ata_smart_self_test_log.standard.error_count_total ${file_path})
-			[[ -n $disk_test_err && $disk_test_err != null && $disk_test_err != 0 ]] && disk_err="true" && printf "${str_linefeed}${str_tab}自检错误：${disk_test_err}" >>"$output_dir/get_disk"
+			local disk_test_err=$(jq -r .ata_smart_self_test_log.standard.error_count_total ${file_path})
+			[[ -n $disk_test_err && $disk_test_err != null && $disk_test_err != 0 ]] && local disk_err="true" && printf "${str_linefeed}${str_tab}自检错误：${disk_test_err}" >>"$output_dir/get_disk"
 			# 0E 错误
-			disk_0e_err=$(jq -r .nvme_smart_health_information_log.media_errors ${file_path})
-			[[ -n $disk_0e_err && $disk_0e_err != null && $disk_0e_err != 0 ]] && disk_err="true" && printf "${str_linefeed}${str_tab}0E 错误：${disk_0e_err}" >>"$output_dir/get_disk"
+			local disk_0e_err=$(jq -r .nvme_smart_health_information_log.media_errors ${file_path})
+			[[ -n $disk_0e_err && $disk_0e_err != null && $disk_0e_err != 0 ]] && local disk_err="true" && printf "${str_linefeed}${str_tab}0E 错误：${disk_0e_err}" >>"$output_dir/get_disk"
 			# 整体健康
-			smart_status=$(jq -r .smart_status.passed ${file_path})
+			local smart_status=$(jq -r .smart_status.passed ${file_path})
 			[[ -n $smart_status && $smart_status != null && $smart_status != "true" ]] && {
 				echo -e -n "${str_linefeed}${str_tab}${str_title_start}硬盘整体健康评估不通过！！！${str_title_end}" >>"$output_dir/get_disk"
-				disk_err="true"
+				local disk_err="true"
 			}
 			[ -n "$disk_err" ] && echo -e -n "${str_linefeed}${str_tab}${str_title_start}硬盘存在错误，请及时备份数据！！！${str_title_end}" >>"$output_dir/get_disk"
 		fi
