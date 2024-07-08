@@ -1867,7 +1867,7 @@ diy_send() {
 	! jq "$type" ${3} >${tempjsonpath} && log_change "【！！！】type:{ } 字段转义变量后格式错误，请检查 type:{ } 字段内是否有特殊符号未转义或语法错误" && return 1
 
 	[ -n "$proxy_address" ] && local proxy_cmd="-x $proxy_address"
-	curl $proxy_cmd --connect-timeout 30 -m 60 --retry 1 -X POST -H "$content_type" -d "$data" "${diyurl}"
+	curl $proxy_cmd --connect-timeout 30 --max-time 60 --retry 2 -X POST -H "$content_type" -d "$data" "${diyurl}"
 	local RETVAL=$?
 	if [ -n "$4" ] || [ $RETVAL -ne 0 ]; then
 		log_change "【！！！】网络错误或 URL 错误，推送失败，curl 返回值为 ${RETVAL}，请参考如下调试信息进行排查"
@@ -1878,7 +1878,7 @@ diy_send() {
 		log_change "【debug】json 文件已保存至：${dir}/debug_send_json"
 		log_change "【debug】推送内容预览文件保存至：${dir}/debug_send_content"
 		log_change "【debug】如果收不到信息，请检查 ${dir}/debug_send_data 文件，或使用下列命令手动测试返回值 (可能需要关闭日志自动刷新方便选中)"
-		log_change "【debug】curl -X POST -H \"$content_type\" -d \"@${dir}debug_send_data\" \"${diyurl}\""
+		log_change "【debug】curl -X POST -H \"$content_type\" -d \"@${dir}/debug_send_data\" \"${diyurl}\""
 		[ -n "$4" ] && [ $RETVAL -eq 0 ] && return 0
 		return 1
 	else
