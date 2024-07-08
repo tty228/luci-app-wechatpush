@@ -1180,7 +1180,7 @@ down_send() {
 		[ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne "0" ] && continue
 
 		local name=$(getname "$ip" "$mac")
-		local time_up=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "unknown") | .uptime' "$devices_json")
+		local time_up=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "offline") | .uptime' "$devices_json")
 		local ip_total=$(usage get "$mac")
 		[ -n "$ip_total" ] && ip_total="${str_linefeed}${str_tab}总计流量： ${str_space}${str_space}${str_space}${str_space}${ip_total}"
 		local time1=$(date +%s)
@@ -1199,7 +1199,7 @@ down_send() {
 
 		local content_name="${str_linefeed}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${name}"
 		local content_ip="${str_linefeed}${str_tab}客户端IP：${str_space}${str_space}${str_space}${str_space}${ip}"
-		local content_mac="${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${ip_mac}${ip_total}"
+		local content_mac="${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}"
 		local content_time="${str_linefeed}${str_tab}在线时间：${str_space}${str_space}${str_space}${str_space}${time1}"
 
 		content="${content}${content_title}${content_name}${content_ip}${content_mac}${content_time}"
