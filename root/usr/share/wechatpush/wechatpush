@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# ------------------------------------
+# 配置、变量获取、初始化类
+#
 # 读取设置文件
 get_config() {
 	while [[ "$*" != "" ]]; do
@@ -30,6 +33,286 @@ wait_and_cat() {
 	fi
 }
 
+# 初始化设置信息
+read_config() {
+	get_config \
+		"enable" "lite_enable" "device_name" "proxy_address" "sleeptime" "oui_data" "reset_regularly" "debuglevel" \
+		"jsonpath" "sckey" "corpid" "userid" "agentid" "corpsecret" "mediapath" "wxpusher_apptoken" "wxpusher_uids" "wxpusher_topicIds" "pushplus_token" "tg_token" "chat_id" \
+		"get_ipv4_mode" "ipv4_interface" "get_ipv6_mode" "ipv6_interface" "auto_update_ip_list" \
+		"device_notification" "cpu_notification" "cpu_load_threshold" "temperature_threshold" \
+		"client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" \
+		"login_notification" "login_max_num" "login_web_black" "login_ip_black_timeout" "login_ip_white_list" "port_knocking_enable" "login_ip_white_timeout" "login_port_white" "login_port_forward_list" \
+		"crontab_regular_time" "crontab_interval_time" \
+		"do_not_disturb_mode" "do_not_disturb_starttime" "do_not_disturb_endtime" "up_down_push_whitelist" "up_down_push_blacklist" "up_down_push_interface" "mac_online_list" "mac_offline_list" "cpu_threshold_duration" "cpu_notification_delay" "login_disturb" "login_notification_delay" "login_log_enable" \
+		"up_timeout" "down_timeout" "timeout_retry_count" "always_check_ip_list" "only_timeout_push" "passive_mode" "thread_num" "defaultSortColumn" "soc_code" "server_host" "server_port" \
+		"unattended_enable" "zerotier_helper" "unattended_only_on_disturb_time" "unattended_device_aliases" "network_disconnect_event" "unattended_autoreboot_mode" "autoreboot_system_uptime" "autoreboot_network_uptime" \
+		"device_info_helper" "gateway_host_url" "gateway_info_url" "gateway_logout_url" "gateway_username_id" "gateway_password_id" "gateway_username" "gateway_password" "scan_ip_range" "device_info_helper_sleeptime"
+
+	(echo "$device_notification" | grep -q "online") && notification_online="true"
+	(echo "$device_notification" | grep -q "offline") && notification_offline="true"
+	(echo "$cpu_notification" | grep -q "load") && notification_load="true"
+	(echo "$cpu_notification" | grep -q "temp") && notification_temp="true"
+	(echo "$login_notification" | grep -q "web_logged") && web_logged="true"
+	(echo "$login_notification" | grep -q "ssh_logged") && ssh_logged="true"
+	(echo "$login_notification" | grep -q "web_login_failed") && web_login_failed="true"
+	(echo "$login_notification" | grep -q "ssh_login_failed") && ssh_login_failed="true"
+	(echo "$device_info_helper" | grep -q "gateway_info") && gateway_info_enable="true"
+	for str_version in "wrtbwmon" "iputils-arping" "curl" "iw"; do
+		eval $(echo ${str_version:0:2}"_version")=$(opkg list-installed | grep -w ^${str_version} | awk '{print $3}') 2>/dev/null
+	done
+	(opkg list-installed | grep -w -q "^firewall4") && nftables_version="true"
+	devices_json="${dir}/devices.json"
+	tempjsonpath="${dir}/temp.json"
+	ip_blacklist_path="/usr/share/wechatpush/api/ip_blacklist"
+	oui_base="${dir}/oui_base.txt"
+	debuglevel=$(echo "$debuglevel") && [ -z "$debuglevel" ] && logfile="/dev/null" || logfile="${dir}/wechatpush.log"
+	login_port_forward_list=$(echo "$login_port_forward_list" | sed 's/ /\n/g') 2>/dev/null
+	up_down_push_blacklist=$(echo "$up_down_push_blacklist" | sed 's/ /\n/g') 2>/dev/null
+	up_down_push_whitelist=$(echo "$up_down_push_whitelist" | sed 's/ /\n/g') 2>/dev/null
+	device_aliases_path="/usr/share/wechatpush/api/device_aliases.list"
+	always_check_ip_list=$(echo "$always_check_ip_list" | sed 's/ /\n/g') 2>/dev/null
+	unattended_device_aliases=$(echo "$unattended_device_aliases" | sed 's/ /\n/g') 2>/dev/null
+	client_usage_whitelist=$(echo "$client_usage_whitelist" | sed 's/ /\n/g') 2>/dev/null
+	login_ip_white_list=$(echo "$login_ip_white_list" | sed 's/ /\n/g') 2>/dev/null
+	mark_mac_list="${mac_online_list} ${mac_offline_list}"
+	mark_mac_list=$(echo "$mark_mac_list" | sed 's/ /\n/g' | sed 's/-/ /') 2>/dev/null
+	ipv4_urllist=$(cat /usr/share/wechatpush/api/ipv4.list) 2>/dev/null
+	ipv6_urllist=$(cat /usr/share/wechatpush/api/ipv6.list) 2>/dev/null
+	[ -z "$get_ipv4_mode" ] && get_ipv4_mode=0
+	[ -z "$get_ipv6_mode" ] && get_ipv6_mode=0
+	[ -z "$sleeptime" ] && sleeptime="60"
+	[ -z "$login_ip_black_timeout" ] && login_ip_black_timeout="86400"
+	[ -z "$login_ip_white_timeout" ] && login_ip_white_timeout="600"
+	[ "$iw_version" ] && wlan_interface=$(iw dev 2>/dev/null | grep Interface | awk '{print $2}') >/dev/null 2>&1
+	[ -z "$server_port" ] && server_port="22"
+	output_dir="${dir}/json_output"
+	mkdir -p "$output_dir"
+	if (echo "$lite_enable" | grep -q "content"); then
+		str_title_start="" && str_title_end="" && str_splitline="" && str_linefeed="" && str_tab=""
+	else
+		read_json "str_title_start" "$jsonpath"
+		read_json "str_title_end" "$jsonpath"
+		read_json "str_linefeed" "$jsonpath"
+		read_json "str_splitline" "$jsonpath"
+		read_json "str_space" "$jsonpath"
+		read_json "str_tab" "$jsonpath"
+		read_json "_api" "$jsonpath"
+	fi
+	update_json_data "read"
+	wait_and_cat
+	disturb_text=$_api
+	deltemp
+	cron
+}
+
+# 初始化
+init() {
+	# 检测程序开关
+	enable_detection
+	[ -f "$logfile" ] && local logrow=$(grep -c "" "$logfile") || local logrow="0"
+	[ "$logrow" -ne 0 ] && echo "---------------------------------------------------------------------------------------" >>${logfile}
+	log_change "【初始化】start running..."
+	if [ -f "/usr/share/wechatpush/errlog" ]; then
+		cat /usr/share/wechatpush/errlog >${logfile}
+		log_change "【！！！】载入上次重启前日志"
+	fi
+
+	# 配置检查
+	[ ! -f "/usr/sbin/wrtbwmon" ] && log_change "【info】未安装 wrtbwmon ，流量统计不可用"
+	[ -z "$ip_version" ] && log_change "【！！！】无法获取依赖项 iputils-arping 版本号，请确认插件是否正常运行"
+	[ -z "$cu_version" ] && log_change "【！！！】无法获取依赖项 curl 版本号，请确认插件是否正常运行"
+	[ -z "${sckey}${tg_token}${pushplus_token}${corpid}${wxpusher_apptoken}${wxpusher_uids}${wxpusher_topicIds}" -a "${jsonpath}" != "/usr/share/wechatpush/api/diy.json" ] && log_change "【！！！】请填写正确的 key" && return 1
+	local interfacelist=$(getinterfacelist) && [ -z "$interfacelist" ] && log_change "【！！！】存在多个接口或配置错误，可能无法获取接口在线时间等信息，请确认插件是否正常运行"
+	[ -n "$notification_temp" ] && [ -n "$temperature_threshold" ] && local cpu_temp=$(soc_temp) || local cpu_temp="null"
+	[ -z "$cpu_temp" ] && log_change "【！！！】无法读取设备温度，请检查命令"
+	[ -n "$notification_load" ] && [ -n "$cpu_load_threshold" ] && local cpu_fuzai=$(cat /proc/loadavg | awk '{print $1}') 2>/dev/null || local cpu_fuzai="null"
+	[ -z "$cpu_fuzai" ] && log_change "【！！！】无法读取设备负载，请检查命令"
+
+	# 文件下载
+	/usr/libexec/wechatpush-call "down_oui"
+
+	# 文件清理
+	rm -f ${dir}/fd1 ${dir}/sheep_usage ${dir}/old_sheep_usage ${dir}/client_usage_aliases ${dir}/old_client_usage_aliases /usr/share/wechatpush/errlog >/dev/null 2>&1
+	LockFile unlock
+
+	# 防火墙初始化
+	[ -n "$login_web_black" ] && [ "$login_web_black" -eq "1" ] && init_ip_black "ipv4"
+	[ -n "$login_web_black" ] && [ "$login_web_black" -eq "1" ] && init_ip_black "ipv6"
+	[ -n "$port_knocking_enable" ] && [ "$port_knocking_enable" -eq "1" ] && init_ip_white "ipv4"
+	[ -n "$port_knocking_enable" ] && [ "$port_knocking_enable" -eq "1" ] && init_ip_white "ipv6"
+	tmp_ip_list=$(echo "$login_ip_white_list" | grep -v "^$" | sort -u)
+	while IFS= read -r tmp_ip; do
+		[ -n "$tmp_ip" ] && add_ip_white "$tmp_ip" "0"
+	done <<<"$tmp_ip_list"
+	set_ip_black
+
+	return 0
+}
+
+# 创建计划任务
+cron() {
+	del_cron() {
+		crontab -l | grep -v "wechatpush" | crontab -
+	}
+	re_cron() {
+		/etc/init.d/cron stop
+		/etc/init.d/cron start
+	}
+	del_cron
+	if [ -z "$enable" ]; then
+		re_cron
+		return
+	fi
+
+	# 重置流量
+	if [ -n "$reset_regularly" ] && [ "$reset_regularly" -eq "1" ]; then
+		(
+			crontab -l 2>/dev/null
+			echo "0 0 * * * rm ${dir}/usage.db >/dev/null 2>&1"
+		) | crontab -
+		(
+			crontab -l 2>/dev/null
+			echo "0 0 * * * rm ${dir}/usage6.db >/dev/null 2>&1"
+		) | crontab -
+	fi
+
+	# 定时发送
+	if [ -n "$crontab_regular_time" ]; then
+		crontab_regular_time=$(echo "$crontab_regular_time" | sed 's/ /,/g')
+		(
+			crontab -l 2>/dev/null
+			echo "0 $crontab_regular_time * * * /usr/share/wechatpush/wechatpush send &"
+		) | crontab -
+	# 间隔发送
+	elif [ -n "$crontab_interval_time" ]; then
+		(
+			crontab -l 2>/dev/null
+			echo "0 */$crontab_interval_time * * * /usr/share/wechatpush/wechatpush send &"
+		) | crontab -
+	fi
+
+	re_cron
+}
+
+# ------------------------------------
+# 主程序
+main() {
+	# 限制并发进程
+	dir="/tmp/wechatpush" && mkdir -p ${dir}
+	get_config "thread_num"
+	[ -z "$thread_num" ] || [ "$thread_num" -eq "0" ] && thread_num=5
+	[ -e "${dir}/fd1" ] || mkfifo "${dir}/fd1"
+	exec 5<>"${dir}/fd1"
+	rm -f "${dir}/fd1" >/dev/null 2>&1
+	for i in $(seq 1 $thread_num); do
+		echo >&5
+	done
+	unset i
+
+	# 定义锁文件
+	lock_file="${dir}/wechatpush.lock"
+	touch "$lock_file"
+
+	# 设置信号处理
+	trap cleanup SIGINT SIGTERM EXIT
+
+	# 初始化
+	if [ "$1" ]; then
+		[ $1 == "soc" ] && get_config "soc_code" "server_host" "server_port"
+		[ $1 == "soc" ] && soc_temp && exit $?
+		[ $1 == "getip" ] && {
+			get_config "get_ipv4_mode" "ipv4_interface" "get_ipv6_mode" "ipv6_interface"
+			ipv4_urllist=$(cat /usr/share/wechatpush/api/ipv4.list) 2>/dev/null
+			ipv6_urllist=$(cat /usr/share/wechatpush/api/ipv6.list) 2>/dev/null
+			output_dir="${dir}/json_output" && mkdir -p "$output_dir"
+			ip_changes getip && exit $?
+		}
+		silent_run read_config
+		[ $1 == "send" ] && send && exit $?
+		[ $1 == "test" ] && send test && exit $?
+		[ $1 == "t1" ] && thread_num=1 || exit
+	else
+		silent_run read_config
+	fi
+
+	# 载入在线设备
+	init
+	[ $? -eq 1 ] && log_change "【！！！】读取设置出错，请检查设置项 " && exit
+	log_change "【初始化】载入在线设备..."
+	silent_run monitor_logins
+	>"${dir}/send_enable.lock" && first && deltemp
+	log_change "【初始化】初始化完成"
+
+	# 循环
+	while [ "$enable" -eq "1" ]; do
+		deltemp
+		usage update
+		disturb
+		disturb=$?
+
+		# 网络状态与 IP 变动
+		if [ "$get_ipv4_mode" -ne "0" ] || [ "$get_ipv6_mode" -ne "0" ]; then
+			check_connect
+			ip_changes
+		fi
+
+		# 设备列表
+		if [ ! -f "${dir}/send_enable.lock" ]; then
+			[ -n "$title" ] && echo "$title" >"${dir}/title"
+			[ -n "$content" ] && echo "$content" >"${dir}/content"
+			first
+			[ -f "${dir}/title" ] && title=$(cat "${dir}/title") && rm -f "${dir}/title" >/dev/null 2>&1
+			[ -f "${dir}/content" ] && content=$(cat "${dir}/content") && rm -f "${dir}/content" >/dev/null 2>&1
+		fi
+
+		# 离线二次验证区推送
+		[ ! -f "${dir}/send_enable.lock" ] && down_send
+
+		# 当前设备列表
+		[ -n "$content" ] && [ ! -f "${dir}/send_enable.lock" ] && current_device
+
+		# 无人值守任务
+		[ ! -f "${dir}/send_enable.lock" ] && unattended
+
+		# CPU 检测
+		[ ! -f "${dir}/send_enable.lock" ] && cpu_load
+
+		# 硬盘检测
+		#[ ! -f "${dir}/send_enable.lock" ] && get_disk
+
+		# 异常流量检测
+		[ ! -f "${dir}/send_enable.lock" ] && get_client_usage
+
+		# 登录提醒通知
+		#[ ! -f "${dir}/send_enable.lock" ] && login_send
+		# 因修改为实时推送，白名单设备并不会再更新时间，暂时性修复
+		# 修改为实时推送后，防火墙列表读取和设置需单独列出，移除黑名单无法实时，待改善
+		set_ip_black
+
+		tmp_ip_list=$(echo "$login_ip_white_list" | grep -v "^$" | sort -u)
+		while IFS= read -r tmp_ip; do
+			[ -n "$tmp_ip" ] && add_ip_white "$tmp_ip" "0"
+		done <<<"$tmp_ip_list"
+
+		# 推送
+		if [ ! -f "${dir}/send_enable.lock" ] && [ -n "$title" ] && [ -n "$content" ]; then
+			[ -n "$device_name" ] && title="【$device_name】$title"
+			(echo "$lite_enable" | grep -q "content") && content="$title"
+			[ "$disturb" -eq 0 ] && diy_send "${title}" "${content}" "${jsonpath}" >/dev/null 2>&1
+		fi
+
+		# 等待定时任务推送完成
+		while [ -f "${dir}/send_enable.lock" ]; do
+			sleep $sleeptime
+		done
+
+		sleep $sleeptime
+	done
+}
+
+# ------------------------------------
+# 工具函数类
+#
 # 在调试模式下隐藏输出
 # 不能直接包裹 var=$(echo $ssh_command) 等命令，待完善
 silent_run() {
@@ -119,76 +402,115 @@ update_json_data() {
 	esac
 }
 
-# 初始化设置信息
-read_config() {
-	get_config \
-		"enable" "lite_enable" "device_name" "proxy_address" "sleeptime" "oui_data" "reset_regularly" "debuglevel" \
-		"jsonpath" "sckey" "corpid" "userid" "agentid" "corpsecret" "mediapath" "wxpusher_apptoken" "wxpusher_uids" "wxpusher_topicIds" "pushplus_token" "tg_token" "chat_id" \
-		"get_ipv4_mode" "ipv4_interface" "get_ipv6_mode" "ipv6_interface" "auto_update_ip_list" \
-		"device_notification" "cpu_notification" "cpu_load_threshold" "temperature_threshold" \
-		"client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" \
-		"login_notification" "login_max_num" "login_web_black" "login_ip_black_timeout" "login_ip_white_list" "port_knocking_enable" "login_ip_white_timeout" "login_port_white" "login_port_forward_list" \
-		"crontab_regular_time" "crontab_interval_time" \
-		"do_not_disturb_mode" "do_not_disturb_starttime" "do_not_disturb_endtime" "up_down_push_whitelist" "up_down_push_blacklist" "up_down_push_interface" "mac_online_list" "mac_offline_list" "cpu_threshold_duration" "cpu_notification_delay" "login_disturb" "login_notification_delay" "login_log_enable" \
-		"up_timeout" "down_timeout" "timeout_retry_count" "always_check_ip_list" "only_timeout_push" "passive_mode" "thread_num" "defaultSortColumn" "soc_code" "server_host" "server_port" \
-		"unattended_enable" "zerotier_helper" "unattended_only_on_disturb_time" "unattended_device_aliases" "network_disconnect_event" "unattended_autoreboot_mode" "autoreboot_system_uptime" "autoreboot_network_uptime" \
-		"device_info_helper" "gateway_host_url" "gateway_info_url" "gateway_logout_url" "gateway_username_id" "gateway_password_id" "gateway_username" "gateway_password" "scan_ip_range" "device_info_helper_sleeptime"
+# 处理并检查 tmp_name 的通用函数
+process_and_check() {
+	[ -z "$1" ] && return 1
+	local value=$(echo "$1" | tr -d '\n\r' | awk '$1=$1' | sed 's/_/ /g' | grep -v "^$" | sort -u | head -n1)
+	[ "$value" == "unknown" ] && value=""
+	[ -n "$value" ] && echo "$value" && return 0
+	return 1
+}
 
-	(echo "$device_notification" | grep -q "online") && notification_online="true"
-	(echo "$device_notification" | grep -q "offline") && notification_offline="true"
-	(echo "$cpu_notification" | grep -q "load") && notification_load="true"
-	(echo "$cpu_notification" | grep -q "temp") && notification_temp="true"
-	(echo "$login_notification" | grep -q "web_logged") && web_logged="true"
-	(echo "$login_notification" | grep -q "ssh_logged") && ssh_logged="true"
-	(echo "$login_notification" | grep -q "web_login_failed") && web_login_failed="true"
-	(echo "$login_notification" | grep -q "ssh_login_failed") && ssh_login_failed="true"
-	(echo "$device_info_helper" | grep -q "gateway_info") && gateway_info_enable="true"
-	for str_version in "wrtbwmon" "iputils-arping" "curl" "iw"; do
-		eval $(echo ${str_version:0:2}"_version")=$(opkg list-installed | grep -w ^${str_version} | awk '{print $3}') 2>/dev/null
-	done
-	(opkg list-installed | grep -w -q "^firewall4") && nftables_version="true"
-	devices_json="${dir}/devices.json"
-	tempjsonpath="${dir}/temp.json"
-	ip_blacklist_path="/usr/share/wechatpush/api/ip_blacklist"
-	oui_base="${dir}/oui_base.txt"
-	debuglevel=$(echo "$debuglevel") && [ -z "$debuglevel" ] && logfile="/dev/null" || logfile="${dir}/wechatpush.log"
-	login_port_forward_list=$(echo "$login_port_forward_list" | sed 's/ /\n/g') 2>/dev/null
-	up_down_push_blacklist=$(echo "$up_down_push_blacklist" | sed 's/ /\n/g') 2>/dev/null
-	up_down_push_whitelist=$(echo "$up_down_push_whitelist" | sed 's/ /\n/g') 2>/dev/null
-	device_aliases_path="/usr/share/wechatpush/api/device_aliases.list"
-	always_check_ip_list=$(echo "$always_check_ip_list" | sed 's/ /\n/g') 2>/dev/null
-	unattended_device_aliases=$(echo "$unattended_device_aliases" | sed 's/ /\n/g') 2>/dev/null
-	client_usage_whitelist=$(echo "$client_usage_whitelist" | sed 's/ /\n/g') 2>/dev/null
-	login_ip_white_list=$(echo "$login_ip_white_list" | sed 's/ /\n/g') 2>/dev/null
-	mark_mac_list="${mac_online_list} ${mac_offline_list}"
-	mark_mac_list=$(echo "$mark_mac_list" | sed 's/ /\n/g' | sed 's/-/ /') 2>/dev/null
-	ipv4_urllist=$(cat /usr/share/wechatpush/api/ipv4.list) 2>/dev/null
-	ipv6_urllist=$(cat /usr/share/wechatpush/api/ipv6.list) 2>/dev/null
-	[ -z "$get_ipv4_mode" ] && get_ipv4_mode=0
-	[ -z "$get_ipv6_mode" ] && get_ipv6_mode=0
-	[ -z "$sleeptime" ] && sleeptime="60"
-	[ -z "$login_ip_black_timeout" ] && login_ip_black_timeout="86400"
-	[ -z "$login_ip_white_timeout" ] && login_ip_white_timeout="600"
-	[ "$iw_version" ] && wlan_interface=$(iw dev 2>/dev/null | grep Interface | awk '{print $2}') >/dev/null 2>&1
-	[ -z "$server_port" ] && server_port="22"
-	output_dir="${dir}/json_output"
-	mkdir -p "$output_dir"
-	if (echo "$lite_enable" | grep -q "content"); then
-		str_title_start="" && str_title_end="" && str_splitline="" && str_linefeed="" && str_tab=""
+# 获取文件最后修改时间（距离现在过去了多少秒）
+file_date() {
+	local file_dir="$1"
+	local datetime=$(date -r "${file_dir}" +%s 2>/dev/null || echo "0")
+	expr $(date +%s) - ${datetime}
+}
+
+# 流量数据单位换算
+bytes_for_humans() {
+	[ -z "$1" ] && return
+	[ "$1" -gt 1073741824 ] && echo "$(awk 'BEGIN{printf "%.2f\n",'$1'/'1073741824'}') GB" && return
+	[ "$1" -gt 1048576 ] && echo "$(awk 'BEGIN{printf "%.2f\n",'$1'/'1048576'}') MB" && return
+	[ "$1" -gt 1024 ] && echo "$(awk 'BEGIN{printf "%.2f\n",'$1'/'1024'}') KB" && return
+	echo "${1} bytes"
+}
+
+# 时间单位换算
+time_for_humans() {
+	[ -z "$1" ] && return
+
+	if [ "$1" -lt 60 ]; then
+		echo "${1} 秒"
+	elif [ "$1" -lt 3600 ]; then
+		local usetime_min=$(expr $1 / 60)
+		local usetime_sec=$(expr $usetime_min \* 60)
+		local usetime_sec=$(expr $1 - $usetime_sec)
+		echo "${usetime_min} 分 ${usetime_sec} 秒"
+	elif [ "$1" -lt 86400 ]; then
+		local usetime_hour=$(expr $1 / 3600)
+		local usetime_min=$(expr $usetime_hour \* 3600)
+		local usetime_min=$(expr $1 - $usetime_min)
+		local usetime_min=$(expr $usetime_min / 60)
+		echo "${usetime_hour} 小时 ${usetime_min} 分"
 	else
-		read_json "str_title_start" "$jsonpath"
-		read_json "str_title_end" "$jsonpath"
-		read_json "str_linefeed" "$jsonpath"
-		read_json "str_splitline" "$jsonpath"
-		read_json "str_space" "$jsonpath"
-		read_json "str_tab" "$jsonpath"
-		read_json "_api" "$jsonpath"
+		local usetime_day=$(expr $1 / 86400)
+		local usetime_hour=$(expr $usetime_day \* 86400)
+		local usetime_hour=$(expr $1 - $usetime_hour)
+		local usetime_hour=$(expr $usetime_hour / 3600)
+		echo "${usetime_day} 天 ${usetime_hour} 小时"
 	fi
-	update_json_data "read"
-	wait_and_cat
-	disturb_text=$_api
-	deltemp
-	cron
+}
+
+# 计算字符串显示宽度
+length_str() {
+	[ -z "$1" ] && return
+
+	local length_zh=$(echo "$1" | awk '{print gensub(/[\u4e00-\u9FA5A-Za-z0-9_]/,"","g",$0)}' | awk -F "" '{print NF}')
+	local length_en=$(echo "$1" | awk '{print gensub(/[^\u4e00-\u9FA5A-Za-z0-9_]/,"","g",$0)}' | awk -F "" '{print NF}')
+
+	echo $((length_zh / 3 * 2 + length_en))
+}
+
+# 字符串显示宽度处理
+cut_str() {
+	[ -z "$1" ] && return
+	[ -z "$2" ] && return
+
+	if [ $(length_str "$1") -le "$2" ]; then
+		echo -n "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+		return
+	fi
+
+	local columns=$(echo "$1" | awk '{print NF}')
+	if [ "$columns" -gt 1 ]; then
+		local max_length=0
+		local max_column=1
+		for i in $(seq 1 $columns); do
+			local length=$(echo "$1" | awk '{print gensub(/[\u4e00-\u9FA5A-Za-z0-9_]/,"","g",$0)}' | awk -F "" '{print NF}')
+			if [ "$length" -gt "$max_length" ]; then
+				max_length=$length
+				max_column=$i
+			fi
+		done
+		unset i
+
+		local text=$(echo -n "$1" | cut -d ' ' -f $max_column)
+		if [ $(length_str "$text") -le "$2" ]; then
+			echo "$text" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+			return
+		fi
+	fi
+
+	local temp_length=$2
+	while [ $(length_str "$(echo -n "$1" | cut -c -$temp_length)") -lt "$2" ]; do
+		temp_length=$(expr $temp_length + 1)
+	done
+	while [ $(printf "%d" \'$(echo -n "$1" | cut -c $temp_length)) -ge "128" ] && [ $(printf "%d" \'$(echo -n "$1" | cut -c $temp_length)) -lt "224" ]; do
+		temp_length=$(expr "$temp_length" + 1)
+	done
+	temp_length=$(expr $temp_length - 1)
+
+	echo "$(echo -n "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | cut -c -$temp_length).."
+}
+
+# 随机数
+rand() {
+	local min=$1
+	local max=$(($2 - $min + 1))
+	local num=$(date +%s%N)
+	echo $(($num % $max + $min))
 }
 
 # 日志输出函数，待设置调试等级
@@ -197,48 +519,40 @@ log_change() {
 	echo "$(date "+%Y-%m-%d %H:%M:%S")" "${message}" >>"$logfile"
 }
 
-# 初始化
-init() {
-	# 检测程序开关
-	enable_detection
-	[ -f "$logfile" ] && local logrow=$(grep -c "" "$logfile") || local logrow="0"
-	[ "$logrow" -ne 0 ] && echo "---------------------------------------------------------------------------------------" >>${logfile}
-	log_change "【初始化】start running..."
-	if [ -f "/usr/share/wechatpush/errlog" ]; then
-		cat /usr/share/wechatpush/errlog >${logfile}
-		log_change "【！！！】载入上次重启前日志"
+# 重启网络服务
+# SB IDE 总提示语法有问题，重写了一下，无实际改变
+network_restart() {
+	echo '#!/bin/sh' >"${dir}/network_restart"
+	echo '/etc/init.d/network restart >/dev/null 2>&1 &' >>"${dir}/network_restart"
+	echo '/etc/init.d/firewall restart >/dev/null 2>&1 &' >>"${dir}/network_restart"
+	echo '/etc/init.d/dnsmasq restart >/dev/null 2>&1 &' >>"${dir}/network_restart"
+
+	chmod 0755 "${dir}/network_restart"
+	"${dir}/network_restart"
+	rm -f "${dir}/network_restart" >/dev/null 2>&1
+}
+
+# 文件锁
+LockFile() {
+	local fd=200
+
+	if [ "$1" = "lock" ]; then
+		eval "exec $fd>$lock_file"
+		flock -n $fd
+		if [ $? -ne 0 ]; then
+			while ! flock -n $fd; do
+				sleep 1
+			done
+		fi
+	elif [ "$1" = "unlock" ]; then
+		eval "exec $fd>&-"
 	fi
+}
 
-	# 配置检查
-	[ ! -f "/usr/sbin/wrtbwmon" ] && log_change "【info】未安装 wrtbwmon ，流量统计不可用"
-	[ -z "$ip_version" ] && log_change "【！！！】无法获取依赖项 iputils-arping 版本号，请确认插件是否正常运行"
-	[ -z "$cu_version" ] && log_change "【！！！】无法获取依赖项 curl 版本号，请确认插件是否正常运行"
-	[ -z "${sckey}${tg_token}${pushplus_token}${corpid}${wxpusher_apptoken}${wxpusher_uids}${wxpusher_topicIds}" -a "${jsonpath}" != "/usr/share/wechatpush/api/diy.json" ] && log_change "【！！！】请填写正确的 key" && return 1
-	local interfacelist=$(getinterfacelist) && [ -z "$interfacelist" ] && log_change "【！！！】存在多个接口或配置错误，可能无法获取接口在线时间等信息，请确认插件是否正常运行"
-	[ -n "$notification_temp" ] && [ -n "$temperature_threshold" ] && local cpu_temp=$(soc_temp) || local cpu_temp="null"
-	[ -z "$cpu_temp" ] && log_change "【！！！】无法读取设备温度，请检查命令"
-	[ -n "$notification_load" ] && [ -n "$cpu_load_threshold" ] && local cpu_fuzai=$(cat /proc/loadavg | awk '{print $1}') 2>/dev/null || local cpu_fuzai="null"
-	[ -z "$cpu_fuzai" ] && log_change "【！！！】无法读取设备负载，请检查命令"
-
-	# 文件下载
-	/usr/libexec/wechatpush-call "down_oui"
-
-	# 文件清理
-	rm -f ${dir}/fd1 ${dir}/sheep_usage ${dir}/old_sheep_usage ${dir}/client_usage_aliases ${dir}/old_client_usage_aliases /usr/share/wechatpush/errlog >/dev/null 2>&1
+# 检测退出信号
+cleanup() {
 	LockFile unlock
-
-	# 防火墙初始化
-	[ -n "$login_web_black" ] && [ "$login_web_black" -eq "1" ] && init_ip_black "ipv4"
-	[ -n "$login_web_black" ] && [ "$login_web_black" -eq "1" ] && init_ip_black "ipv6"
-	[ -n "$port_knocking_enable" ] && [ "$port_knocking_enable" -eq "1" ] && init_ip_white "ipv4"
-	[ -n "$port_knocking_enable" ] && [ "$port_knocking_enable" -eq "1" ] && init_ip_white "ipv6"
-	tmp_ip_list=$(echo "$login_ip_white_list" | grep -v "^$" | sort -u)
-	while IFS= read -r tmp_ip; do
-		[ -n "$tmp_ip" ] && add_ip_white "$tmp_ip" "0"
-	done <<<"$tmp_ip_list"
-	set_ip_black
-
-	return 0
+	exit 0
 }
 
 # 清理临时文件
@@ -249,16 +563,9 @@ deltemp() {
 	[ "$logrow" -gt 500 ] && sed -i '1,100d' "$logfile" && log_change "【清理】日志超出上限，删除前 100 条"
 }
 
-# 检测程序开关
-enable_detection() {
-	[ -z "$1" ] && local time_n=1
-	for i in $(seq 1 $time_n); do
-		get_config enable
-		[ -z "$enable" ] || [ "$enable" -eq "0" ] && exit || sleep 1
-	done
-	unset i
-}
-
+# ------------------------------------
+# 信息获取类
+#
 # 获取 ip
 getip() {
 	[ -z "$1" ] && return
@@ -317,66 +624,30 @@ getip() {
 	fi
 }
 
-# 获取接口信息
-getinterfacelist() {
-	[ $(ubus list | grep -w -i "network.interface.wan" | wc -l) -ge "1" ] && ubus call network.interface.wan status || ubus call network.interface.lan status && return
-	[ -n "$ipv4_interface" ] && local device_name=$ipv4_interface || [ -n "$ipv6_interface" ] && local device_name=$ipv6_interface
-	[ -n "$device_name" ] && local interface_name=$(ubus call network.interface dump | jq -r --arg intf "$device_name" '.interface[] | select(.device == $intf and (.interface | endswith("6") | not)) | .interface')
-	[ -z "$interface_name" ] && local interface_name=$(ubus list | grep -i "network.interface." | grep -v "loopback" | grep -v -i "wan6" | grep -v -i "wan_6" | grep -v -i "lan6" | grep -v -i "ipsec.*" | grep -v -i "VPN.*" | grep -v -i "DOCKER.*" | awk -F '.' '{print $3}' | head -n1)
-	ubus call network.interface.${interface_name} status && return
-}
+# 查询设备接口
+getinterface() {
+	local ip=${1}
+	local mac=${2}
+	local interface
 
-# 获取接口在线时间
-getinterfaceuptime() {
-	getinterfacelist | awk -F'\"uptime\": ' '/uptime/ { gsub(/,/, "", $2); print $2 }'
-}
+	[ -z "$mac" ] && return
+	[ "$mac" == "unknown" ] && return
 
-# 处理并检查 tmp_name 的通用函数
-process_and_check() {
-	[ -z "$1" ] && return 1
-	local value=$(echo "$1" | tr -d '\n\r' | awk '$1=$1' | sed 's/_/ /g' | grep -v "^$" | sort -u | head -n1)
-	[ "$value" == "unknown" ] && value=""
-	[ -n "$value" ] && echo "$value" && return 0
-	return 1
-}
+	# 从已保存的地址中获取接口
+	interface=$(jq -r --arg ip "$ip" --arg mac "$mac" '.devices[] | select(.ip == $ip and .mac == $mac) | .interface' <<<"$json_data")
+	process_and_check "$interface" && return
 
-# 查询 NetBIOS
-nmblookup_timeout() {
-	local ip="$1"
-	local query_type="$2" # "name" or "mac"
-	local max_wait_time="$3"
-	local result=""
-	[ -z "$ip" ] && return 1
-	[ -z "$query_type" ] && return 1
-	[ -z "$max_wait_time" ] && return 1
-
-	{
-		if [ "$query_type" == "name" ]; then
-			result=$(nmblookup -A ${ip} 2>/dev/null | awk '/<00>/ && !/<GROUP>/ {print $1}')
-		elif [ "$query_type" == "mac" ]; then
-			result=$(nmblookup -A ${ip} 2>/dev/null | grep -oE 'MAC\s+Address\s+=\s+([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})' | awk '{print $NF}')
-		fi
-		echo "$result"
-	} &
-	local nmblookup_pid=$!
-
-	# 等待最多5秒，检查结果是否已经获取
-	local wait_time=0
-	while [ $wait_time -lt $max_wait_time ]; do
-		# 检查子进程是否已完成
-		if ! kill -0 $nmblookup_pid >/dev/null 2>&1; then
-			result=$(wait $nmblookup_pid) # 获取子进程的输出
-			break
-		fi
-		sleep 1
-		wait_time=$((wait_time + 1))
-	done
-
-	if kill -0 $nmblookup_pid >/dev/null 2>&1; then
-		kill $nmblookup_pid
+	# 如果定义了 WLAN 接口列表，则查询每个接口
+	if [ -n "$wlan_interface" ]; then
+		for interface_wlan in $wlan_interface; do
+			interface=$(iw dev "$interface_wlan" station dump 2>/dev/null | grep -i -w "$mac" | sed -nr 's#^.*on (.*))#\1#gp')
+			process_and_check "$interface" && return
+		done
 	fi
 
-	echo "$result"
+	# 查询 ARP 表获取接口
+	interface=$(cat /proc/net/arp | grep "0x2\|0x6" | grep -i -w "$mac" | awk '{print $6}')
+	process_and_check "$interface" && return
 }
 
 # 查询 MAC 地址
@@ -466,7 +737,80 @@ getname() {
 	echo "unknown"
 }
 
-#  查询 http/https 端口
+# 获取接口信息
+getinterfacelist() {
+	[ $(ubus list | grep -w -i "network.interface.wan" | wc -l) -ge "1" ] && ubus call network.interface.wan status || ubus call network.interface.lan status && return
+	[ -n "$ipv4_interface" ] && local device_name=$ipv4_interface || [ -n "$ipv6_interface" ] && local device_name=$ipv6_interface
+	[ -n "$device_name" ] && local interface_name=$(ubus call network.interface dump | jq -r --arg intf "$device_name" '.interface[] | select(.device == $intf and (.interface | endswith("6") | not)) | .interface')
+	[ -z "$interface_name" ] && local interface_name=$(ubus list | grep -i "network.interface." | grep -v "loopback" | grep -v -i "wan6" | grep -v -i "wan_6" | grep -v -i "lan6" | grep -v -i "ipsec.*" | grep -v -i "VPN.*" | grep -v -i "DOCKER.*" | awk -F '.' '{print $3}' | head -n1)
+	ubus call network.interface.${interface_name} status && return
+}
+
+# 获取接口在线时间
+getinterfaceuptime() {
+	getinterfacelist | awk -F'\"uptime\": ' '/uptime/ { gsub(/,/, "", $2); print $2 }'
+}
+
+# 查询 IP 归属地
+get_ip_attribution() {
+	ip="$1"
+	jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip) | .ip' <<<"$json_data" >/dev/null && echo "本地局域网" && return
+	ip_attribution_urls=$(cat /usr/share/wechatpush/api/ip_attribution.list)
+	local url_number=$(echo "$ip_attribution_urls" | wc -l)
+	local rand_number=$(rand 1 $url_number)
+	get_attribution() {
+		local ip_attribution_url=$(echo "$ip_attribution_urls" | sed -n "${1}p" | sed -e 's/\r//g')
+		local login_ip_attribution=$(eval curl --connect-timeout 2 -m 2 -k -s "$ip_attribution_url" 2>/dev/null)
+		#logfile=logfile="${dir}/wechatpush.log"
+		#[ -z "$login_ip_attribution" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】归属地获取超时，当前使用的 API 为 $ip_attribution_url" >> ${logfile}
+		echo "$login_ip_attribution"
+	}
+	local ip_attribution=$(get_attribution ${rand_number})
+	[ -z "$ip_attribution" ] && local rand_number=$(expr $rand_number + 1) && [ $rand_number -gt $url_number ] && local rand_number=1
+	[ -z "$ip_attribution" ] && local ip_attribution=$(get_attribution ${rand_number})
+	echo "$ip_attribution"
+}
+
+# 查询 NetBIOS
+nmblookup_timeout() {
+	local ip="$1"
+	local query_type="$2" # "name" or "mac"
+	local max_wait_time="$3"
+	local result=""
+	[ -z "$ip" ] && return 1
+	[ -z "$query_type" ] && return 1
+	[ -z "$max_wait_time" ] && return 1
+
+	{
+		if [ "$query_type" == "name" ]; then
+			result=$(nmblookup -A ${ip} 2>/dev/null | awk '/<00>/ && !/<GROUP>/ {print $1}')
+		elif [ "$query_type" == "mac" ]; then
+			result=$(nmblookup -A ${ip} 2>/dev/null | grep -oE 'MAC\s+Address\s+=\s+([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})' | awk '{print $NF}')
+		fi
+		echo "$result"
+	} &
+	local nmblookup_pid=$!
+
+	# 等待最多5秒，检查结果是否已经获取
+	local wait_time=0
+	while [ $wait_time -lt $max_wait_time ]; do
+		# 检查子进程是否已完成
+		if ! kill -0 $nmblookup_pid >/dev/null 2>&1; then
+			result=$(wait $nmblookup_pid) # 获取子进程的输出
+			break
+		fi
+		sleep 1
+		wait_time=$((wait_time + 1))
+	done
+
+	if kill -0 $nmblookup_pid >/dev/null 2>&1; then
+		kill $nmblookup_pid
+	fi
+
+	echo "$result"
+}
+
+# 查询 http/https 端口
 check_http_access() {
 	local ip="$1"
 	[ -z "$ip" ] && return 1
@@ -478,97 +822,6 @@ check_http_access() {
 	[ $? -eq 0 ] && echo "https" && return
 
 	return 1
-}
-
-# 获取文件最后修改时间（距离现在过去了多少秒）
-file_date() {
-	local file_dir="$1"
-	local datetime=$(date -r "${file_dir}" +%s 2>/dev/null || echo "0")
-	expr $(date +%s) - ${datetime}
-}
-
-# 从光猫处获取设备信息
-getgateway() {
-	[ -z "$gateway_info_enable" ] && return
-	[ "$1" ] && [ "$1" == "reboot" ] && last_getgateway_time="$device_info_helper_sleeptime" || last_getgateway_time=$(file_date "${dir}/gateway_info")
-
-	if [ "$last_getgateway_time" -ge "$device_info_helper_sleeptime" ]; then
-		# 登录
-		local loginfo=$(curl -s -L "${gateway_host_url}" -c ${dir}/cookies.txt -d "${gateway_username_id}=${gateway_username}&${gateway_password_id}=${gateway_password}") 2>/dev/null
-		[ -n "$loginfo" ] && local mytoken=$(echo $loginfo | sed 's/{/\n/g' | grep token | awk '/realRestart/{print $2}' | sed $'s/\'//g')
-		# 获取
-		[ -n "$mytoken" ] && local get_gateway=$(curl -s -b ${dir}/cookies.txt "${gateway_info_url}" -d 'token='$mytoken | jq '.[] | iterables| "\(.ip) \(.devName) \(.model)"' | sed 's/unknown//g' | sed 's/  / /g' | sed 's/ /_/g' | sed 's/_/ /' | sed 's/\"//g')
-		# 重启
-		[ "$1" ] && [ "$1" == "reboot" ] && curl -s -b ${dir}/cookies.txt "${gateway_host_url}/admin/reboot" -d "token=$mytoken" >/dev/null 2>&1
-		# 注销
-		[ -n "$get_gateway" ] && [ -n "$gateway_logout_url" ] && curl -s -b ${dir}/cookies.txt "${gateway_logout_url}" -d 'token='$mytoken 2>/dev/null
-		[ -z "$get_gateway" ] && log_change "【info】获取光猫信息失败，可能当前用户未注销或设置错误"
-		# 保存信息
-		[ -n "$get_gateway" ] && echo "$get_gateway" >"${dir}/gateway_info"
-		gateway_iplist=$(echo "${get_gateway}" | awk '{print $1}')
-	else
-		unset gateway_iplist
-	fi
-}
-
-# 扫描范围内 IP
-scanlocalip() {
-	[ -z "$scan_ip_range" ] && return
-	[ -f "${dir}/send.lock" ] && return # 定时推送时不扫描
-	[ -z "$last_scan_ip_time" ] && last_scan_ip_time=0
-
-	local current_time=$(date +%s)
-	local elapsed_time=$((current_time - last_scan_ip_time))
-
-	# 判断是否需要重新扫描
-	if [ "$elapsed_time" -ge "$device_info_helper_sleeptime" ]; then
-		local start_ip=$(echo "$scan_ip_range" | cut -d "-" -f 1)
-		local end_ip=$(echo "$scan_ip_range" | cut -d "-" -f 2)
-
-		local start_num=$(echo "$start_ip" | awk -F '.' '{print $NF}')
-		local end_num=$(echo "$end_ip" | awk -F '.' '{print $NF}')
-		local base_ip=$(echo "$start_ip" | awk -F '.' '{print $1"."$2"."$3}')
-
-		for i in $(seq "$start_num" "$end_num"); do
-			# 获取一个令牌
-			read -u 5
-			{
-				ping -c 1 "${base_ip}.${i}" >/dev/null 2>&1
-				# 释放令牌
-				echo >&5
-			} &
-		done
-		wait
-
-		last_scan_ip_time="$current_time"
-	fi
-	unset i
-}
-
-# 查询设备接口
-getinterface() {
-	local ip=${1}
-	local mac=${2}
-	local interface
-
-	[ -z "$mac" ] && return
-	[ "$mac" == "unknown" ] && return
-
-	# 从已保存的地址中获取接口
-	interface=$(jq -r --arg ip "$ip" --arg mac "$mac" '.devices[] | select(.ip == $ip and .mac == $mac) | .interface' <<<"$json_data")
-	process_and_check "$interface" && return
-
-	# 如果定义了 WLAN 接口列表，则查询每个接口
-	if [ -n "$wlan_interface" ]; then
-		for interface_wlan in $wlan_interface; do
-			interface=$(iw dev "$interface_wlan" station dump 2>/dev/null | grep -i -w "$mac" | sed -nr 's#^.*on (.*))#\1#gp')
-			process_and_check "$interface" && return
-		done
-	fi
-
-	# 查询 ARP 表获取接口
-	interface=$(cat /proc/net/arp | grep "0x2\|0x6" | grep -i -w "$mac" | awk '{print $6}')
-	process_and_check "$interface" && return
 }
 
 # ping
@@ -632,6 +885,7 @@ soc_temp() {
 	[ -z "$temperature" ] && local temperature=$(cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | sort -nr | head -n1 | cut -c-2)
 	printf "%.1f" "$temperature"
 }
+
 # 流量数据
 usage() {
 	[ ! -f "/usr/sbin/wrtbwmon" ] || [ -z "$1" ] && return
@@ -656,237 +910,17 @@ usage() {
 	fi
 }
 
-# 流量数据单位换算
-bytes_for_humans() {
-	[ -z "$1" ] && return
-	[ "$1" -gt 1073741824 ] && echo "$(awk 'BEGIN{printf "%.2f\n",'$1'/'1073741824'}') GB" && return
-	[ "$1" -gt 1048576 ] && echo "$(awk 'BEGIN{printf "%.2f\n",'$1'/'1048576'}') MB" && return
-	[ "$1" -gt 1024 ] && echo "$(awk 'BEGIN{printf "%.2f\n",'$1'/'1024'}') KB" && return
-	echo "${1} bytes"
-}
-
-# 设备异常流量检测
-get_client_usage() {
-	[ -z "$client_usage" ] && return
-	[ "$client_usage" -ne "1" ] && return
-	[ -z "$client_usage_max" ] && return
-
-	[ -z "$get_client_usage_time" ] && get_client_usage_time=$(date +%s)
-	(echo $client_usage_max | sed -r 's/.*(.)$/\1/' | grep -q "K\|k") && client_usage_max=$(expr ${client_usage_max%?} \* 1024)
-	(echo $client_usage_max | sed -r 's/.*(.)$/\1/' | grep -q "M\|m") && client_usage_max=$(expr ${client_usage_max%?} \* 1048576)
-	(echo $client_usage_max | sed -r 's/.*(.)$/\1/' | grep -q "G\|g") && client_usage_max=$(expr ${client_usage_max%?} \* 1073741824)
-	[ -z "$client_usage_disturb" ] && client_usage_disturb="0"
-	[ "$client_usage_disturb" -eq "0" ] && local MACLIST=$(jq -r '.devices[] | select(.status == "online") | .mac' <<<"$json_data" | sort -u)
-	[ "$client_usage_disturb" -eq "1" ] && [ -n "$client_usage_whitelist" ] && local MACLIST=$(echo "$client_usage_whitelist")
-	[ -z "$MACLIST" ] && return
-
-	if [ "$(($(date +%s) - $get_client_usage_time))" -ge "60" ]; then
-		>${dir}/client_usage_aliases
-		for mac in $MACLIST; do
-			# 查找在线设备中是否存在这个mac，不存在则退出
-			! jq -e --arg mac "$mac" '.devices[] | select(.mac == $mac and .status == "online")' <<<"$json_data" >/dev/null && continue
-
-			echo "$mac" $(usage get ${mac} bytes) >>${dir}/client_usage_aliases
-			[ -f "${dir}/old_client_usage_aliases" ] && get_client_usage_bytes=$(cat ${dir}/old_client_usage_aliases | grep -i -w $mac | awk '{print $2}' | grep -v "^$" | sort -u | head -n1) || continue
-
-			[ -z "$get_client_usage_bytes" ] && get_client_usage_bytes="0"
-			if [ "$(($(usage get ${mac} bytes) - $get_client_usage_bytes))" -ge "$client_usage_max" ]; then
-				local ip=$(jq -r --arg mac "$mac" '.devices[] | select(.mac == $mac and .status == "online") | .ip' <<<"$json_data")
-				local ip_name=$(getname ${ip} ${mac})
-				local tmp_usage=$(bytes_for_humans $(expr $(usage get ${mac} bytes) - ${get_client_usage_bytes}))
-				local time_up=$(jq -r --arg mac "$mac" '.devices[] | select(.mac == $mac and .status == "online") | .uptime' <<<"$json_data")
-				local ip_total=$(usage get $mac) && [ -n "$ip_total" ] && local ip_total="${str_linefeed}${str_tab}总计流量： ${str_space}${str_space}${str_space}${str_space}${ip_total}"
-				local time1=$(date +%s)
-				local time1=$(time_for_humans $(expr ${time1} - ${time_up}))
-				if [ -z "$title" ]; then
-					title="${ip_name} 流量异常"
-					local content_title="${str_splitline}${str_title_start} 设备流量异常${str_title_end}"
-				elif echo "$title" | grep -q "流量异常"; then
-					title="${ip_name} ${title}"
-				else
-					title="设备状态变化"
-					local content_title="${str_splitline}${str_title_start} 设备流量异常${str_title_end}"
-				fi
-
-				local content_name="${str_linefeed}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${ip_name}"
-				local content_ip="${str_linefeed}${str_tab}客户端IP：${str_space}${str_space}${str_space}${str_space}${ip}"
-				local content_mac="${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}"
-				local content_usage="${str_linefeed}${str_tab}一分钟内流量：${str_space}${str_space}${str_space}${tmp_usage}"
-				local content_time="${str_linefeed}${str_tab}在线时间：${str_space}${str_space}${str_space}${str_space}${time1}"
-
-				content="${content}${content_title}${content_name}${content_ip}${content_mac}${content_usage}${content_time}"
-			fi
-		done
-		cat ${dir}/client_usage_aliases >${dir}/old_client_usage_aliases
-		get_client_usage_time=$(date +%s)
-	fi
-}
-
-# 时间单位换算
-time_for_humans() {
-	[ -z "$1" ] && return
-
-	if [ "$1" -lt 60 ]; then
-		echo "${1} 秒"
-	elif [ "$1" -lt 3600 ]; then
-		local usetime_min=$(expr $1 / 60)
-		local usetime_sec=$(expr $usetime_min \* 60)
-		local usetime_sec=$(expr $1 - $usetime_sec)
-		echo "${usetime_min} 分 ${usetime_sec} 秒"
-	elif [ "$1" -lt 86400 ]; then
-		local usetime_hour=$(expr $1 / 3600)
-		local usetime_min=$(expr $usetime_hour \* 3600)
-		local usetime_min=$(expr $1 - $usetime_min)
-		local usetime_min=$(expr $usetime_min / 60)
-		echo "${usetime_hour} 小时 ${usetime_min} 分"
-	else
-		local usetime_day=$(expr $1 / 86400)
-		local usetime_hour=$(expr $usetime_day \* 86400)
-		local usetime_hour=$(expr $1 - $usetime_hour)
-		local usetime_hour=$(expr $usetime_hour / 3600)
-		echo "${usetime_day} 天 ${usetime_hour} 小时"
-	fi
-}
-
-# 计算字符串显示宽度
-length_str() {
-	[ -z "$1" ] && return
-
-	local length_zh=$(echo "$1" | awk '{print gensub(/[\u4e00-\u9FA5A-Za-z0-9_]/,"","g",$0)}' | awk -F "" '{print NF}')
-	local length_en=$(echo "$1" | awk '{print gensub(/[^\u4e00-\u9FA5A-Za-z0-9_]/,"","g",$0)}' | awk -F "" '{print NF}')
-
-	echo $((length_zh / 3 * 2 + length_en))
-}
-
-# 字符串显示宽度处理
-cut_str() {
-	[ -z "$1" ] && return
-	[ -z "$2" ] && return
-
-	if [ $(length_str "$1") -le "$2" ]; then
-		echo -n "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
-		return
-	fi
-
-	local columns=$(echo "$1" | awk '{print NF}')
-	if [ "$columns" -gt 1 ]; then
-		local max_length=0
-		local max_column=1
-		for i in $(seq 1 $columns); do
-			local length=$(echo "$1" | awk '{print gensub(/[\u4e00-\u9FA5A-Za-z0-9_]/,"","g",$0)}' | awk -F "" '{print NF}')
-			if [ "$length" -gt "$max_length" ]; then
-				max_length=$length
-				max_column=$i
-			fi
-		done
-		unset i
-
-		local text=$(echo -n "$1" | cut -d ' ' -f $max_column)
-		if [ $(length_str "$text") -le "$2" ]; then
-			echo "$text" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
-			return
-		fi
-	fi
-
-	local temp_length=$2
-	while [ $(length_str "$(echo -n "$1" | cut -c -$temp_length)") -lt "$2" ]; do
-		temp_length=$(expr $temp_length + 1)
+# ------------------------------------
+# 需要经常调用的偷懒类
+#
+# 检测程序开关
+enable_detection() {
+	[ -z "$1" ] && local time_n=1
+	for i in $(seq 1 $time_n); do
+		get_config enable
+		[ -z "$enable" ] || [ "$enable" -eq "0" ] && exit || sleep 1
 	done
-	while [ $(printf "%d" \'$(echo -n "$1" | cut -c $temp_length)) -ge "128" ] && [ $(printf "%d" \'$(echo -n "$1" | cut -c $temp_length)) -lt "224" ]; do
-		temp_length=$(expr "$temp_length" + 1)
-	done
-	temp_length=$(expr $temp_length - 1)
-
-	echo "$(echo -n "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' | cut -c -$temp_length).."
-}
-
-# 随机数
-rand() {
-	local min=$1
-	local max=$(($2 - $min + 1))
-	local num=$(date +%s%N)
-	echo $(($num % $max + $min))
-}
-
-# 在线设备列表
-first() {
-	# 注：此处为后台任务，无法操作父进程变量，故每个线程结束后都必须保存变量到文件
-	local IPLIST=$(jq -r '.devices[] | select(.status == "online" or .status == "unknown") | .ip' <<<"$json_data" | sort -u)
-	getgateway
-	silent_run scanlocalip
-	for ip in $IPLIST; do
-		[ -n "$passive_mode" ] && [ "$passive_mode" -eq "1" ] && break
-		# 获取一个令牌
-		read -u 5
-		{
-			down "$ip"
-			# 释放令牌
-			echo >&5
-		} &
-	done
-	wait
-
-	local IP_INFO=$(ip addr show br-lan | grep 'inet ' | awk '{print $2}')
-	[ -n "$IP_INFO" ] && local SUBNET=$(echo $IP_INFO | cut -d'/' -f1 | cut -d'.' -f1-3)
-	[ -n "$SUBNET" ] && local IPLIST=$(cat /proc/net/arp | grep "0x2\|0x6" | awk '{print $1}' | grep -v "^169.254." | grep -v "^$" | sort -u | grep -oE "${SUBNET}\.[0-9]{1,3}") || local IPLIST=$(cat /proc/net/arp | grep "0x2\|0x6" | awk '{print $1}' | grep -v "^169.254." | grep -v "^$" | sort -u | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
-
-	local IPLIST=$(echo -e "${IPLIST}\n${gateway_iplist}\n${always_check_ip_list}" | grep -v "^$" | sort -u)
-	for ip in $IPLIST; do
-		[ -n "$passive_mode" ] && [ "$passive_mode" -eq "1" ] && break
-		# 获取一个令牌
-		read -u 5
-		{
-			up "$ip"
-			# 释放令牌
-			echo >&5
-		} &
-	done
-	wait
-}
-
-# 创建计划任务
-cron() {
-	del_cron() {
-		crontab -l | grep -v "wechatpush" | crontab -
-	}
-	re_cron() {
-		/etc/init.d/cron stop
-		/etc/init.d/cron start
-	}
-	del_cron
-	if [ -z "$enable" ]; then
-		re_cron
-		return
-	fi
-
-	# 重置流量
-	if [ -n "$reset_regularly" ] && [ "$reset_regularly" -eq "1" ]; then
-		(
-			crontab -l 2>/dev/null
-			echo "0 0 * * * rm ${dir}/usage.db >/dev/null 2>&1"
-		) | crontab -
-		(
-			crontab -l 2>/dev/null
-			echo "0 0 * * * rm ${dir}/usage6.db >/dev/null 2>&1"
-		) | crontab -
-	fi
-
-	# 定时发送
-	if [ -n "$crontab_regular_time" ]; then
-		crontab_regular_time=$(echo "$crontab_regular_time" | sed 's/ /,/g')
-		(
-			crontab -l 2>/dev/null
-			echo "0 $crontab_regular_time * * * /usr/share/wechatpush/wechatpush send &"
-		) | crontab -
-	# 间隔发送
-	elif [ -n "$crontab_interval_time" ]; then
-		(
-			crontab -l 2>/dev/null
-			echo "0 */$crontab_interval_time * * * /usr/share/wechatpush/wechatpush send &"
-		) | crontab -
-	fi
-
-	re_cron
+	unset i
 }
 
 # 免打扰检测
@@ -914,29 +948,6 @@ disturb() {
 			return 1
 		fi
 	fi
-}
-
-# 文件锁
-LockFile() {
-	local fd=200
-
-	if [ "$1" = "lock" ]; then
-		eval "exec $fd>$lock_file"
-		flock -n $fd
-		if [ $? -ne 0 ]; then
-			while ! flock -n $fd; do
-				sleep 1
-			done
-		fi
-	elif [ "$1" = "unlock" ]; then
-		eval "exec $fd>&-"
-	fi
-}
-
-# 检测退出信号
-cleanup() {
-	LockFile unlock
-	exit 0
 }
 
 # 检测黑白名单
@@ -968,19 +979,6 @@ blackwhitelist() {
 	return 0
 }
 
-# 重启网络服务
-# SB IDE 总提示语法有问题，重写了一下，无实际改变
-network_restart() {
-	echo '#!/bin/sh' >"${dir}/network_restart"
-	echo '/etc/init.d/network restart >/dev/null 2>&1 &' >>"${dir}/network_restart"
-	echo '/etc/init.d/firewall restart >/dev/null 2>&1 &' >>"${dir}/network_restart"
-	echo '/etc/init.d/dnsmasq restart >/dev/null 2>&1 &' >>"${dir}/network_restart"
-
-	chmod 0755 "${dir}/network_restart"
-	"${dir}/network_restart"
-	rm -f "${dir}/network_restart" >/dev/null 2>&1
-}
-
 # 查看无人值守任务设备是否在线
 geterrdevicealiases() {
 	[ -z "$unattended_device_aliases" ] && return
@@ -1008,25 +1006,60 @@ geterrdevicealiases() {
 	[ -z "$unattended_mac" ]
 }
 
-# 无人值守任务
-unattended() {
-	[ -z "$unattended_enable" ] || [ "$unattended_enable" -ne "1" ] && return
-	[ -n "$unattended_only_on_disturb_time" ] && [ "$unattended_only_on_disturb_time" -eq "1" ] && [ -z "$sheep_starttime" ] && return
-	geterrdevicealiases
-	[ $? -eq "1" ] && return
+# ------------------------------------
+# 网络状态相关
+#
+# 检测 ip 状况
+ip_changes() {
+	local IPv4_URL="网络接口"
+	local IPv6_URL="网络接口"
+	[ "$get_ipv4_mode" -eq "1" ] && getip wanipv4 >"$output_dir/IPv4" &
+	[ "$get_ipv6_mode" -eq "1" ] && getip wanipv6 >"$output_dir/IPv6" &
+	[ "$get_ipv4_mode" -eq "2" ] && local IPv4=$(getip hostipv4) && local IPv4_URL=$(echo ${IPv4} | jq -r '.URL') && local IPv4=$(echo ${IPv4} | jq -r '.IP')
+	[ "$get_ipv6_mode" -eq "2" ] && local IPv6=$(getip hostipv6) && local IPv6_URL=$(echo ${IPv6} | jq -r '.URL') && local IPv6=$(echo ${IPv6} | jq -r '.IP')
+	wait_and_cat
 
-	if [ -n "$unattended_autoreboot_mode" ]; then
-		local interfaceuptime=$(getinterfaceuptime)
-		if [ -n "$autoreboot_system_uptime" ] && [ $(cat /proc/uptime | awk -F. '{run_hour=$1/3600;printf("%d",run_hour)}') -ge "$autoreboot_system_uptime" ] && [ "$unattended_autoreboot_mode" -eq "1" ]; then
-			log_change "【无人值守任务】重启路由器咯"
-			cat ${logfile} >/usr/share/wechatpush/errlog
-			sleep 2 && reboot && exit
-		elif [ -n "$autoreboot_network_uptime" ] && [ -n "$interfaceuptime" ] && [ $(echo "$interfaceuptime" | awk -F. '{run_hour=$1/3600;printf("%d",run_hour)}') -ge "$autoreboot_network_uptime" ] && [ "$unattended_autoreboot_mode" -eq "2" ]; then
-			log_change "【无人值守任务】重新拨号咯"
-			ifup wan >/dev/null 2>&1
-			sleep 60
+	if [ "$1" ] && [ "$1" == "getip" ]; then
+		echo "IPv4：$IPv4<br/>地址：$(get_ip_attribution $IPv4)<br/>接口：$IPv4_URL<br/>IPv6：$IPv6<br/>地址：$(get_ip_attribution $IPv6)<br/>接口：$IPv6_URL"
+		return
+	fi
+	local last_IPv4=$(jq -r '.address[0].IPv4 // empty' <<<"$json_data")
+	local last_IPv6=$(jq -r '.address[0].IPv6 // empty' <<<"$json_data")
+
+	if [ -z "$last_IPv4" ] && [ -z "$last_IPv6" ]; then
+		log_change "${disturb_text}路由器已经重启!"
+		title="路由器重新启动"
+		content="${content}${str_splitline}${str_title_start} 路由器重新启动${str_title_end}"
+		new_address='{
+			"IPv4": "",
+			"IPv6": ""
+		}'
+		silent_run update_json_data "add" "address" "new_address"
+	fi
+	if [ "$get_ipv4_mode" -ne "0" ] && [ -n "$IPv4" ] && [ "$IPv4" != "$last_IPv4" ]; then
+		log_change "${disturb_text}当前 IP：${IPv4} from：${IPv4_URL}"
+		[ -z "$title" ] && title="IP 地址变化"
+		[ -z "$content" ] && content="${content}${str_splitline}${str_title_start} IP 地址变化${str_title_end}"
+		content="${content}${str_linefeed}${str_tab}当前 IP：  ${IPv4}"
+		silent_run update_json_data "update" "address" "IPv4" "$last_IPv4" "IPv4" "$IPv4"
+
+	fi
+	if [ "$get_ipv6_mode" -ne "0" ] && [ -n "$IPv6" ] && [ "$IPv6" != "$last_IPv6" ]; then
+		log_change "${disturb_text}当前 IPv6：${IPv6} from：${IPv6_URL}"
+		[ -z "$title" ] && title="IPv6 地址变化"
+		[ -z "$content" ] && content="${content}${str_splitline}${str_title_start} IPv6 地址变化${str_title_end}"
+		content="${content}${str_linefeed}${str_tab}当前 IPv6：${IPv6}"
+		silent_run update_json_data "update" "address" "IPv6" "$last_IPv6" "IPv6" "$IPv6"
+	fi
+
+	# IP 变化，悄咪咪的重启 zerotier
+	if [ -n "$content" ] && [ -n "$zerotier_helper" ] && [ "$zerotier_helper" -eq "1" ]; then
+		[ -z "$zerotier_enabled" ] && zerotier_enabled=$(uci get zerotier.sample_config.enabled)
+		if [ -n "$zerotier_enabled" ] && [ $zerotier_enabled -eq "1" ]; then
+			/etc/init.d/zerotier restart >/dev/null 2>&1
 		fi
 	fi
+	silent_run update_json_data "save"
 }
 
 # 检测网络状态
@@ -1085,270 +1118,9 @@ check_connect() {
 	rm -f /usr/share/wechatpush/autoreboot_count >/dev/null 2>&1
 }
 
-# 检测 ip 状况
-ip_changes() {
-	local IPv4_URL="网络接口"
-	local IPv6_URL="网络接口"
-	[ "$get_ipv4_mode" -eq "1" ] && getip wanipv4 >"$output_dir/IPv4" &
-	[ "$get_ipv6_mode" -eq "1" ] && getip wanipv6 >"$output_dir/IPv6" &
-	[ "$get_ipv4_mode" -eq "2" ] && local IPv4=$(getip hostipv4) && local IPv4_URL=$(echo ${IPv4} | jq -r '.URL') && local IPv4=$(echo ${IPv4} | jq -r '.IP')
-	[ "$get_ipv6_mode" -eq "2" ] && local IPv6=$(getip hostipv6) && local IPv6_URL=$(echo ${IPv6} | jq -r '.URL') && local IPv6=$(echo ${IPv6} | jq -r '.IP')
-	wait_and_cat
-
-	if [ "$1" ] && [ "$1" == "getip" ]; then
-		echo "IPv4：$IPv4<br/>地址：$(get_ip_attribution $IPv4)<br/>接口：$IPv4_URL<br/>IPv6：$IPv6<br/>地址：$(get_ip_attribution $IPv6)<br/>接口：$IPv6_URL"
-		return
-	fi
-	local last_IPv4=$(jq -r '.address[0].IPv4 // empty' <<<"$json_data")
-	local last_IPv6=$(jq -r '.address[0].IPv6 // empty' <<<"$json_data")
-
-	if [ -z "$last_IPv4" ] && [ -z "$last_IPv6" ]; then
-		log_change "${disturb_text}路由器已经重启!"
-		title="路由器重新启动"
-		content="${content}${str_splitline}${str_title_start} 路由器重新启动${str_title_end}"
-		new_address='{
-			"IPv4": "",
-			"IPv6": ""
-		}'
-		silent_run update_json_data "add" "address" "new_address"
-	fi
-	if [ "$get_ipv4_mode" -ne "0" ] && [ -n "$IPv4" ] && [ "$IPv4" != "$last_IPv4" ]; then
-		log_change "${disturb_text}当前 IP：${IPv4} from：${IPv4_URL}"
-		[ -z "$title" ] && title="IP 地址变化"
-		[ -z "$content" ] && content="${content}${str_splitline}${str_title_start} IP 地址变化${str_title_end}"
-		content="${content}${str_linefeed}${str_tab}当前 IP：  ${IPv4}"
-		silent_run update_json_data "update" "address" "IPv4" "$last_IPv4" "IPv4" "$IPv4"
-
-	fi
-	if [ "$get_ipv6_mode" -ne "0" ] && [ -n "$IPv6" ] && [ "$IPv6" != "$last_IPv6" ]; then
-		log_change "${disturb_text}当前 IPv6：${IPv6} from：${IPv6_URL}"
-		[ -z "$title" ] && title="IPv6 地址变化"
-		[ -z "$content" ] && content="${content}${str_splitline}${str_title_start} IPv6 地址变化${str_title_end}"
-		content="${content}${str_linefeed}${str_tab}当前 IPv6：${IPv6}"
-		silent_run update_json_data "update" "address" "IPv6" "$last_IPv6" "IPv6" "$IPv6"
-	fi
-
-	# IP 变化，悄咪咪的重启 zerotier
-	if [ -n "$content" ] && [ -n "$zerotier_helper" ] && [ "$zerotier_helper" -eq "1" ]; then
-		[ -z "$zerotier_enabled" ] && zerotier_enabled=$(uci get zerotier.sample_config.enabled)
-		if [ -n "$zerotier_enabled" ] && [ $zerotier_enabled -eq "1" ]; then
-			/etc/init.d/zerotier restart >/dev/null 2>&1
-		fi
-	fi
-	silent_run update_json_data "save"
-}
-
-# 检测设备上线
-up() {
-	local ip="$1"
-	[ -z "$ip" ] && return 1
-	# 如果当前 IP 为在线，退出
-	jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "online") | .ip' <<<"$json_data" >/dev/null && return
-	local mac=$(getmac "$ip")
-	getping "$ip" "$mac" "$up_timeout" "1"
-	local ping_online=$?
-
-	# 连通
-	if [ "$ping_online" -eq "0" ]; then
-		local time_up=$(date +%s)
-
-		# 如果 IP 不存在，或者 http_access 键值为空，检查 http_access 参数
-		# 检查 http_access 参数时间过长，考虑只在第一次连通时检查
-		#jq -e --arg ip "$ip" 'any(.devices[]; .ip == $ip and (.http_access | length == 0)) or (.devices | map(select(.ip == $ip)) | length == 0)' "$devices_json" >/dev/null && local http_access=$(check_http_access "$ip")
-
-		# 如果 json 文件中能找到相同的 MAC，恢复数据
-		if [ "$mac" != "unknown" ] && jq -e --arg ip "$ip" --arg mac "$mac" '.devices[] | select(.ip == $ip and .mac == $mac) | .mac' <<<"$json_data" >/dev/null; then
-			# 如果是待检测离线设备，json 文件中依然有信息，修改在线状态为 online
-			silent_run update_json_data "update" "devices" "ip" "$ip" "status" "online"
-			silent_run update_json_data "save"
-		# up
-		else
-			usage down ${ip}
-			# 删除当前 IP 对应的键值，重新写入
-			silent_run update_json_data "del" "devices" "ip" "$ip"
-			local name=$(getname "$ip" "$mac")
-			local interface=$(getinterface "ip" "$mac")
-			local http_access=$(check_http_access "$ip")
-			new_device='{
-				"name": "'"${name}"'",
-				"ip": "'"${ip}"'",
-				"mac": "'"${mac}"'",
-				"interface": "'"${interface}"'",
-				"uptime": "'"${time_up}"'",
-				"usage": "",
-				"http_access": "'"${http_access}"'",
-				"status": "online"
-			}'
-			silent_run update_json_data "add" "devices" "new_device"
-			silent_run update_json_data "save"
-
-			blackwhitelist ${mac}
-			local ip_blackwhite=$?
-			#[ -f "${dir}/send_enable.lock" ] || [ -z "$notification_online" ] || [ -z "$ip_blackwhite" ] && silent_run LockFile unlock && return
-			#[ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne "0" ] && silent_run LockFile unlock && return
-
-			[ -f "${dir}/send_enable.lock" ] || [ -z "$notification_online" ] || [ -z "$ip_blackwhite" ] && return
-			[ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne "0" ] && return
-
-			[ -f "${dir}/title" ] && local title=$(cat "${dir}/title")
-			[ -f "${dir}/content" ] && local content=$(cat "${dir}/content")
-
-			if [ -z "$title" ]; then
-				local title="${name} 连接了你的路由器"
-				local content_title="${str_title_start} 新设备连接${str_title_end}"
-			elif echo "$title" | grep -q "连接了你的路由器"; then
-				local title="${name} ${title}"
-			else
-				local title="设备状态变化"
-				local content_title="${str_title_start} 新设备连接${str_title_end}"
-			fi
-
-			local content_name="${str_linefeed}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${name}"
-			local content_ip="${str_linefeed}${str_tab}客户端IP：${str_space}${str_space}${str_space}${str_space}${ip}"
-			local content_mac="${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${mac}"
-			local content_interface="${str_linefeed}${str_tab}网络接口：${str_space}${str_space}${str_space}${str_space}${str_space}${interface}"
-
-			content="${str_splitline}${content_title}${content_name}${content_ip}${content_mac}${content_interface}"
-
-			log_change "${disturb_text}新设备 ${name} ${ip} 连接了"
-			#[ -n "$up_down_push_blacklist" ] && local title="你偷偷关注的设备上线了"
-			[ -n "$title" ] && echo "$title" >"${dir}/title"
-			[ -n "$content" ] && echo -n "$content" >>"${dir}/content"
-		fi
-	fi
-}
-
-# 检测设备离线
-down() {
-	local ip="$1"
-	[ -z "$ip" ] && return 1
-	local mac=$(getmac "$ip")
-
-	tmp_timeout=$down_timeout && tmp_retry_count=$timeout_retry_count
-	[ -n "$only_timeout_push" ] && blackwhitelist "$mac"
-	local ip_blackwhite=$? && [ "$ip_blackwhite" -ne "0" ] && tmp_timeout=10 && tmp_retry_count=2
-	getping "$ip" "$mac" "$tmp_timeout" "$tmp_retry_count"
-	local ping_online=$?
-
-	# 离线，置入待验证区
-	if [ "$ping_online" -eq "1" ]; then
-		# 修改为 unknown
-		if jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "online") | .ip' <<<"$json_data" >/dev/null; then
-			silent_run update_json_data "update" "devices" "ip" "$ip" "status" "unknown"
-		elif jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "unknown") | .ip' <<<"$json_data" >/dev/null; then
-			silent_run update_json_data "update" "devices" "ip" "$ip" "status" "offline"
-		fi
-	# 更新主机名或 MAC
-	else
-		local name=$(getname "$ip" "$mac")
-		local interface=$(getinterface "ip" "$mac")
-
-		# 函数内已经做了键值对比，直接写入新值
-		silent_run update_json_data "update" "devices" "ip" "$ip" "mac" "$mac"
-		silent_run update_json_data "update" "devices" "ip" "$ip" "name" "$name"
-		silent_run update_json_data "update" "devices" "ip" "$ip" "interface" "$interface"
-
-	fi
-	silent_run update_json_data "save"
-}
-
-# 设备离线通知
-down_send() {
-	# 如果没有离线设备，退出
-	[ "$(jq '.devices | map(select(.status == "offline")) | length' <<<"$json_data")" -eq 0 ] && return
-
-	local IPLIST=$(jq -r '.devices[] | select(.status == "offline") | .ip' <<<"$json_data" | sort -u)
-	for ip in $IPLIST; do
-		local mac=$(getmac "$ip")
-		blackwhitelist "$mac"
-		local ip_blackwhite=$?
-		[ -z "$notification_offline" ] || [ -z "$ip_blackwhite" ] && continue
-		[ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne "0" ] && continue
-
-		local name=$(getname "$ip" "$mac")
-		local time_up=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "offline") | .uptime' <<<"$json_data")
-		local ip_total=$(usage get "$mac")
-		[ -n "$ip_total" ] && ip_total="${str_linefeed}${str_tab}总计流量： ${str_space}${str_space}${str_space}${str_space}${ip_total}"
-		local time1=$(date +%s)
-		local time1=$(time_for_humans $(expr ${time1} - ${time_up}))
-
-		if [ -z "$title" ]; then
-			title="${name} 断开连接"
-			content_title="${str_splitline}${str_title_start} 设备断开连接${str_title_end}"
-		elif echo "$title" | grep -q "断开连接"; then
-			title="${name} ${title}"
-			content_title=""
-		else
-			title="设备状态变化"
-			content_title="${str_splitline}${str_title_start} 设备断开连接${str_title_end}"
-		fi
-
-		local content_name="${str_linefeed}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${name}"
-		local content_ip="${str_linefeed}${str_tab}客户端IP：${str_space}${str_space}${str_space}${str_space}${ip}"
-		local content_mac="${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}"
-		local content_time="${str_linefeed}${str_tab}在线时间：${str_space}${str_space}${str_space}${str_space}${time1}"
-
-		content="${content}${content_title}${content_name}${content_ip}${content_mac}${content_time}"
-
-		log_change "${disturb_text}设备 ${name} ${ip} 断开连接 "
-	done
-	silent_run update_json_data "del" "devices" "status" "offline"
-	silent_run update_json_data "save"
-}
-
-# 当前设备列表
-current_device() {
-	(echo "$lite_enable" | grep -q "content") || (echo "$lite_enable" | grep -q "device") && return
-	local logrow=$(jq '.devices | map(select(.status == "online")) | length' <<<"$json_data")
-	[ $logrow -eq "0" ] && return
-
-	[ -f "${dir}/usage.db" ] && local ip_total_db="总计流量${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}"
-	local explain="${str_splitline}${str_title_start} 现有在线设备 ${logrow} 台，具体如下${str_title_end}"
-	[ $logrow -eq "0" ] && local explain="${send_content}${str_splitline}${str_title_start} 当前无在线设备${str_title_end}"
-	local header="${str_linefeed}${str_tab}IP 地址${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${ip_total_db}${str_space}${str_space}${str_space}${str_space}在线时间${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}客户端名"
-
-	content="${explain}${header}"
-
-	if [ -z "$defaultSortColumn" ] || [ "$defaultSortColumn" = "ip" ]; then
-		# 按 IP 排序
-		local IPLIST=$(jq -r '.devices[] | select(.status == "online") | .ip' <<<"$json_data" | sort -uV)
-	else
-		# 按在线时间（短到长）
-		local IPLIST=$(jq -r '.devices | sort_by(-(.uptime | tonumber)) | .[] | select(.status == "online") | .ip' <<<"$json_data")
-	fi
-
-	local longest_ip=$(echo "$IPLIST" | awk '{ print length, $0 }' | sort -nr | head -n 1 | cut -d " " -f2-)
-	#local max_length=$(("${#longest_ip}" + 1))
-	local max_length="${#longest_ip}"
-
-	for ip in $IPLIST; do
-		local mac=$(getmac "$ip")
-		local total=$(usage get "$mac")
-		local name=$(getname "$ip" "$mac")
-		local name=$(cut_str "$name" "15")
-		local time_up=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip) | .uptime' <<<"$json_data")
-		local time_online=$(time_for_humans $(($(date +%s) - time_up)))
-		# 如果 IP 的字符长度小于 max_length，用空格补齐，方便对齐
-		if [ "${#ip}" -lt "$max_length" ]; then
-			local n=$(expr "$max_length" - "${#ip}")
-			for i in $(seq 1 $n); do
-				ip="${ip}${str_space}"
-			done
-			unset i n
-		fi
-		if [ -n "$total" ]; then
-			local n=$(expr 11 - ${#total})
-			for i in $(seq 1 $n); do
-				total="${total}${str_space}"
-			done
-			unset i n
-			total="${total}${str_space}|${str_space}"
-		fi
-		content="${content}${str_linefeed}${str_space}${ip}${str_space}|${str_space}${total}${time_online}${str_space}|${str_space}${name}"
-	done
-	[ -f "${dir}/send.lock" ] && echo "$content" >"$output_dir/current_device" && unset content
-}
-
+# ------------------------------------
+# 运行状态相关
+#
 # 检测 cpu 状态
 cpu_load() {
 	[ -z "$cpu_notification_duration" ] && cpu_notification_duration=$(time_for_humans $cpu_notification_delay)
@@ -1567,26 +1339,395 @@ get_disk() {
 	unset i
 }
 
-# 查询 IP 归属地
-get_ip_attribution() {
-	ip="$1"
-	jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip) | .ip' <<<"$json_data" >/dev/null && echo "本地局域网" && return
-	ip_attribution_urls=$(cat /usr/share/wechatpush/api/ip_attribution.list)
-	local url_number=$(echo "$ip_attribution_urls" | wc -l)
-	local rand_number=$(rand 1 $url_number)
-	get_attribution() {
-		local ip_attribution_url=$(echo "$ip_attribution_urls" | sed -n "${1}p" | sed -e 's/\r//g')
-		local login_ip_attribution=$(eval curl --connect-timeout 2 -m 2 -k -s "$ip_attribution_url" 2>/dev/null)
-		#logfile=logfile="${dir}/wechatpush.log"
-		#[ -z "$login_ip_attribution" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】归属地获取超时，当前使用的 API 为 $ip_attribution_url" >> ${logfile}
-		echo "$login_ip_attribution"
-	}
-	local ip_attribution=$(get_attribution ${rand_number})
-	[ -z "$ip_attribution" ] && local rand_number=$(expr $rand_number + 1) && [ $rand_number -gt $url_number ] && local rand_number=1
-	[ -z "$ip_attribution" ] && local ip_attribution=$(get_attribution ${rand_number})
-	echo "$ip_attribution"
+# ------------------------------------
+# 设备在线状态相关
+#
+# 扫描范围内 IP
+scanlocalip() {
+	[ -z "$scan_ip_range" ] && return
+	[ -f "${dir}/send.lock" ] && return # 定时推送时不扫描
+	[ -z "$last_scan_ip_time" ] && last_scan_ip_time=0
+
+	local current_time=$(date +%s)
+	local elapsed_time=$((current_time - last_scan_ip_time))
+
+	# 判断是否需要重新扫描
+	if [ "$elapsed_time" -ge "$device_info_helper_sleeptime" ]; then
+		local start_ip=$(echo "$scan_ip_range" | cut -d "-" -f 1)
+		local end_ip=$(echo "$scan_ip_range" | cut -d "-" -f 2)
+
+		local start_num=$(echo "$start_ip" | awk -F '.' '{print $NF}')
+		local end_num=$(echo "$end_ip" | awk -F '.' '{print $NF}')
+		local base_ip=$(echo "$start_ip" | awk -F '.' '{print $1"."$2"."$3}')
+
+		for i in $(seq "$start_num" "$end_num"); do
+			# 获取一个令牌
+			read -u 5
+			{
+				ping -c 1 "${base_ip}.${i}" >/dev/null 2>&1
+				# 释放令牌
+				echo >&5
+			} &
+		done
+		wait
+
+		last_scan_ip_time="$current_time"
+	fi
+	unset i
 }
 
+# 从光猫处获取设备信息
+getgateway() {
+	[ -z "$gateway_info_enable" ] && return
+	[ "$1" ] && [ "$1" == "reboot" ] && last_getgateway_time="$device_info_helper_sleeptime" || last_getgateway_time=$(file_date "${dir}/gateway_info")
+
+	if [ "$last_getgateway_time" -ge "$device_info_helper_sleeptime" ]; then
+		# 登录
+		local loginfo=$(curl -s -L "${gateway_host_url}" -c ${dir}/cookies.txt -d "${gateway_username_id}=${gateway_username}&${gateway_password_id}=${gateway_password}") 2>/dev/null
+		[ -n "$loginfo" ] && local mytoken=$(echo $loginfo | sed 's/{/\n/g' | grep token | awk '/realRestart/{print $2}' | sed $'s/\'//g')
+		# 获取
+		[ -n "$mytoken" ] && local get_gateway=$(curl -s -b ${dir}/cookies.txt "${gateway_info_url}" -d 'token='$mytoken | jq '.[] | iterables| "\(.ip) \(.devName) \(.model)"' | sed 's/unknown//g' | sed 's/  / /g' | sed 's/ /_/g' | sed 's/_/ /' | sed 's/\"//g')
+		# 重启
+		[ "$1" ] && [ "$1" == "reboot" ] && curl -s -b ${dir}/cookies.txt "${gateway_host_url}/admin/reboot" -d "token=$mytoken" >/dev/null 2>&1
+		# 注销
+		[ -n "$get_gateway" ] && [ -n "$gateway_logout_url" ] && curl -s -b ${dir}/cookies.txt "${gateway_logout_url}" -d 'token='$mytoken 2>/dev/null
+		[ -z "$get_gateway" ] && log_change "【info】获取光猫信息失败，可能当前用户未注销或设置错误"
+		# 保存信息
+		[ -n "$get_gateway" ] && echo "$get_gateway" >"${dir}/gateway_info"
+		gateway_iplist=$(echo "${get_gateway}" | awk '{print $1}')
+	else
+		unset gateway_iplist
+	fi
+}
+
+# 在线设备列表
+first() {
+	# 注：此处为后台任务，无法操作父进程变量，故每个线程结束后都必须保存变量到文件
+	local IPLIST=$(jq -r '.devices[] | select(.status == "online" or .status == "unknown") | .ip' <<<"$json_data" | sort -u)
+	getgateway
+	silent_run scanlocalip
+	for ip in $IPLIST; do
+		[ -n "$passive_mode" ] && [ "$passive_mode" -eq "1" ] && break
+		# 获取一个令牌
+		read -u 5
+		{
+			down "$ip"
+			# 释放令牌
+			echo >&5
+		} &
+	done
+	wait
+
+	local IP_INFO=$(ip addr show br-lan | grep 'inet ' | awk '{print $2}')
+	[ -n "$IP_INFO" ] && local SUBNET=$(echo $IP_INFO | cut -d'/' -f1 | cut -d'.' -f1-3)
+	[ -n "$SUBNET" ] && local IPLIST=$(cat /proc/net/arp | grep "0x2\|0x6" | awk '{print $1}' | grep -v "^169.254." | grep -v "^$" | sort -u | grep -oE "${SUBNET}\.[0-9]{1,3}") || local IPLIST=$(cat /proc/net/arp | grep "0x2\|0x6" | awk '{print $1}' | grep -v "^169.254." | grep -v "^$" | sort -u | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
+
+	local IPLIST=$(echo -e "${IPLIST}\n${gateway_iplist}\n${always_check_ip_list}" | grep -v "^$" | sort -u)
+	for ip in $IPLIST; do
+		[ -n "$passive_mode" ] && [ "$passive_mode" -eq "1" ] && break
+		# 获取一个令牌
+		read -u 5
+		{
+			up "$ip"
+			# 释放令牌
+			echo >&5
+		} &
+	done
+	wait
+}
+
+# 检测设备上线
+up() {
+	local ip="$1"
+	[ -z "$ip" ] && return 1
+	# 如果当前 IP 为在线，退出
+	jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "online") | .ip' <<<"$json_data" >/dev/null && return
+	local mac=$(getmac "$ip")
+	getping "$ip" "$mac" "$up_timeout" "1"
+	local ping_online=$?
+
+	# 连通
+	if [ "$ping_online" -eq "0" ]; then
+		local time_up=$(date +%s)
+
+		# 如果 IP 不存在，或者 http_access 键值为空，检查 http_access 参数
+		# 检查 http_access 参数时间过长，考虑只在第一次连通时检查
+		#jq -e --arg ip "$ip" 'any(.devices[]; .ip == $ip and (.http_access | length == 0)) or (.devices | map(select(.ip == $ip)) | length == 0)' "$devices_json" >/dev/null && local http_access=$(check_http_access "$ip")
+
+		# 如果 json 文件中能找到相同的 MAC，恢复数据
+		if [ "$mac" != "unknown" ] && jq -e --arg ip "$ip" --arg mac "$mac" '.devices[] | select(.ip == $ip and .mac == $mac) | .mac' <<<"$json_data" >/dev/null; then
+			# 如果是待检测离线设备，json 文件中依然有信息，修改在线状态为 online
+			silent_run update_json_data "update" "devices" "ip" "$ip" "status" "online"
+			silent_run update_json_data "save"
+		# up
+		else
+			usage down ${ip}
+			# 删除当前 IP 对应的键值，重新写入
+			silent_run update_json_data "del" "devices" "ip" "$ip"
+			local name=$(getname "$ip" "$mac")
+			local interface=$(getinterface "ip" "$mac")
+			local http_access=$(check_http_access "$ip")
+			new_device='{
+				"name": "'"${name}"'",
+				"ip": "'"${ip}"'",
+				"mac": "'"${mac}"'",
+				"interface": "'"${interface}"'",
+				"uptime": "'"${time_up}"'",
+				"usage": "",
+				"http_access": "'"${http_access}"'",
+				"status": "online"
+			}'
+			silent_run update_json_data "add" "devices" "new_device"
+			silent_run update_json_data "save"
+
+			blackwhitelist ${mac}
+			local ip_blackwhite=$?
+			#[ -f "${dir}/send_enable.lock" ] || [ -z "$notification_online" ] || [ -z "$ip_blackwhite" ] && silent_run LockFile unlock && return
+			#[ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne "0" ] && silent_run LockFile unlock && return
+
+			[ -f "${dir}/send_enable.lock" ] || [ -z "$notification_online" ] || [ -z "$ip_blackwhite" ] && return
+			[ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne "0" ] && return
+
+			[ -f "${dir}/title" ] && local title=$(cat "${dir}/title")
+			[ -f "${dir}/content" ] && local content=$(cat "${dir}/content")
+
+			if [ -z "$title" ]; then
+				local title="${name} 连接了你的路由器"
+				local content_title="${str_title_start} 新设备连接${str_title_end}"
+			elif echo "$title" | grep -q "连接了你的路由器"; then
+				local title="${name} ${title}"
+			else
+				local title="设备状态变化"
+				local content_title="${str_title_start} 新设备连接${str_title_end}"
+			fi
+
+			local content_name="${str_linefeed}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${name}"
+			local content_ip="${str_linefeed}${str_tab}客户端IP：${str_space}${str_space}${str_space}${str_space}${ip}"
+			local content_mac="${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${mac}"
+			local content_interface="${str_linefeed}${str_tab}网络接口：${str_space}${str_space}${str_space}${str_space}${str_space}${interface}"
+
+			content="${str_splitline}${content_title}${content_name}${content_ip}${content_mac}${content_interface}"
+
+			log_change "${disturb_text}新设备 ${name} ${ip} 连接了"
+			#[ -n "$up_down_push_blacklist" ] && local title="你偷偷关注的设备上线了"
+			[ -n "$title" ] && echo "$title" >"${dir}/title"
+			[ -n "$content" ] && echo -n "$content" >>"${dir}/content"
+		fi
+	fi
+}
+
+# 检测设备离线
+down() {
+	local ip="$1"
+	[ -z "$ip" ] && return 1
+	local mac=$(getmac "$ip")
+
+	tmp_timeout=$down_timeout && tmp_retry_count=$timeout_retry_count
+	[ -n "$only_timeout_push" ] && blackwhitelist "$mac"
+	local ip_blackwhite=$? && [ "$ip_blackwhite" -ne "0" ] && tmp_timeout=10 && tmp_retry_count=2
+	getping "$ip" "$mac" "$tmp_timeout" "$tmp_retry_count"
+	local ping_online=$?
+
+	# 离线，置入待验证区
+	if [ "$ping_online" -eq "1" ]; then
+		# 修改为 unknown
+		if jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "online") | .ip' <<<"$json_data" >/dev/null; then
+			silent_run update_json_data "update" "devices" "ip" "$ip" "status" "unknown"
+		elif jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "unknown") | .ip' <<<"$json_data" >/dev/null; then
+			silent_run update_json_data "update" "devices" "ip" "$ip" "status" "offline"
+		fi
+	# 更新主机名或 MAC
+	else
+		local name=$(getname "$ip" "$mac")
+		local interface=$(getinterface "ip" "$mac")
+
+		# 函数内已经做了键值对比，直接写入新值
+		silent_run update_json_data "update" "devices" "ip" "$ip" "mac" "$mac"
+		silent_run update_json_data "update" "devices" "ip" "$ip" "name" "$name"
+		silent_run update_json_data "update" "devices" "ip" "$ip" "interface" "$interface"
+
+	fi
+	silent_run update_json_data "save"
+}
+
+# 设备离线通知
+down_send() {
+	# 如果没有离线设备，退出
+	[ "$(jq '.devices | map(select(.status == "offline")) | length' <<<"$json_data")" -eq 0 ] && return
+
+	local IPLIST=$(jq -r '.devices[] | select(.status == "offline") | .ip' <<<"$json_data" | sort -u)
+	for ip in $IPLIST; do
+		local mac=$(getmac "$ip")
+		blackwhitelist "$mac"
+		local ip_blackwhite=$?
+		[ -z "$notification_offline" ] || [ -z "$ip_blackwhite" ] && continue
+		[ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne "0" ] && continue
+
+		local name=$(getname "$ip" "$mac")
+		local time_up=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "offline") | .uptime' <<<"$json_data")
+		local ip_total=$(usage get "$mac")
+		[ -n "$ip_total" ] && ip_total="${str_linefeed}${str_tab}总计流量： ${str_space}${str_space}${str_space}${str_space}${ip_total}"
+		local time1=$(date +%s)
+		local time1=$(time_for_humans $(expr ${time1} - ${time_up}))
+
+		if [ -z "$title" ]; then
+			title="${name} 断开连接"
+			content_title="${str_splitline}${str_title_start} 设备断开连接${str_title_end}"
+		elif echo "$title" | grep -q "断开连接"; then
+			title="${name} ${title}"
+			content_title=""
+		else
+			title="设备状态变化"
+			content_title="${str_splitline}${str_title_start} 设备断开连接${str_title_end}"
+		fi
+
+		local content_name="${str_linefeed}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${name}"
+		local content_ip="${str_linefeed}${str_tab}客户端IP：${str_space}${str_space}${str_space}${str_space}${ip}"
+		local content_mac="${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}"
+		local content_time="${str_linefeed}${str_tab}在线时间：${str_space}${str_space}${str_space}${str_space}${time1}"
+
+		content="${content}${content_title}${content_name}${content_ip}${content_mac}${content_time}"
+
+		log_change "${disturb_text}设备 ${name} ${ip} 断开连接 "
+	done
+	silent_run update_json_data "del" "devices" "status" "offline"
+	silent_run update_json_data "save"
+}
+
+# 当前设备列表
+current_device() {
+	(echo "$lite_enable" | grep -q "content") || (echo "$lite_enable" | grep -q "device") && return
+	local logrow=$(jq '.devices | map(select(.status == "online")) | length' <<<"$json_data")
+	[ $logrow -eq "0" ] && return
+
+	[ -f "${dir}/usage.db" ] && local ip_total_db="总计流量${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}"
+	local explain="${str_splitline}${str_title_start} 现有在线设备 ${logrow} 台，具体如下${str_title_end}"
+	[ $logrow -eq "0" ] && local explain="${send_content}${str_splitline}${str_title_start} 当前无在线设备${str_title_end}"
+	local header="${str_linefeed}${str_tab}IP 地址${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${ip_total_db}${str_space}${str_space}${str_space}${str_space}在线时间${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}客户端名"
+
+	content="${explain}${header}"
+
+	if [ -z "$defaultSortColumn" ] || [ "$defaultSortColumn" = "ip" ]; then
+		# 按 IP 排序
+		local IPLIST=$(jq -r '.devices[] | select(.status == "online") | .ip' <<<"$json_data" | sort -uV)
+	else
+		# 按在线时间（短到长）
+		local IPLIST=$(jq -r '.devices | sort_by(-(.uptime | tonumber)) | .[] | select(.status == "online") | .ip' <<<"$json_data")
+	fi
+
+	local longest_ip=$(echo "$IPLIST" | awk '{ print length, $0 }' | sort -nr | head -n 1 | cut -d " " -f2-)
+	#local max_length=$(("${#longest_ip}" + 1))
+	local max_length="${#longest_ip}"
+
+	for ip in $IPLIST; do
+		local mac=$(getmac "$ip")
+		local total=$(usage get "$mac")
+		local name=$(getname "$ip" "$mac")
+		local name=$(cut_str "$name" "15")
+		local time_up=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip) | .uptime' <<<"$json_data")
+		local time_online=$(time_for_humans $(($(date +%s) - time_up)))
+		# 如果 IP 的字符长度小于 max_length，用空格补齐，方便对齐
+		if [ "${#ip}" -lt "$max_length" ]; then
+			local n=$(expr "$max_length" - "${#ip}")
+			for i in $(seq 1 $n); do
+				ip="${ip}${str_space}"
+			done
+			unset i n
+		fi
+		if [ -n "$total" ]; then
+			local n=$(expr 11 - ${#total})
+			for i in $(seq 1 $n); do
+				total="${total}${str_space}"
+			done
+			unset i n
+			total="${total}${str_space}|${str_space}"
+		fi
+		content="${content}${str_linefeed}${str_space}${ip}${str_space}|${str_space}${total}${time_online}${str_space}|${str_space}${name}"
+	done
+	[ -f "${dir}/send.lock" ] && echo "$content" >"$output_dir/current_device" && unset content
+}
+
+# 无人值守任务
+unattended() {
+	[ -z "$unattended_enable" ] || [ "$unattended_enable" -ne "1" ] && return
+	[ -n "$unattended_only_on_disturb_time" ] && [ "$unattended_only_on_disturb_time" -eq "1" ] && [ -z "$sheep_starttime" ] && return
+	geterrdevicealiases
+	[ $? -eq "1" ] && return
+
+	if [ -n "$unattended_autoreboot_mode" ]; then
+		local interfaceuptime=$(getinterfaceuptime)
+		if [ -n "$autoreboot_system_uptime" ] && [ $(cat /proc/uptime | awk -F. '{run_hour=$1/3600;printf("%d",run_hour)}') -ge "$autoreboot_system_uptime" ] && [ "$unattended_autoreboot_mode" -eq "1" ]; then
+			log_change "【无人值守任务】重启路由器咯"
+			cat ${logfile} >/usr/share/wechatpush/errlog
+			sleep 2 && reboot && exit
+		elif [ -n "$autoreboot_network_uptime" ] && [ -n "$interfaceuptime" ] && [ $(echo "$interfaceuptime" | awk -F. '{run_hour=$1/3600;printf("%d",run_hour)}') -ge "$autoreboot_network_uptime" ] && [ "$unattended_autoreboot_mode" -eq "2" ]; then
+			log_change "【无人值守任务】重新拨号咯"
+			ifup wan >/dev/null 2>&1
+			sleep 60
+		fi
+	fi
+}
+
+# 设备异常流量检测
+get_client_usage() {
+	[ -z "$client_usage" ] && return
+	[ "$client_usage" -ne "1" ] && return
+	[ -z "$client_usage_max" ] && return
+
+	[ -z "$get_client_usage_time" ] && get_client_usage_time=$(date +%s)
+	(echo $client_usage_max | sed -r 's/.*(.)$/\1/' | grep -q "K\|k") && client_usage_max=$(expr ${client_usage_max%?} \* 1024)
+	(echo $client_usage_max | sed -r 's/.*(.)$/\1/' | grep -q "M\|m") && client_usage_max=$(expr ${client_usage_max%?} \* 1048576)
+	(echo $client_usage_max | sed -r 's/.*(.)$/\1/' | grep -q "G\|g") && client_usage_max=$(expr ${client_usage_max%?} \* 1073741824)
+	[ -z "$client_usage_disturb" ] && client_usage_disturb="0"
+	[ "$client_usage_disturb" -eq "0" ] && local MACLIST=$(jq -r '.devices[] | select(.status == "online") | .mac' <<<"$json_data" | sort -u)
+	[ "$client_usage_disturb" -eq "1" ] && [ -n "$client_usage_whitelist" ] && local MACLIST=$(echo "$client_usage_whitelist")
+	[ -z "$MACLIST" ] && return
+
+	if [ "$(($(date +%s) - $get_client_usage_time))" -ge "60" ]; then
+		>${dir}/client_usage_aliases
+		for mac in $MACLIST; do
+			# 查找在线设备中是否存在这个mac，不存在则退出
+			! jq -e --arg mac "$mac" '.devices[] | select(.mac == $mac and .status == "online")' <<<"$json_data" >/dev/null && continue
+
+			echo "$mac" $(usage get ${mac} bytes) >>${dir}/client_usage_aliases
+			[ -f "${dir}/old_client_usage_aliases" ] && get_client_usage_bytes=$(cat ${dir}/old_client_usage_aliases | grep -i -w $mac | awk '{print $2}' | grep -v "^$" | sort -u | head -n1) || continue
+
+			[ -z "$get_client_usage_bytes" ] && get_client_usage_bytes="0"
+			if [ "$(($(usage get ${mac} bytes) - $get_client_usage_bytes))" -ge "$client_usage_max" ]; then
+				local ip=$(jq -r --arg mac "$mac" '.devices[] | select(.mac == $mac and .status == "online") | .ip' <<<"$json_data")
+				local ip_name=$(getname ${ip} ${mac})
+				local tmp_usage=$(bytes_for_humans $(expr $(usage get ${mac} bytes) - ${get_client_usage_bytes}))
+				local time_up=$(jq -r --arg mac "$mac" '.devices[] | select(.mac == $mac and .status == "online") | .uptime' <<<"$json_data")
+				local ip_total=$(usage get $mac) && [ -n "$ip_total" ] && local ip_total="${str_linefeed}${str_tab}总计流量： ${str_space}${str_space}${str_space}${str_space}${ip_total}"
+				local time1=$(date +%s)
+				local time1=$(time_for_humans $(expr ${time1} - ${time_up}))
+				if [ -z "$title" ]; then
+					title="${ip_name} 流量异常"
+					local content_title="${str_splitline}${str_title_start} 设备流量异常${str_title_end}"
+				elif echo "$title" | grep -q "流量异常"; then
+					title="${ip_name} ${title}"
+				else
+					title="设备状态变化"
+					local content_title="${str_splitline}${str_title_start} 设备流量异常${str_title_end}"
+				fi
+
+				local content_name="${str_linefeed}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${ip_name}"
+				local content_ip="${str_linefeed}${str_tab}客户端IP：${str_space}${str_space}${str_space}${str_space}${ip}"
+				local content_mac="${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}"
+				local content_usage="${str_linefeed}${str_tab}一分钟内流量：${str_space}${str_space}${str_space}${tmp_usage}"
+				local content_time="${str_linefeed}${str_tab}在线时间：${str_space}${str_space}${str_space}${str_space}${time1}"
+
+				content="${content}${content_title}${content_name}${content_ip}${content_mac}${content_usage}${content_time}"
+			fi
+		done
+		cat ${dir}/client_usage_aliases >${dir}/old_client_usage_aliases
+		get_client_usage_time=$(date +%s)
+	fi
+}
+
+# ------------------------------------
+# 自动封禁相关
+#
 # 登录提醒通知
 login_send() {
 	# 初始化黑名单和白名单
@@ -1827,6 +1968,70 @@ set_ip_black() {
 	done <<<"$combined_fw_info_blacklist"
 }
 
+# 监听登录事件（封装为函数，拒绝调试模式下日志刷屏）
+monitor_logins() {
+	if [ -n "$web_logged" ] || [ -n "$ssh_logged" ] || [ -n "$web_login_failed" ] || [ -n "$ssh_login_failed" ]; then
+		# 声明关联数组
+		declare -A web_login_counts
+		declare -A ssh_login_counts
+		declare -A web_failed_counts
+		declare -A ssh_failed_counts
+
+		# 子进程的信号处理函数
+		cleanup_child() {
+			echo "捕获到信号，正在清理子进程..."
+			kill $child_pid >/dev/null 2>&1
+			wait $child_pid >/dev/null 2>&1
+			rm -f "${dir}/child_pid" >/dev/null 2>&1
+			echo "子进程已清理"
+			exit 0
+		}
+
+		# 设置信号处理
+		trap cleanup_child SIGINT SIGTERM
+
+		(
+			# 监听系统日志，-f 表示跟随实时日志，-p 表示日志级别为 notice
+			logread -f -p notice | while IFS= read -r line; do
+				[ -n "$web_logged" ] && {
+					web_login_ip=$(echo "$line" | grep -i "accepted login" | awk '{print $NF}')
+					[ -n "$web_login_ip" ] && process_login "$web_login_ip" $(echo "$line" | awk '{print $4}') web_login_counts
+				}
+
+				[ -n "$ssh_logged" ] && {
+					ssh_login_ip=$(echo "$line" | grep -i "Password auth succeeded\|Pubkey auth succeeded" | awk '{print $NF}' | sed -nr 's#^(.*):.[0-9]{1,5}#\1#gp' | sed -e 's/%.*//')
+					[ -n "$ssh_login_ip" ] && process_login "$ssh_login_ip" $(echo "$line" | awk '{print $4}') ssh_login_counts
+				}
+
+				[ -n "$web_login_failed" ] && {
+					web_failed_ip=$(echo "$line" | grep -i "failed login" | awk '{print $NF}')
+					[ -n "$web_failed_ip" ] && process_login "$web_failed_ip" $(echo "$line" | awk '{print $4}') web_failed_counts
+				}
+
+				[ -n "$ssh_login_failed" ] && {
+					# 匹配特定的 SSH 登录失败情况并提取 IP 地址和时间
+					ssh_failed_ip=$(echo "$line" | grep -iE "Bad password attempt|Login attempt for nonexistent user|Max auth tries reached" | awk '{print $NF}' | sed -nr 's#^(.*):[0-9]{1,5}#\1#gp' | sed -e 's/%.*//')
+
+					# 如果未能提取到 IP，从日志标识符提取失败用户的 ID，并再次提取 IP
+					if [ -z "$ssh_failed_ip" ]; then
+						ssh_failed_num=$(echo "$line" | sed -n 's/.*authpriv\.warn dropbear\[\([0-9]\+\)\]: Login attempt for nonexistent user/\1/p')
+						[ -n "$ssh_failed_num" ] && ssh_failed_ip=$(logread notice | grep "authpriv\.info dropbear\[${ssh_failed_num}\].*Child connection from" | awk '{print $NF}' | sed -nr 's#^(.*):[0-9]{1,5}#\1#gp' | sed -e 's/%.*//' | sort -u)
+					fi
+
+					# 如果成功提取到 IP 地址，调用 process_login 处理
+					[ -n "$ssh_failed_ip" ] && process_login "$ssh_failed_ip" $(echo "$line" | awk '{print $4}') ssh_failed_counts
+				}
+
+			done
+		) &
+		# 分离子shell，避免影响 wait
+		child_pid=$!
+		sleep 1
+		disown "$child_pid"
+		echo $child_pid >"${dir}/child_pid"
+	fi
+}
+
 # 处理登录事件，传递参数 $1：ip $2：日志时间(从日志中读取而不是使用当前时间，避免秒对应不上) $3：数组名
 process_login() {
 	local login_ip=$1
@@ -1861,6 +2066,9 @@ process_login() {
 	>"${dir}/send_enable.lock" && login_send && deltemp
 }
 
+# ------------------------------------
+# 信息推送相关
+#
 # 发送定时数据
 send() {
 	log_change "【定时数据】创建定时任务"
@@ -1995,178 +2203,5 @@ diy_send() {
 	fi
 }
 
-# 限制并发进程
-dir="/tmp/wechatpush" && mkdir -p ${dir}
-get_config "thread_num"
-[ -z "$thread_num" ] || [ "$thread_num" -eq "0" ] && thread_num=5
-[ -e "${dir}/fd1" ] || mkfifo "${dir}/fd1"
-exec 5<>"${dir}/fd1"
-rm -f "${dir}/fd1" >/dev/null 2>&1
-for i in $(seq 1 $thread_num); do
-	echo >&5
-done
-unset i
-
-# 定义锁文件
-lock_file="${dir}/wechatpush.lock"
-touch "$lock_file"
-
-# 设置信号处理
-trap cleanup SIGINT SIGTERM EXIT
-
-# 初始化
-if [ "$1" ]; then
-	[ $1 == "soc" ] && get_config "soc_code" "server_host" "server_port"
-	[ $1 == "soc" ] && soc_temp && exit $?
-	[ $1 == "getip" ] && {
-		get_config "get_ipv4_mode" "ipv4_interface" "get_ipv6_mode" "ipv6_interface"
-		ipv4_urllist=$(cat /usr/share/wechatpush/api/ipv4.list) 2>/dev/null
-		ipv6_urllist=$(cat /usr/share/wechatpush/api/ipv6.list) 2>/dev/null
-		output_dir="${dir}/json_output" && mkdir -p "$output_dir"
-		ip_changes getip && exit $?
-	}
-	silent_run read_config
-	[ $1 == "send" ] && send && exit $?
-	[ $1 == "test" ] && send test && exit $?
-	[ $1 == "t1" ] && thread_num=1 || exit
-else
-	silent_run read_config
-fi
-
-# 监听登录事件（封装为函数，拒绝调试模式下日志刷屏）
-monitor_logins() {
-	if [ -n "$web_logged" ] || [ -n "$ssh_logged" ] || [ -n "$web_login_failed" ] || [ -n "$ssh_login_failed" ]; then
-		# 声明关联数组
-		declare -A web_login_counts
-		declare -A ssh_login_counts
-		declare -A web_failed_counts
-		declare -A ssh_failed_counts
-
-		# 子进程的信号处理函数
-		cleanup_child() {
-			echo "捕获到信号，正在清理子进程..."
-			kill $child_pid >/dev/null 2>&1
-			wait $child_pid >/dev/null 2>&1
-			rm -f "${dir}/child_pid" >/dev/null 2>&1
-			echo "子进程已清理"
-			exit 0
-		}
-
-		# 设置信号处理
-		trap cleanup_child SIGINT SIGTERM
-
-		(
-			# 监听系统日志，-f 表示跟随实时日志，-p 表示日志级别为 notice
-			logread -f -p notice | while IFS= read -r line; do
-				[ -n "$web_logged" ] && {
-					web_login_ip=$(echo "$line" | grep -i "accepted login" | awk '{print $NF}')
-					[ -n "$web_login_ip" ] && process_login "$web_login_ip" $(echo "$line" | awk '{print $4}') web_login_counts
-				}
-
-				[ -n "$ssh_logged" ] && {
-					ssh_login_ip=$(echo "$line" | grep -i "Password auth succeeded\|Pubkey auth succeeded" | awk '{print $NF}' | sed -nr 's#^(.*):.[0-9]{1,5}#\1#gp' | sed -e 's/%.*//')
-					[ -n "$ssh_login_ip" ] && process_login "$ssh_login_ip" $(echo "$line" | awk '{print $4}') ssh_login_counts
-				}
-
-				[ -n "$web_login_failed" ] && {
-					web_failed_ip=$(echo "$line" | grep -i "failed login" | awk '{print $NF}')
-					[ -n "$web_failed_ip" ] && process_login "$web_failed_ip" $(echo "$line" | awk '{print $4}') web_failed_counts
-				}
-
-				[ -n "$ssh_login_failed" ] && {
-					# 匹配特定的 SSH 登录失败情况并提取 IP 地址和时间
-					ssh_failed_ip=$(echo "$line" | grep -iE "Bad password attempt|Login attempt for nonexistent user|Max auth tries reached" | awk '{print $NF}' | sed -nr 's#^(.*):[0-9]{1,5}#\1#gp' | sed -e 's/%.*//')
-
-					# 如果未能提取到 IP，从日志标识符提取失败用户的 ID，并再次提取 IP
-					if [ -z "$ssh_failed_ip" ]; then
-						ssh_failed_num=$(echo "$line" | sed -n 's/.*authpriv\.warn dropbear\[\([0-9]\+\)\]: Login attempt for nonexistent user/\1/p')
-						[ -n "$ssh_failed_num" ] && ssh_failed_ip=$(logread notice | grep "authpriv\.info dropbear\[${ssh_failed_num}\].*Child connection from" | awk '{print $NF}' | sed -nr 's#^(.*):[0-9]{1,5}#\1#gp' | sed -e 's/%.*//' | sort -u)
-					fi
-
-					# 如果成功提取到 IP 地址，调用 process_login 处理
-					[ -n "$ssh_failed_ip" ] && process_login "$ssh_failed_ip" $(echo "$line" | awk '{print $4}') ssh_failed_counts
-				}
-
-			done
-		) &
-		# 分离子shell，避免影响 wait
-		child_pid=$!
-		sleep 1
-		disown "$child_pid"
-		echo $child_pid >"${dir}/child_pid"
-	fi
-}
-
-# 载入在线设备
-init
-[ $? -eq 1 ] && log_change "【！！！】读取设置出错，请检查设置项 " && exit
-log_change "【初始化】载入在线设备..."
-silent_run monitor_logins
->"${dir}/send_enable.lock" && first && deltemp
-log_change "【初始化】初始化完成"
-
-# 循环
-while [ "$enable" -eq "1" ]; do
-	deltemp
-	usage update
-	disturb
-	disturb=$?
-
-	# 网络状态与 IP 变动
-	if [ "$get_ipv4_mode" -ne "0" ] || [ "$get_ipv6_mode" -ne "0" ]; then
-		check_connect
-		ip_changes
-	fi
-
-	# 设备列表
-	if [ ! -f "${dir}/send_enable.lock" ]; then
-		[ -n "$title" ] && echo "$title" >"${dir}/title"
-		[ -n "$content" ] && echo "$content" >"${dir}/content"
-		first
-		[ -f "${dir}/title" ] && title=$(cat "${dir}/title") && rm -f "${dir}/title" >/dev/null 2>&1
-		[ -f "${dir}/content" ] && content=$(cat "${dir}/content") && rm -f "${dir}/content" >/dev/null 2>&1
-	fi
-
-	# 离线二次验证区推送
-	[ ! -f "${dir}/send_enable.lock" ] && down_send
-
-	# 当前设备列表
-	[ -n "$content" ] && [ ! -f "${dir}/send_enable.lock" ] && current_device
-
-	# 无人值守任务
-	[ ! -f "${dir}/send_enable.lock" ] && unattended
-
-	# CPU 检测
-	[ ! -f "${dir}/send_enable.lock" ] && cpu_load
-
-	# 硬盘检测
-	#[ ! -f "${dir}/send_enable.lock" ] && get_disk
-
-	# 异常流量检测
-	[ ! -f "${dir}/send_enable.lock" ] && get_client_usage
-
-	# 登录提醒通知
-	#[ ! -f "${dir}/send_enable.lock" ] && login_send
-	# 因修改为实时推送，白名单设备并不会再更新时间，暂时性修复
-	# 修改为实时推送后，防火墙列表读取和设置需单独列出，移除黑名单无法实时，待改善
-	set_ip_black
-
-	tmp_ip_list=$(echo "$login_ip_white_list" | grep -v "^$" | sort -u)
-	while IFS= read -r tmp_ip; do
-		[ -n "$tmp_ip" ] && add_ip_white "$tmp_ip" "0"
-	done <<<"$tmp_ip_list"
-
-	# 推送
-	if [ ! -f "${dir}/send_enable.lock" ] && [ -n "$title" ] && [ -n "$content" ]; then
-		[ -n "$device_name" ] && title="【$device_name】$title"
-		(echo "$lite_enable" | grep -q "content") && content="$title"
-		[ "$disturb" -eq 0 ] && diy_send "${title}" "${content}" "${jsonpath}" >/dev/null 2>&1
-	fi
-
-	# 等待定时任务推送完成
-	while [ -f "${dir}/send_enable.lock" ]; do
-		sleep $sleeptime
-	done
-
-	sleep $sleeptime
-done
+# ------------------------------------
+main "$@"
