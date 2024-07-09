@@ -247,7 +247,6 @@ main() {
 	while [ "$enable" -eq "1" ]; do
 		deltemp
 		usage update
-		disturb=$(disturb)
 
 		# 网络状态与 IP 变动
 		if [ "$get_ipv4_mode" -ne "0" ] || [ "$get_ipv6_mode" -ne "0" ]; then
@@ -297,7 +296,9 @@ main() {
 		if [ ! -f "${dir}/send_enable.lock" ] && [ -n "$title" ] && [ -n "$content" ]; then
 			[ -n "$device_name" ] && title="【$device_name】$title"
 			(echo "$lite_enable" | grep -q "content") && content="$title"
-			[ "$disturb" -eq 0 ] && diy_send "${title}" "${content}" "${jsonpath}" >/dev/null 2>&1
+			disturb
+			disturb_RETVAL=$?
+			[ "$disturb_RETVAL" -eq 0 ] && diy_send "${title}" "${content}" "${jsonpath}" >/dev/null 2>&1
 		fi
 
 		# 等待定时任务推送完成
@@ -1796,11 +1797,12 @@ login_send() {
 	done
 
 	# 发送通知
-	disturb=$(disturb)
+	disturb
+	disturb_RETVAL=$?
 	[ -z "$login_title" ] && return
 	[ -n "$device_name" ] && login_title="【$device_name】$login_title"
 	(echo "$lite_enable" | grep -q "login_content") && login_content="$login_title"
-	[ "$disturb" -eq 0 ] && [ -n "$login_title" ] && diy_send "${login_title}" "${login_content}" "${jsonpath}" >/dev/null 2>&1
+	[ "$disturb_RETVAL" -eq 0 ] && [ -n "$login_title" ] && diy_send "${login_title}" "${login_content}" "${jsonpath}" >/dev/null 2>&1
 }
 
 # 添加白名单，懒得写删除项和信息显示了，纯粹就是懒
@@ -2063,7 +2065,8 @@ process_login() {
 send() {
 	log_change "【定时数据】创建定时任务"
 	touch "${dir}/send.lock"
-	local send_disturb=$(disturb)
+	disturb
+	disturb_RETVAL=$?
 	get_config "send_title" "send_notification"
 
 	[ -z "$1" ] && cpuload=$(getcpu)
@@ -2153,7 +2156,7 @@ send() {
 
 	[ -n "$device_name" ] && send_title="【$device_name】${send_title}"
 	[ -z "$send_content" ] && send_content="${str_splitline}${str_title_start} 我遇到了一个难题${str_title_end}${str_linefeed}${str_tab}定时发送选项错误，你没有选择需要发送的项目，该怎 么办呢${str_splitline}"
-	[ "$send_disturb" -eq "0" ] && diy_send "${send_title}" "${send_content}" "${jsonpath}" "$1" >/dev/null 2>&1
+	[ "$disturb_RETVAL" -eq "0" ] && diy_send "${send_title}" "${send_content}" "${jsonpath}" "$1" >/dev/null 2>&1
 	RETVAL=$?
 	[ $RETVAL -eq 1 ] && [ "$send_disturb" -eq "0" ] && log_change "【！！！】定时推送失败，请检查网络或设置信息" || log_change "${disturb_text}定时推送任务完成"
 	deltemp
