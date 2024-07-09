@@ -1449,7 +1449,7 @@ get_disk() {
 			local disk_time=$(jq -r .power_on_time.hours ${file_path})
 			[[ -n $disk_time && $disk_time != null ]] && printf "${str_linefeed}${str_tab}通电时间：${disk_time}h" >>"$output_dir/get_disk"
 			# 空间使用
-			local disk_use=$(eval ${tmp_command} lsblk -o NAME,FSUSE% "/dev/${tmp_name}" 2>/dev/null | awk '$2 != "" { gsub(/^[^a-zA-Z0-9]+/, "", $1); printf "%s: %s\n", $1, $2 }')
+			local disk_use=$(eval ${tmp_command} lsblk -no NAME,FSUSE% "/dev/${tmp_name}" 2>/dev/null | awk '$2 != "" { gsub(/^[^a-zA-Z0-9]+/, "", $1); printf "%s: %s\n", $1, $2 }')
 			[ -z "$disk_use" ] && disk_use=$(eval ${tmp_command} df -h 2>/dev/null | awk -v part_name="${tmp_name}" '$1 ~ "^/dev/"part_name && NF > 1 {sub("/dev/", "", $1); if (!seen[$1]) { printf "%s: %s  ", $1, $5; seen[$1] = 1; }} END {print ""}')
 			[ -z "$disk_use" ] && [ -n "$tmp_command" ] && {
 				local uuid=$($tmp_command ls -l /dev/disk/by-uuid/ 2>/dev/null | grep "$disk" | awk '{print $9}')
