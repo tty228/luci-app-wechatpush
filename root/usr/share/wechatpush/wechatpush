@@ -247,8 +247,7 @@ main() {
 	while [ "$enable" -eq "1" ]; do
 		deltemp
 		usage update
-		disturb
-		disturb=$?
+		disturb=$(disturb)
 
 		# 网络状态与 IP 变动
 		if [ "$get_ipv4_mode" -ne "0" ] || [ "$get_ipv6_mode" -ne "0" ]; then
@@ -343,7 +342,6 @@ update_json_data() {
 		[ -n "$json_data" ] && [ "$changed" -eq 0 ] && json_data=$(cat "$devices_json")
 		;;
 	"save")
-		#[ "$changed" -ne 0 ] && echo "$json_data" >"$devices_json"
 		# 合并 json
 		[ "$changed" -ne 0 ] && {
 			local old_json_data=$(cat "$devices_json")
@@ -520,7 +518,6 @@ log_change() {
 }
 
 # 重启网络服务
-# SB IDE 总提示语法有问题，重写了一下，无实际改变
 network_restart() {
 	echo '#!/bin/sh' >"${dir}/network_restart"
 	echo '/etc/init.d/network restart >/dev/null 2>&1 &' >>"${dir}/network_restart"
@@ -560,7 +557,7 @@ deltemp() {
 	unset title content gateway_iplist
 	rm -f "${dir}/title" "${dir}/content" "${dir}/send_enable.lock" "${dir}/send.lock" "${tempjsonpath}" "${dir}/cookies.txt" >/dev/null 2>&1
 	[ -f "$logfile" ] && local logrow=$(grep -c "" "$logfile") || local logrow="0"
-	[ "$logrow" -gt 500 ] && sed -i '1,100d' "$logfile" && log_change "【清理】日志超出上限，删除前 100 条"
+	[ "$logrow" -gt 500 ] && sed -i '1,200d' "$logfile" && log_change "【清理】日志超出上限，删除前 200 条"
 }
 
 # ------------------------------------
@@ -658,8 +655,7 @@ getmac() {
 
 	# 某些路由器中继模式，会进行 MAC 克隆，如果是重复值，全都重置为 unknown
 	local mac_count=$(jq -r --arg mac "$mac" '.devices[] | select(.mac == $mac) | .mac' <<<"$json_data" | wc -l)
-	#[ "$mac_count" -gt 1 ] && silent_run LockFile lock && update_json_data "update" "devices" "mac" "$mac" "mac" "unknown" && update_json_data "save"
-	[ "$mac_count" -gt 1 ] && silent_run update_json_data "update" "devices" "mac" "$mac" "mac" "unknown" # getmac 函数都被包含在函数内，应该不会在这个时候有 IO 操作，待观察
+	[ "$mac_count" -gt 1 ] && silent_run update_json_data "update" "devices" "mac" "$mac" "mac" "unknown"
 
 	# 已保存的 MAC
 	mac=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip) | .mac' <<<"$json_data")
@@ -761,7 +757,7 @@ get_ip_attribution() {
 	get_attribution() {
 		local ip_attribution_url=$(echo "$ip_attribution_urls" | sed -n "${1}p" | sed -e 's/\r//g')
 		local login_ip_attribution=$(eval curl --connect-timeout 2 -m 2 -k -s "$ip_attribution_url" 2>/dev/null)
-		#logfile=logfile="${dir}/wechatpush.log"
+		#logfile=logfile="${dir}/wechatpush.log" # 此处保留排查时使用
 		#[ -z "$login_ip_attribution" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】归属地获取超时，当前使用的 API 为 $ip_attribution_url" >> ${logfile}
 		echo "$login_ip_attribution"
 	}
@@ -791,7 +787,7 @@ nmblookup_timeout() {
 	} &
 	local nmblookup_pid=$!
 
-	# 等待最多5秒，检查结果是否已经获取
+	# 等待最多 $max_wait_time 秒
 	local wait_time=0
 	while [ $wait_time -lt $max_wait_time ]; do
 		# 检查子进程是否已完成
@@ -1034,7 +1030,7 @@ ip_changes() {
 			"IPv4": "",
 			"IPv6": ""
 		}'
-		silent_run update_json_data "add" "address" "new_address"
+		silent_run update_json_data "add" "address" "new_address" # 偷懒，update 未写空键创建，反正就这里会创建新的键
 	fi
 	if [ "$get_ipv4_mode" -ne "0" ] && [ -n "$IPv4" ] && [ "$IPv4" != "$last_IPv4" ]; then
 		log_change "${disturb_text}当前 IP：${IPv4} from：${IPv4_URL}"
@@ -1256,7 +1252,7 @@ get_disk() {
 		fi
 		local file_path="${dir}/disk_info/${tmp_name}${disk_type}"
 
-		# 如果不能获取值，使用分区名重试（因为不清楚是 OpenWrt 的原因还是 smartctl 版本的原因，使用出错重试的方式）
+		# 如果不能获取值，使用分区名重试（因为不清楚是 OpenWrt 的原因还是 smartctl 版本的原因，使用出错重试的方式） // 2024/07/10 - 未重新验证
 		eval ${tmp_command} smartctl -i -n standby "/dev/${tmp_name}" 2>/dev/null | grep -qE "$error_pattern" && {
 			local tmp_name=$(eval ${tmp_command} df -h | awk "/^\\/dev\\/${tmp_name}/ {print \$1}" | awk -F '/' '{print $NF}' | head -n1)
 			[ -z "$tmp_name" ] && continue
@@ -1345,7 +1341,6 @@ get_disk() {
 # 扫描范围内 IP
 scanlocalip() {
 	[ -z "$scan_ip_range" ] && return
-	[ -f "${dir}/send.lock" ] && return # 定时推送时不扫描
 	[ -z "$last_scan_ip_time" ] && last_scan_ip_time=0
 
 	local current_time=$(date +%s)
@@ -1403,9 +1398,10 @@ getgateway() {
 # 在线设备列表
 first() {
 	# 注：此处为后台任务，无法操作父进程变量，故每个线程结束后都必须保存变量到文件
-	local IPLIST=$(jq -r '.devices[] | select(.status == "online" or .status == "unknown") | .ip' <<<"$json_data" | sort -u)
-	getgateway
-	silent_run scanlocalip
+	# 耗时太长，定时推送不再检查
+	[ -f "${dir}/send.lock" ] && local IPLIST=$(jq -r '.devices[] | select(.status == "online" or .status == "unknown") | .ip' <<<"$json_data" | sort -u)
+	[ -f "${dir}/send.lock" ] && getgateway
+	[ -f "${dir}/send.lock" ] && silent_run scanlocalip
 	for ip in $IPLIST; do
 		[ -n "$passive_mode" ] && [ "$passive_mode" -eq "1" ] && break
 		# 获取一个令牌
@@ -1440,8 +1436,8 @@ first() {
 up() {
 	local ip="$1"
 	[ -z "$ip" ] && return 1
-	# 如果当前 IP 为在线，退出
-	jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "online") | .ip' <<<"$json_data" >/dev/null && return
+
+	jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "online") | .ip' <<<"$json_data" >/dev/null && return # 如果当前 IP 为在线，退出
 	local mac=$(getmac "$ip")
 	getping "$ip" "$mac" "$up_timeout" "1"
 	local ping_online=$?
@@ -1454,16 +1450,14 @@ up() {
 		# 检查 http_access 参数时间过长，考虑只在第一次连通时检查
 		#jq -e --arg ip "$ip" 'any(.devices[]; .ip == $ip and (.http_access | length == 0)) or (.devices | map(select(.ip == $ip)) | length == 0)' "$devices_json" >/dev/null && local http_access=$(check_http_access "$ip")
 
-		# 如果 json 文件中能找到相同的 MAC，恢复数据
+		# 如果是待二次离线检测 unknown 设备，json 文件中依然有信息，修改在线状态为 online
 		if [ "$mac" != "unknown" ] && jq -e --arg ip "$ip" --arg mac "$mac" '.devices[] | select(.ip == $ip and .mac == $mac) | .mac' <<<"$json_data" >/dev/null; then
-			# 如果是待检测离线设备，json 文件中依然有信息，修改在线状态为 online
 			silent_run update_json_data "update" "devices" "ip" "$ip" "status" "online"
 			silent_run update_json_data "save"
 		# up
 		else
-			usage down ${ip}
-			# 删除当前 IP 对应的键值，重新写入
-			silent_run update_json_data "del" "devices" "ip" "$ip"
+			usage down ${ip} # 剔除（重置）流量数据
+			silent_run update_json_data "del" "devices" "ip" "$ip" # 删除当前 IP 对应的键值，重新写入
 			local name=$(getname "$ip" "$mac")
 			local interface=$(getinterface "ip" "$mac")
 			local http_access=$(check_http_access "$ip")
@@ -1482,9 +1476,8 @@ up() {
 
 			blackwhitelist ${mac}
 			local ip_blackwhite=$?
-			#[ -f "${dir}/send_enable.lock" ] || [ -z "$notification_online" ] || [ -z "$ip_blackwhite" ] && silent_run LockFile unlock && return
-			#[ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne "0" ] && silent_run LockFile unlock && return
 
+			# 文件锁解开应写在函数最后，因为这里同样使用了文件操作，但这里偷懒使用了 return，待修改
 			[ -f "${dir}/send_enable.lock" ] || [ -z "$notification_online" ] || [ -z "$ip_blackwhite" ] && return
 			[ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne "0" ] && return
 
@@ -1616,7 +1609,7 @@ current_device() {
 	fi
 
 	local longest_ip=$(echo "$IPLIST" | awk '{ print length, $0 }' | sort -nr | head -n 1 | cut -d " " -f2-)
-	#local max_length=$(("${#longest_ip}" + 1))
+	#local max_length=$(("${#longest_ip}" + 1))  # +1
 	local max_length="${#longest_ip}"
 
 	for ip in $IPLIST; do
@@ -1743,7 +1736,7 @@ login_send() {
 	set_ip_black
 
 	# 获取系统日志
-	sys_log=$(logread notice)
+	sys_log=$(logread notice) # 此处在调试模式下会造成日志刷屏，待修改
 
 	local login_title
 	local login_content
@@ -1803,8 +1796,7 @@ login_send() {
 	done
 
 	# 发送通知
-	disturb
-	disturb=$?
+	disturb=$(disturb)
 	[ -z "$login_title" ] && return
 	[ -n "$device_name" ] && login_title="【$device_name】$login_title"
 	(echo "$lite_enable" | grep -q "login_content") && login_content="$login_title"
@@ -1947,7 +1939,7 @@ set_ip_black() {
 	# 检查换行，避免出错
 	[ $(tail -n1 "${ip_blacklist_path}" | wc -l) -eq "0" ] && echo -e >>${ip_blacklist_path}
 
-	# 从 ip_blacklist 文件逐行添加黑名单，add_ip_black() 处验证是否重复
+	# 从 ip_blacklist 文件逐行添加黑名单，add_ip_black() 处验证是否重复，此处不在验证
 	for ip_black in $(cat ${ip_blacklist_path} | awk '{print $1}'); do
 		add_ip_black ${ip_black}
 	done
@@ -1979,11 +1971,9 @@ monitor_logins() {
 
 		# 子进程的信号处理函数
 		cleanup_child() {
-			echo "捕获到信号，正在清理子进程..."
 			kill $child_pid >/dev/null 2>&1
 			wait $child_pid >/dev/null 2>&1
 			rm -f "${dir}/child_pid" >/dev/null 2>&1
-			echo "子进程已清理"
 			exit 0
 		}
 
@@ -2073,8 +2063,7 @@ process_login() {
 send() {
 	log_change "【定时数据】创建定时任务"
 	touch "${dir}/send.lock"
-	disturb
-	local send_disturb=$?
+	local send_disturb=$(disturb)
 	get_config "send_title" "send_notification"
 
 	[ -z "$1" ] && cpuload=$(getcpu)
@@ -2108,8 +2097,7 @@ send() {
 	[ -n "$1" ] && send_title="发送测试：" && send_content="${str_splitline}${str_title_start}内容1${str_title_end}${str_linefeed}${str_tab}设备1${str_linefeed}${str_tab}设备2${str_splitline}${str_title_start}内容2${str_title_end}${str_linefeed}${str_tab}设备3${str_linefeed}${str_tab}设备4"
 
 	wait_and_cat
-	# 需要等待 first & 完成
-	[ -z "$1" ] && (echo "$send_notification" | grep -q "client_list") && current_device &
+	[ -z "$1" ] && (echo "$send_notification" | grep -q "client_list") && current_device & # 设备列表需等待 first & 完成
 
 	if [ -z "$1" ] && [ -n "$systeminfo_enable" ]; then
 		[[ $Qwai -eq 200 || $Qwai -eq 301 || $Qwai -eq 302 ]] && Qwai_status="已连通！" || Qwai_status="已断开！"
