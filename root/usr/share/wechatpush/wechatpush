@@ -1541,7 +1541,6 @@ up() {
 			blackwhitelist ${mac}
 			local ip_blackwhite=$?
 
-			# 文件锁解开应写在函数最后，因为这里同样使用了文件操作，但这里偷懒使用了 return，待修改
 			[ -f "${dir}/send_enable.lock" ] || [ -z "$notification_online" ] || [ -z "$ip_blackwhite" ] && return
 			[ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne "0" ] && return
 
@@ -1566,9 +1565,11 @@ up() {
 			content="${str_splitline}${content_title}${content_name}${content_ip}${content_mac}${content_interface}"
 
 			log_change "${disturb_text}新设备 ${name} ${ip} 连接了"
-			#[ -n "$up_down_push_blacklist" ] && local title="你偷偷关注的设备上线了"
+
+			silent_run LockFile lock
 			[ -n "$title" ] && echo "$title" >"${dir}/title"
 			[ -n "$content" ] && echo -n "$content" >>"${dir}/content"
+			silent_run LockFile unlock
 		fi
 	fi
 }
@@ -1800,7 +1801,7 @@ login_send() {
 	set_ip_black
 
 	# 获取系统日志
-	sys_log=$(logread notice) # 此处在调试模式下会造成日志刷屏，待修改
+	sys_log=$(logread notice)
 
 	local login_title
 	local login_content
