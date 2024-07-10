@@ -128,11 +128,15 @@ init() {
 	[ -n "$notification_load" ] && [ -n "$cpu_load_threshold" ] && local cpu_fuzai=$(cat /proc/loadavg | awk '{print $1}') 2>/dev/null || local cpu_fuzai="null"
 	[ -z "$cpu_fuzai" ] && log_change "【！！！】无法读取设备负载，请检查命令"
 
+	if ! jq empty "$devices_json" >/dev/null 2>&1 || ! jq -e 'has("address") and has("devices") and has("disks")' "$devices_json" >/dev/null 2>&1; then
+		[ -f "$devices_json" ] && log_change "【！！！】设备列表文件格式错误，需重新初始化，原文件已保存至 ${devices_json}.err" && mv "$devices_json" "${devices_json}.err"
+	fi
+
 	# 文件下载
 	/usr/libexec/wechatpush-call "down_oui"
 
 	# 文件清理
-	rm -f ${dir}/fd1 ${dir}/sheep_usage ${dir}/old_sheep_usage ${dir}/client_usage_aliases ${dir}/old_client_usage_aliases /usr/share/wechatpush/errlog >/dev/null 2>&1
+	rm -f ${dir}/sheep_usage ${dir}/old_sheep_usage ${dir}/client_usage_aliases ${dir}/old_client_usage_aliases /usr/share/wechatpush/errlog >/dev/null 2>&1
 	LockFile unlock
 
 	# 防火墙初始化
@@ -201,10 +205,15 @@ main() {
 	dir="/tmp/wechatpush" && mkdir -p ${dir}
 	get_config "thread_num"
 	[ -z "$thread_num" ] || [ "$thread_num" -eq "0" ] && thread_num=5
-	[ -e "${dir}/fd1" ] || mkfifo "${dir}/fd1"
-	exec 5<>"${dir}/fd1"
-	rm -f "${dir}/fd1" >/dev/null 2>&1
-	for i in $(seq 1 $thread_num); do
+	[ "$1" ] && [ $1 == "t1" ] && thread_num=1
+	max_thread_num="$thread_num"
+
+	FIFO_PATH="${dir}/fifo.$$"
+	mkfifo "$FIFO_PATH"
+	exec 5<>"$FIFO_PATH"
+	rm "$FIFO_PATH" >/dev/null 2>&1
+
+	for i in $(seq 1 "$max_thread_num"); do
 		echo >&5
 	done
 	unset i
@@ -230,7 +239,6 @@ main() {
 		silent_run read_config
 		[ $1 == "send" ] && send && exit $?
 		[ $1 == "test" ] && send test && exit $?
-		[ $1 == "t1" ] && thread_num=1 || exit
 	else
 		silent_run read_config
 	fi
@@ -334,33 +342,74 @@ update_json_data() {
 
 	case $action in
 	"read")
-		if ! jq empty "$devices_json" >/dev/null 2>&1 || ! jq -e 'has("address") and has("devices") and has("disks")' "$devices_json" >/dev/null 2>&1; then
-			[ -f "$devices_json" ] && log_change "【！！！】设备列表文件格式错误，需重新初始化，原文件已保存至 ${devices_json}.err" && mv "$devices_json" "${devices_json}.err"
-		fi
-		# 如果设备列表文件为空，初始化
-		[ ! -s "$devices_json" ] && echo '{"address": [], "devices": [], "disks": []}' >"$devices_json"
-		[ -z "$json_data" ] && json_data=$(cat "$devices_json")
-		[ -n "$json_data" ] && [ "$changed" -eq 0 ] && json_data=$(cat "$devices_json")
+		[ -z "$json_data" ] && [ -s "$devices_json" ] && json_data=$(cat "$devices_json") && return
+		[ -z "$json_data" ] && [ ! -s "$devices_json" ] && json_data='{"address": [], "devices": [], "disks": []}' && return
+		[ -n "$json_data" ] && [ "$changed" -eq 0 ] && json_data=$(cat "$devices_json") && return
 		;;
 	"save")
-		# 合并 json
 		[ "$changed" -ne 0 ] && {
-			local old_json_data=$(cat "$devices_json")
-			local new_json_data=$(jq -n --argjson new_json_data "$json_data" --argjson old_json_data "$old_json_data" '
-				{
-					address: $new_json_data.address,
-					devices: ($new_json_data.devices + $old_json_data.devices | unique_by(.ip)),
-					disks: $new_json_data.disks
-				}
-			')
-			[ $? -eq 0 ] && {
+			if [ -z "$field" ]; then
+				local new_json_data="$json_data"
+			elif [ $# -eq 0 ]; then
+				local old_json_data=$(cat "$devices_json")
+				local new_json_data=$(jq --arg field "$field" --argjson new_json_data "$json_data" --argjson old_json_data "$old_json_data" '
+				if $field == "address" then
+						.address = $new_json_data.address |
+						.devices = $old_json_data.devices |
+						.disks = $old_json_data.disks
+					elif $field == "devices" then
+						.address = $old_json_data.address |
+						.devices = $new_json_data.devices |
+						.disks = $old_json_data.disks
+					elif $field == "disks" then
+						.address = $old_json_data.address |
+						.devices = $old_json_data.devices |
+						.disks = $new_json_data.disks
+					else
+						$new_json_data.[]
+					end
+				' <<<"{}")
+			elif [ $# -eq 2 ]; then
+				local key_name=$1
+				local key_value=$2
+				local old_json_data=$(cat "$devices_json")
+				local new_json_data=$(jq --arg field "$field" --arg key_name "$key_name" --arg key_value "$key_value" --argjson new_json_data "$json_data" --argjson old_json_data "$old_json_data" '
+					if $field == "devices" then
+						# address 数组保持不变
+						.address = $old_json_data.address |
+						.devices = (
+							# 在 old_json_data 中不存在 key_value 的情况下，添加 new_json_data 中的对应设备
+							# 将新的键值合并到 json 中，因为是合并，不会删除空值
+							(($new_json_data.devices | map(select(.[$key_name] == $key_value))) + $old_json_data.devices | unique_by(.[$key_name]))
+							#|
+							# 如果要删除 IP，实际上脚本中用不到
+							#map(
+							#	# 存在数值，以 new_json_data 的数值覆盖
+							#	if .[$key_name] == $key_value then
+							#		($new_json_data.devices[] | select(.[$key_name] == $key_value))
+							#	else
+							#		.
+							#	end
+							#)
+						) |
+						# disks 数组保持不变
+    					.disks = $old_json_data.disks
+					else
+						$new_json_data.[]
+					end
+				' <<<"{}")
+			fi
+
+			if [ $? -eq 0 ]; then
 				silent_run LockFile lock
 				json_data="$new_json_data"
 				echo "$json_data" >"$devices_json"
 				silent_run LockFile unlock
-			} || return 1
+			else
+				return 1
+			fi
+			changed=0
 		}
-		changed=0
 		;;
 	"add")
 		local var_name=$1
@@ -388,12 +437,13 @@ update_json_data() {
 		local current_value=$(jq -r --arg search_key "$search_key" --arg search_value "$search_value" --arg field "$field" --arg update_key "$update_key" '
 			.[$field][] | select(.[$search_key] == $search_value) | .[$update_key]
 		' <<<"$json_data")
-		if [ "$current_value" != "$update_value" ]; then
+		# 数值不一致则写入，数值一致则后续不需要保存至文件
+		[ "$current_value" != "$update_value" ] && {
 			json_data=$(jq --arg search_key "$search_key" --arg search_value "$search_value" --arg update_key "$update_key" --arg update_value "$update_value" --arg field "$field" '
                 .[$field] |= map(if .[$search_key] == $search_value then .[$update_key] = $update_value else . end)
             ' <<<"$json_data")
 			changed=1
-		fi
+		}
 		;;
 	*)
 		return 1
@@ -656,7 +706,7 @@ getmac() {
 
 	# 某些路由器中继模式，会进行 MAC 克隆，如果是重复值，全都重置为 unknown
 	local mac_count=$(jq -r --arg mac "$mac" '.devices[] | select(.mac == $mac) | .mac' <<<"$json_data" | wc -l)
-	[ "$mac_count" -gt 1 ] && silent_run update_json_data "update" "devices" "mac" "$mac" "mac" "unknown"
+	[ "$mac_count" -gt 1 ] && silent_run update_json_data "update" "devices" "mac" "$mac" "mac" "unknown" && silent_run update_json_data "save" && log_change "【info】发现重复 MAC，重置中"
 
 	# 已保存的 MAC
 	mac=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip) | .mac' <<<"$json_data")
@@ -674,7 +724,7 @@ getmac() {
 	[ -f "${dir}/send.lock" ] && echo "unknown" && return
 
 	# 因 NetBIOS 查询时间过长，跳过离线设备
-	jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "online") | .ip' <<<"$json_data" >/dev/null && mac=$(nmblookup_timeout "${ip}" "mac" "5")
+	jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "online") | .ip' <<<"$json_data" >/dev/null && mac=$(nmblookup_timeout "${ip}" "mac" "5" 2>/dev/null)
 	process_and_check "$mac" && return
 
 	# 默认返回 unknown
@@ -721,7 +771,7 @@ getname() {
 	# 因 NetBIOS 查询时间过长，跳过离线设备
 	# 设备刚上线时设备信息未保存，json 中无法检查在线状态，应避免使用 oui 数据库，否则无法使用 NetBIOS 查询
 	if jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "online") | .ip' <<<"$json_data" >/dev/null; then
-		tmp_name=$(nmblookup_timeout "${ip}" "name" "5")
+		tmp_name=$(nmblookup_timeout "${ip}" "name" "5" 2>/dev/null)
 		process_and_check "$tmp_name" && return
 
 		# MAC 设备信息数据库
@@ -1031,7 +1081,7 @@ ip_changes() {
 			"IPv4": "",
 			"IPv6": ""
 		}'
-		silent_run update_json_data "add" "address" "new_address" # 偷懒，update 未写空键创建，反正就这里会创建新的键
+		silent_run update_json_data "add" "address" "new_address" # 偷懒，update 未写空键创建故无法写入，反正就这里会创建新的键，这里要先加入空的key
 	fi
 	if [ "$get_ipv4_mode" -ne "0" ] && [ -n "$IPv4" ] && [ "$IPv4" != "$last_IPv4" ]; then
 		log_change "${disturb_text}当前 IP：${IPv4} from：${IPv4_URL}"
@@ -1056,7 +1106,7 @@ ip_changes() {
 			/etc/init.d/zerotier restart >/dev/null 2>&1
 		fi
 	fi
-	silent_run update_json_data "save"
+	silent_run update_json_data "save" "address"
 }
 
 # 检测网络状态
@@ -1356,20 +1406,33 @@ scanlocalip() {
 		local end_num=$(echo "$end_ip" | awk -F '.' '{print $NF}')
 		local base_ip=$(echo "$start_ip" | awk -F '.' '{print $1"."$2"."$3}')
 
+		tmp_thread_num=5
+		# 临时增加并发数
+		for i in $(seq 1 "$tmp_thread_num"); do
+			echo >&5
+		done
+		unset i
+
 		for i in $(seq "$start_num" "$end_num"); do
 			# 获取一个令牌
 			read -u 5
 			{
-				ping -c 1 "${base_ip}.${i}" >/dev/null 2>&1
+				ping -c 1 -W 2 "${base_ip}.${i}" >/dev/null 2>&1
 				# 释放令牌
 				echo >&5
 			} &
 		done
+		unset i
 		wait
+
+		# 减少临时并发数
+		for i in $(seq 1 "$tmp_thread_num"); do
+			read -u 5
+		done
+		unset i
 
 		last_scan_ip_time="$current_time"
 	fi
-	unset i
 }
 
 # 从光猫处获取设备信息
@@ -1400,9 +1463,9 @@ getgateway() {
 first() {
 	# 注：此处为后台任务，无法操作父进程变量，故每个线程结束后都必须保存变量到文件
 	# 耗时太长，定时推送不再检查
-	[ -f "${dir}/send.lock" ] && local IPLIST=$(jq -r '.devices[] | select(.status == "online" or .status == "unknown") | .ip' <<<"$json_data" | sort -u)
-	[ -f "${dir}/send.lock" ] && getgateway
-	[ -f "${dir}/send.lock" ] && silent_run scanlocalip
+	[ ! -f "${dir}/send.lock" ] && local IPLIST=$(jq -r '.devices[] | select(.status == "online" or .status == "unknown") | .ip' <<<"$json_data" | sort -u)
+	[ ! -f "${dir}/send.lock" ] && getgateway
+	[ ! -f "${dir}/send.lock" ] && silent_run scanlocalip
 	for ip in $IPLIST; do
 		[ -n "$passive_mode" ] && [ "$passive_mode" -eq "1" ] && break
 		# 获取一个令牌
@@ -1454,10 +1517,10 @@ up() {
 		# 如果是待二次离线检测 unknown 设备，json 文件中依然有信息，修改在线状态为 online
 		if [ "$mac" != "unknown" ] && jq -e --arg ip "$ip" --arg mac "$mac" '.devices[] | select(.ip == $ip and .mac == $mac) | .mac' <<<"$json_data" >/dev/null; then
 			silent_run update_json_data "update" "devices" "ip" "$ip" "status" "online"
-			silent_run update_json_data "save"
+			silent_run update_json_data "save" "devices" "ip" "$ip"
 		# up
 		else
-			usage down ${ip} # 剔除（重置）流量数据
+			usage down ${ip}                                       # 剔除（重置）流量数据
 			silent_run update_json_data "del" "devices" "ip" "$ip" # 删除当前 IP 对应的键值，重新写入
 			local name=$(getname "$ip" "$mac")
 			local interface=$(getinterface "ip" "$mac")
@@ -1473,7 +1536,7 @@ up() {
 				"status": "online"
 			}'
 			silent_run update_json_data "add" "devices" "new_device"
-			silent_run update_json_data "save"
+			silent_run update_json_data "save" "devices" "ip" "$ip"
 
 			blackwhitelist ${mac}
 			local ip_blackwhite=$?
@@ -1541,7 +1604,7 @@ down() {
 		silent_run update_json_data "update" "devices" "ip" "$ip" "interface" "$interface"
 
 	fi
-	silent_run update_json_data "save"
+	silent_run update_json_data "save" "devices" "ip" "$ip"
 }
 
 # 设备离线通知
