@@ -706,7 +706,7 @@ getmac() {
 
 	# 某些路由器中继模式，会进行 MAC 克隆，如果是重复值，全都重置为 unknown
 	local mac_count=$(jq -r --arg mac "$mac" '.devices[] | select(.mac == $mac) | .mac' <<<"$json_data" | wc -l)
-	[ "$mac_count" -gt 1 ] && silent_run update_json_data "update" "devices" "mac" "$mac" "mac" "unknown" && silent_run update_json_data "save" && log_change "【info】发现重复 MAC，重置中"
+	[ "$mac_count" -gt 1 ] && silent_run update_json_data "update" "devices" "mac" "$mac" "mac" "unknown" && silent_run update_json_data "save" "devices" "mac" "unknown"&& log_change "【info】发现重复 MAC，重置中"
 
 	# 已保存的 MAC
 	mac=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip) | .mac' <<<"$json_data")
