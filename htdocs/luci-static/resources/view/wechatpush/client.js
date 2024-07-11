@@ -84,72 +84,108 @@ return view.extend({
         }
 
         var style = `
+            /* 设备表格样式 */
             .device-table {
-                width: 80%;
-                border-collapse: collapse;
+                width: 80%; /* 表格宽度占满父容器 */
+                border-collapse: collapse; /* 合并边框 */
+                margin-top: 10px; /* 顶部外边距 */
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* 阴影效果 */
+                border-radius: 8px; /* 圆角边框 */
+                overflow: hidden; /* 内容溢出隐藏 */
             }
+
             .device-table th,
             .device-table td {
-                padding: 0.5rem;
-                text-align: center;
-                border: 1px solid #ccc;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
+                padding: 10px; /* 单元格内边距 */
+                text-align: center; /* 文本居中 */
+                border: 1px solid #ddd; /* 边框样式 */
             }
-            .device-table td:first-child {
-                word-wrap: break-word;
-            }
+
             .device-table th {
-                background-color: #f2f2f2;
-                font-weight: bold;
-                color: #666;
-                cursor: pointer;
+                background-color: rgba(0, 0, 0, 0.05); /* 表头背景色，透明 */
+                font-weight: bold; /* 粗体字体 */
+                cursor: pointer; /* 鼠标指针样式为指针 */
+                position: relative; /* 相对定位 */
             }
-            .device-table tbody tr:nth-of-type(even) {
-                background-color: #f9f9f9;
+
+            .device-table th.sortable::after {
+                right: 10px; /* 右侧距离 */
+                top: 50%; /* 顶部偏移50% */
+                transform: translateY(-50%); /* 垂直居中 */
+                border-width: 5px 5px 0; /* 边框宽度 */
+                border-style: solid; /* 边框样式为实线 */
+                opacity: 0.6; /* 透明度 */
             }
-            .sortable {
-                cursor: pointer;
-                position: relative;
-            }
-            .sortable::after {
+
+            .device-table th.asc::after {
                 content: '';
                 position: absolute;
-                right: -10px;
+                right: 10px;
                 top: 50%;
                 transform: translateY(-50%);
-                width: 0;
-                height: 0;
+                border-width: 6px;
                 border-style: solid;
-                border-width: 5px 5px 0 5px;
-                border-color: #aaa transparent transparent transparent;
-                opacity: 0.6;
+                border-color: #666 transparent transparent transparent; /* 向上箭头颜色 */
             }
-            .sortable.asc::after {
-                border-color: #666 transparent transparent transparent;
+
+            .device-table th.desc::after {
+                content: '';
+                position: absolute;
+                right: 10px;
+                top: 50%;
+                transform: translateY(-50%);
+                border-width: 6px;
+                border-style: solid;
+                border-color: transparent transparent #666 transparent; /* 向下箭头颜色 */
             }
-            .sortable.desc::after {
-                border-color: transparent transparent #666 transparent;
+
+
+            .device-table tbody tr:nth-child(even) {
+                background-color: rgba(0, 0, 0, 0.05); /* 偶数行背景色，透明 */
             }
+
+            .device-table td:first-child {
+                text-align: left; /* 第一列文本左对齐 */
+                padding-left: 20px; /* 第一列左侧内边距 */
+            }
+
+            .device-table td a {
+                color: #007bff; /* 链接颜色 */
+                text-decoration: none; /* 去掉下划线 */
+            }
+
+            .device-table td a:hover {
+                text-decoration: underline; /* 鼠标悬停下划线 */
+            }
+
             .device-table .hide {
-                display: none;
+                display: none; /* 隐藏元素 */
             }
+
             @media (max-width: 767px) {
-                .device-table th:nth-of-type(3),
-                .device-table td:nth-of-type(3) {
-                    display: none;
+            .device-table {
+                width: 100%; /* 表格宽度占满父容器 */
+                overflow: hidden; /* 内容溢出隐藏 */
+            }
+                .device-table th,
+            .device-table td {
+                padding: 3px; /* 单元格内边距 */
+                text-align: center; /* 文本居中 */
+                border: 0.35px solid #ddd; /* 边框样式 */
+            }
+            .device-table td:first-child {
+                                max-width: 80px;
+                            }
+            .device-table td:nth-of-type(5) { /* 控制第五列（Online time）的样式 */
+                    font-size: 14px; /* 调整字体大小 */
                 }
+            .device-table td:first-child {
+                text-align: left; /* 第一列文本左对齐 */
+                padding-left: 2px; /* 第一列左侧内边距 */
+            }
                 .device-table th:nth-of-type(4),
                 .device-table td:nth-of-type(4) {
-                    display: none;
-                }
-                .device-table th,
-                .device-table td {
-                    padding: 0.35rem;
-                }
-                .device-table td:first-child {
-                    max-width: 150px;
+                    display: none; /* 在小屏幕下隐藏第四列 */
                 }
             }
         `;
@@ -188,7 +224,7 @@ return view.extend({
                     if (visibleColumns.includes(i)) {
                         var cell = document.createElement('td');
                         if (columns[i] === 'uptime') {
-                            cell.textContent = calculateUptime(device['uptime']);
+                            cell.textContent = calculateUptime(device['uptime'], window.innerWidth <= 767);
                         } else if (columns[i] === 'ip' && device['http_access']) {
                             var link = document.createElement('a');
                             link.href = `${device['http_access']}://${device['ip']}`;
@@ -209,8 +245,7 @@ return view.extend({
             return table;
         }
 
-        function calculateUptime(uptime) {
-            // 将时间戳转换为时间格式
+        function calculateUptime(uptime, simpleFormat = false) {
             var startTimeStamp = parseInt(uptime);
             var currentTimeStamp = Math.floor(Date.now() / 1000);
             var uptimeInSeconds = currentTimeStamp - startTimeStamp;
@@ -220,16 +255,29 @@ return view.extend({
             var minutes = Math.floor((uptimeInSeconds % 3600) / 60);
             var seconds = uptimeInSeconds % 60;
 
-            if (days > 0) {
-                return days + ' 天 ' + hours + ' 小时';
-            } else if (hours > 0) {
-                return hours + ' 小时 ' + minutes + ' 分钟';
-            } else if (minutes > 0) {
-                return minutes + ' 分钟 ' + seconds + ' 秒';
+            if (simpleFormat) {
+                if (days > 0) {
+                    return days + 'd ' + hours + 'h';
+                } else if (hours > 0) {
+                    return hours + 'h ' + minutes + 'm';
+                } else if (minutes > 0) {
+                    return minutes + 'm ' + seconds + 's';
+                } else {
+                    return seconds + 's';
+                }
             } else {
-                return seconds + ' 秒';
+                if (days > 0) {
+                    return days + ' 天 ' + hours + ' 小时';
+                } else if (hours > 0) {
+                    return hours + ' 小时 ' + minutes + ' 分';
+                } else if (minutes > 0) {
+                    return minutes + ' 分 ' + seconds + ' 秒';
+                } else {
+                    return seconds + ' 秒';
+                }
             }
         }
+
 
         function compareDevices(a, b, column, direction) {
             var value1 = getValueForSorting(a, column);
