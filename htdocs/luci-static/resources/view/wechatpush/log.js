@@ -9,51 +9,48 @@
 return view.extend({
 	render: function () {
 		var css = `
+			/* 日志框文本区域 */
 			#log_textarea {
 				margin-top: 10px;
 			}
+
 			#log_textarea pre {
-				background-color: #f7f7f7;
-				color: #333;
-				padding: 10px;
-				border: 1px solid #ccc;
-				border-radius: 4px;
+				padding: 10px; /* 内边距 */
+				border: 1px solid #ddd; /* 边框颜色 */
+				border-radius: 6px; /* 边框圆角 */
 				font-family: Consolas, Menlo, Monaco, monospace;
 				font-size: 14px;
-				line-height: 1.5;
+				line-height: 1.6; /* 行高 */
 				white-space: pre-wrap;
 				word-wrap: break-word;
 				overflow-y: auto;
-				max-height: 400px;
+				max-height: 600px;
 			}
-			#.description {
-				background-color: #33ccff;
-			}
+
+			/* 清理日志按钮 */
 			.cbi-button-danger {
-				background-color: #fff;
-				color: #f00;
-				border: 1px solid #f00;
-				border-radius: 4px;
-				padding: 4px 8px;
+				background-color: #dc3545; /* 深红色背景 */
+				border: 0.5px solid #dc3545; /* 边框 */
+				border-radius: 6px;
+				padding: 2px 8px; /* 内边距 */
 				font-size: 14px;
 				cursor: pointer;
-				margin-top: 10px;
+				margin-top: 0px;
+				transition: background-color 0.3s, color 0.3s;
 			}
+
 			.cbi-button-danger:hover {
-				background-color: #f00;
-				color: #fff;
+				background-color: #c82333; /* 深红色悬停背景 */
+				border-color: #c82333; /* 悬停时边框色 */
 			}
+
+			/* 5s 自动刷新文字 */
 			.cbi-section small {
 				margin-left: 10px;
-			}
-			.cbi-section .cbi-section-actions {
-				margin-top: 10px;
-			}
-			.cbi-section .cbi-section-actions-right {
-				text-align: right;
+				font-size: 12px; 
+				color: #666; /* 深灰色文字 */
 			}
 		`;
-
 
 		var log_textarea = E('div', { 'id': 'log_textarea' },
 			E('img', {
