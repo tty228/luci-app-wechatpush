@@ -1396,7 +1396,7 @@ up() {
 		else
 			# 剔除（重置）流量数据
 			usage down ${ip}
-			 # 删除当前 IP 对应的键值，重新写入，否则要启用 unique_by(.ip) 去重
+			# 删除当前 IP 对应的键值，重新写入，否则要启用 unique_by(.ip) 去重
 			jq --arg ip "$ip" 'del(.devices[] | select(.ip == $ip))' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
 			local name=$(getname "$ip" "$mac")
 			local interface=$(getinterface "ip" "$mac")
