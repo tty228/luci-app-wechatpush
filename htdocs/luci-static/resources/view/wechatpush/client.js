@@ -86,7 +86,7 @@ return view.extend({
         var style = `
             /* 设备表格样式 */
             .device-table {
-                width: 100%; /* 表格宽度占满父容器 */
+                width: 80%; /* 表格宽度占满父容器 */
                 border-collapse: collapse; /* 合并边框 */
                 margin-top: 10px; /* 顶部外边距 */
                 box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* 阴影效果 */
@@ -163,6 +163,10 @@ return view.extend({
             }
 
             @media (max-width: 767px) {
+            .device-table {
+                width: 100%; /* 表格宽度占满父容器 */
+                overflow: hidden; /* 内容溢出隐藏 */
+            }
                 .device-table th,
             .device-table td {
                 padding: 3px; /* 单元格内边距 */
@@ -170,7 +174,7 @@ return view.extend({
                 border: 0.35px solid #ddd; /* 边框样式 */
             }
             .device-table td:first-child {
-                                max-width: 100px;
+                                max-width: 80px;
                             }
             .device-table td:nth-of-type(5) { /* 控制第五列（Online time）的样式 */
                     font-size: 14px; /* 调整字体大小 */
