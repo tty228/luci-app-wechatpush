@@ -2131,7 +2131,7 @@ diy_send() {
 		! jq -r '.' ${dir}/debug_send_json && log_change "【！！！】转义变量后格式错误，请检查 ${dir}/debug_send_json 字段内是否有特殊符号未转义或语法错误"
 		log_change "【debug】json 文件已保存至：${dir}/debug_send_json"
 		log_change "【debug】推送内容预览文件保存至：${dir}/debug_send_content"
-		log_change "【debug】如果收不到信息，请检查 ${dir}/debug_send_data 文件，或使用下列命令手动测试返回值 (可能需要关闭日志自动刷新方便选中)"
+		log_change "【debug】如果收不到信息，请检查 ${dir}/debug_send_data 文件，或使用下列命令手动测试返回值"
 		log_change "【debug】curl -X POST -H \"$content_type\" -d \"@${dir}/debug_send_data\" \"${diyurl}\""
 		[ -n "$4" ] && [ $RETVAL -eq 0 ] && return 0
 		return 1
