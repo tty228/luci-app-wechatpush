@@ -647,6 +647,7 @@ getname() {
 
 	# 因 NetBIOS 查询时间过长，跳过离线设备
 	# 设备刚上线时设备信息未保存，json 中无法检查在线状态，应避免使用 oui 数据库，否则无法使用 NetBIOS 查询
+	# 应避免对 unknown 设备反复查询主机名，无用的挣扎，待优化
 	if jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "online") | .ip' "$devices_json" >/dev/null; then
 		tmp_name=$(nmblookup_timeout "${ip}" "name" "5" 2>/dev/null)
 		process_and_check "$tmp_name" && return
@@ -1465,7 +1466,9 @@ down() {
 		# 修改为 unknown
 		if jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "online") | .ip' "$devices_json" >/dev/null; then
 			jq --arg ip "$ip" '.devices |= map(if .ip == $ip then .status = "unknown" else . end)' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
-		elif jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "unknown") | .ip' "$devices_json" >/dev/null; then
+		#这里其实无需再判断，只有 status == "online" 和 status == "unknown" 的设备会使用 down $ip
+		#elif jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "unknown") | .ip' "$devices_json" >/dev/null; then
+		else
 			jq --arg ip "$ip" '.devices |= map(if .ip == $ip then .status = "offline" else . end)' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
 		fi
 	# 更新主机名或 MAC
@@ -1473,12 +1476,7 @@ down() {
 		local name=$(getname "$ip" "$mac")
 		local interface=$(getinterface "ip" "$mac")
 
-		# 检查是否有变化
-		local current_mac=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip) | .mac' "$devices_json")
-		local current_name=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip) | .name' "$devices_json")
-		local current_interface=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip) | .interface' "$devices_json")
-
-		if [[ "$current_mac" != "$mac" || "$current_name" != "$name" || "$current_interface" != "$interface" ]]; then
+		if ! jq -e --arg ip "$ip" --arg mac "$mac" --arg name "$name" --arg interface "$interface" '.devices[] | select(.ip == $ip and .mac == $mac and .name == $name and .interface == $interface) | .ip' "$devices_json" >/dev/null; then
 			jq --arg ip "$ip" --arg new_mac "$mac" --arg new_name "$name" --arg new_interface "$interface" '
 				.devices |= map(
 					if .ip == $ip then 
@@ -1490,7 +1488,6 @@ down() {
 				)
 			' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
 		fi
-
 	fi
 	silent_run LockFile unlock
 }
@@ -1632,9 +1629,6 @@ get_client_usage() {
 	if [ "$(($(date +%s) - $get_client_usage_time))" -ge "60" ]; then
 		>${dir}/client_usage_aliases
 		for mac in $MACLIST; do
-			# 查找在线设备中是否存在这个mac，不存在则退出
-			! jq -e --arg mac "$mac" '.devices[] | select(.mac == $mac and .status == "online")' "$devices_json" >/dev/null && continue
-
 			echo "$mac" $(usage get ${mac} bytes) >>${dir}/client_usage_aliases
 			[ -f "${dir}/old_client_usage_aliases" ] && get_client_usage_bytes=$(cat ${dir}/old_client_usage_aliases | grep -i -w $mac | awk '{print $2}' | grep -v "^$" | sort -u | head -n1) || continue
 
