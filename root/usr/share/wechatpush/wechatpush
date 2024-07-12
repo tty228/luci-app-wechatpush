@@ -1343,7 +1343,7 @@ getgateway() {
 first() {
 	# 注：此处为后台任务，无法操作父进程变量，故每个线程结束后都必须保存变量到文件
 	# 耗时太长，定时推送不再检查
-	[ ! -f "${dir}/send_pid" ] && local IPLIST=$(jq -r '.devices[] | select(.status == "online" or .status == "unknown") | .ip' "$devices_json" | sort -u)
+	local IPLIST=$(jq -r '.devices[] | select(.status == "online" or .status == "unknown") | .ip' "$devices_json" | sort -u)
 	[ ! -f "${dir}/send_pid" ] && getgateway
 	[ ! -f "${dir}/send_pid" ] && silent_run scanlocalip
 	for ip in $IPLIST; do
@@ -1910,7 +1910,8 @@ send() {
 
 	[ -z "$1" ] && cpuload=$(getcpu)
 	[ -z "$1" ] && service_status=$(ubus call service list '{"name": "wechatpush"}' | grep -o '"running": true')
-	[ -z "$1" ] && (echo "$send_notification" | grep -q "client_list") && [ -z "$service_status" ] && first &
+	# 只有当主程序没有运行，且定时任务中选择了推送设备列表，免打扰选项中也没屏蔽设备列表时，才进行在线设备扫描
+	[ -z "$1" ] && [ -z "$service_status" ] && echo "$send_notification" | grep -q "client_list" && echo "$lite_enable" | grep -v -q "device" && first &
 	if [ -z "$1" ] && (echo "$send_notification" | grep -q "router_status"); then
 		cat /proc/loadavg | awk '{print $1" "$2" "$3}' >"$output_dir/systemload" &
 		free -m | sed -n '2p' | awk '{printf "%.2f%%\n",($3/$2)*100}' >"$output_dir/ramload" &
