@@ -357,24 +357,6 @@ return view.extend({
 		};
 		o.description = _('Access a random address from the list above,URLs in the list are specific to Chinese websites. If you need to use this feature, please replace the URLs with the ones available to you.<br/>Please use the 「Save」 button in the text box.');
 
-		o = s.taboption('content', form.Button, '_update_ipv4_list', _('Update IPv4 list'));
-		o.inputstyle = 'add';
-		o.onclick = function () {
-			var _this = this;
-			return fs.exec('/usr/libexec/wechatpush-call', ['update_ip_list', 'ipv4']).then(function (res) {
-				if (res.code === 0)
-					_this.description = _('Update successful');
-				else if (res.code === 1)
-					_this.description = _('Update failed');
-				return _this.map.reset();
-			}).catch(function (err) {
-				ui.addNotification(null, E('p', [_('Unknown error: %s.').format(err)]));
-				_this.description = _('Update failed');
-				return _this.map.reset();
-			});
-		}
-		o.depends('get_ipv4_mode', '2');
-
 		o = s.taboption('content', cbiRichListValue, 'get_ipv6_mode', _('IPv6 Dynamic Notification'));
 		o.value('', _('Close'),
 			_(' '));
@@ -407,29 +389,6 @@ return view.extend({
 			});
 		};
 		o.description = _('Access a random address from the list above,URLs in the list are specific to Chinese websites. If you need to use this feature, please replace the URLs with the ones available to you.<br/>Please use the 「Save」 button in the text box.');
-
-		o = s.taboption('content', form.Button, '_update_ipv6_list', _('Update IPv6 list'));
-		o.inputstyle = 'add';
-		o.onclick = function () {
-			var _this = this;
-			return fs.exec('/usr/libexec/wechatpush-call', ['update_ip_list', 'ipv6']).then(function (res) {
-				if (res.code === 0)
-					_this.description = _('Update successful');
-				else if (res.code === 1)
-					_this.description = _('Update failed');
-				return _this.map.reset();
-			}).catch(function (err) {
-				ui.addNotification(null, E('p', [_('Unknown error: %s.').format(err)]));
-				_this.description = _('Update failed');
-				return _this.map.reset();
-			});
-		}
-		o.depends('get_ipv6_mode', '2');
-
-		o = s.taboption('content', form.Flag, 'auto_update_ip_list', _('Automatically update API list'));
-		o.description = _('When multiple IP retrieval attempts fail, try to automatically update the list file from GitHub');
-		o.depends('get_ipv4_mode', '2');
-		o.depends('get_ipv6_mode', '2');
 
 		o = s.taboption('content', form.MultiValue, 'device_notification', _('Device Online/Offline Notification'));
 		o.value('online', _('Online Notification'));

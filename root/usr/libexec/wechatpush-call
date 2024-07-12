@@ -35,14 +35,6 @@ down_oui() {
 if [ "$1" == "clear_log" ]; then
 	# 清空日志
 	>"${logfile}"
-elif [ "$1" == "update_list" ]; then
-	# 更新 API 列表
-	echo "$(date "+%Y-%m-%d %H:%M:%S") 【info】开始更新 ${2} API 列表" >>"${logfile}"
-	curl -fsSL --connect-timeout 15 --max-time 30 -o "/tmp/wechatpush/${2}.list" "https://raw.githubusercontent.com/tty228/luci-app-wechatpush/master/root/usr/share/wechatpush/api/${2}.list" >/dev/null 2>&1
-	local RETVAL=$?
-	[ ${RETVAL} -ne 0 ] && echo "$(date "+%Y-%m-%d %H:%M:%S") 【!!!】${2} API 列表更新失败，返回码为 ${RETVAL}" >>"${logfile}" && return 1
-	mv -f "/tmp/wechatpush/${2}.list" "/usr/share/wechatpush/api/${2}.list"
-	echo "$(date "+%Y-%m-%d %H:%M:%S") 【info】${2} API 列表更新成功" >>"${logfile}"
 elif [ "$1" == "down_oui" ]; then
 	# 更新 MAC 信息列表
 	[ $(file_date "$oui_base") -lt 86400 ] && echo "$(date "+%Y-%m-%d %H:%M:%S") 【info】MAC 信息文件无需更新" >>"${logfile}" && exit 2
