@@ -38,7 +38,7 @@ read_config() {
 	get_config \
 		"enable" "lite_enable" "device_name" "proxy_address" "sleeptime" "oui_data" "reset_regularly" "debuglevel" \
 		"jsonpath" "sckey" "corpid" "userid" "agentid" "corpsecret" "mediapath" "wxpusher_apptoken" "wxpusher_uids" "wxpusher_topicIds" "pushplus_token" "tg_token" "chat_id" \
-		"get_ipv4_mode" "ipv4_interface" "get_ipv6_mode" "ipv6_interface" "auto_update_ip_list" \
+		"get_ipv4_mode" "ipv4_interface" "get_ipv6_mode" "ipv6_interface" \
 		"device_notification" "cpu_notification" "cpu_load_threshold" "temperature_threshold" \
 		"client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" \
 		"login_notification" "login_max_num" "login_web_black" "login_ip_black_timeout" "login_ip_white_list" "port_knocking_enable" "login_ip_white_timeout" "login_port_white" "login_port_forward_list" \
@@ -88,7 +88,7 @@ read_config() {
 	[ -z "$server_port" ] && server_port="22"
 	output_dir="${dir}/json_output"
 	mkdir -p "$output_dir"
-	if (echo "$lite_enable" | grep -q "content"); then
+	if (echo "$lite_enable" | grep -q "content") || [ -z "$jsonpath" ]; then
 		str_title_start="" && str_title_end="" && str_splitline="" && str_linefeed="" && str_tab=""
 	else
 		read_json "str_title_start" "$jsonpath"
@@ -121,7 +121,7 @@ init() {
 	[ ! -f "/usr/sbin/wrtbwmon" ] && log_change "【info】未安装 wrtbwmon ，流量统计不可用"
 	[ -z "$ip_version" ] && log_change "【！！！】无法获取依赖项 iputils-arping 版本号，请确认插件是否正常运行"
 	[ -z "$cu_version" ] && log_change "【！！！】无法获取依赖项 curl 版本号，请确认插件是否正常运行"
-	[ -z "${sckey}${tg_token}${pushplus_token}${corpid}${wxpusher_apptoken}${wxpusher_uids}${wxpusher_topicIds}" -a "${jsonpath}" != "/usr/share/wechatpush/api/diy.json" ] && log_change "【！！！】请填写正确的 key" && return 1
+	[ -n "$jsonpath" ] && [ -z "${sckey}${tg_token}${pushplus_token}${corpid}${wxpusher_apptoken}${wxpusher_uids}${wxpusher_topicIds}" -a "${jsonpath}" != "/usr/share/wechatpush/api/diy.json" ] && log_change "【！！！】请填写正确的 key" && return 1
 	local interfacelist=$(getinterfacelist) && [ -z "$interfacelist" ] && log_change "【！！！】存在多个接口或配置错误，可能无法获取接口在线时间等信息，请确认插件是否正常运行"
 	[ -n "$notification_temp" ] && [ -n "$temperature_threshold" ] && local cpu_temp=$(soc_temp) || local cpu_temp="null"
 	[ -z "$cpu_temp" ] && log_change "【！！！】无法读取设备温度，请检查命令"
@@ -508,52 +508,33 @@ getip() {
 		[ -n "$ipv4_interface" ] && local wanIP=$(/sbin/ifconfig ${ipv4_interface} | awk '/inet addr/ {print $2}' | awk -F: '{print $2}' | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
 		[ -z "$ipv4_interface" ] && local wanIP=$(getinterfacelist | grep '\"address\"' | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
 		echo "$wanIP"
-
 	# 从 URL 获取 IPv4
 	elif [ $1 == "hostipv4" ]; then
-		local url_number=$(echo "$ipv4_urllist" | wc -l)
-		local rand_number=$(rand 1 $url_number)
-		get_hostipv4() {
-			local ipv4_URL=$(echo "$ipv4_urllist" | sed -n "${1}p" | sed -e 's/\r//g')
+		local sorted_ipv4_urllist=$(echo "$ipv4_urllist" | awk 'BEGIN {srand()} {print rand() "\t" $0}' | sort -k1,1n | cut -f2-)
+		local ipv4_URL
+		while IFS= read -r ipv4_URL; do
 			[ -n "$ipv4_interface" ] && local tmp_hostIP=$(eval "curl --connect-timeout 2 -m 2 -k -s -4 --interface ${ipv4_interface} -m 5 ${ipv4_URL}") || local tmp_hostIP=$(eval "curl --connect-timeout 2 -m 2 -k -s -4 -m 5 ${ipv4_URL}")
 			[ -z "$tmp_hostIP" ] && log_change "【info】IP 获取失败，当前使用的 API 为 $ipv4_URL & ${ipv4_interface}"
 			local tmp_hostIP=$(echo $tmp_hostIP | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | head -n1)
-			echo "{\"IP\":\"${tmp_hostIP}\", \"URL\":\"${ipv4_URL}\"}"
-		}
-		local hostIP=$(get_hostipv4 ${rand_number})
-		[ -z $(echo $hostIP | jq -r '.IP') ] && local rand_number=$(expr $rand_number + 1) && [ $rand_number -gt $url_number ] && local rand_number=1
-		[ -z $(echo $hostIP | jq -r '.IP') ] && local hostIP=$(get_hostipv4 ${rand_number})
-		[ -z $(echo $hostIP | jq -r '.IP') ] && local rand_number=$(expr $rand_number + 1) && [ $rand_number -gt $url_number ] && local rand_number=1
-		[ -z $(echo $hostIP | jq -r '.IP') ] && local hostIP=$(get_hostipv4 ${rand_number})
-		[ -n "$list_auto_up" ] && [ "$list_auto_up" -eq "1" ] && [ -z $(echo $hostIP | jq -r '.IP') ] && /usr/libexec/wechatpush-call "auto_update_ip_list" "ipv4"
-		[ -z $(echo $hostIP | jq -r '.IP') ] && ipv4_urllist=$(cat /usr/share/wechatpush/api/ipv4.list) 2>/dev/null
-		echo $hostIP
-
+			[ -n "$tmp_hostIP" ] && local tmp_hostIP="{\"IP\":\"${tmp_hostIP}\", \"URL\":\"${ipv4_URL}\"}" && break
+		done <<<"$sorted_ipv4_urllist"
+		echo $tmp_hostIP
 	# 从接口获取 IPv6
 	elif [ $1 == "wanipv6" ]; then
 		[ -n "$ipv6_interface" ] && local wanIPv6=$(ip -6 addr show dev ${ipv6_interface} | grep "inet6" | grep "global dynamic noprefixroute" | awk '{print $2}' | grep -Ev "^(fc|fd)" | tail -n 1 | grep -oE "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}")
 		[ -z "$ipv6_interface" ] && local wanIPv6=$(ip -6 addr show | grep "inet6" | grep "global dynamic noprefixroute" | awk '{print $2}' | grep -Ev "^(fc|fd)" | tail -n 1 | grep -oE "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}")
 		echo "$wanIPv6"
-
 	# 从 URL 获取 IPv6
 	elif [ $1 == "hostipv6" ]; then
-		local urlv6_number=$(echo "$ipv6_urllist" | wc -l)
-		local rand_numberv6=$(rand 1 $urlv6_number)
-		get_hostipv6() {
-			local ipv6_URL=$(echo "$ipv6_urllist" | sed -n "${1}p" | sed -e 's/\r//g')
+		local sorted_ipv6_urllist=$(echo "$ipv6_urllist" | awk 'BEGIN {srand()} {print rand() "\t" $0}' | sort -k1,1n | cut -f2-)
+		local ipv6_URL
+		while IFS= read -r ipv6_URL; do
 			[ -n "$ipv6_interface" ] && local tmp_hostIPv6=$(eval "curl --connect-timeout 2 -m 2 -k -s -6 --interface ${ipv6_interface} -m 5 ${ipv6_URL}") || local tmp_hostIPv6=$(eval "curl --connect-timeout 2 -m 2 -k -s -6 -m 5 ${ipv6_URL}")
 			[ -z "$tmp_hostIPv6" ] && log_change "【info】IP 获取失败，当前使用的 API 为 $ipv6_URL & ${ipv6_interface}"
 			local tmp_hostIPv6=$(echo $tmp_hostIPv6 | grep -oE "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}" | head -n1)
-			echo "{\"IP\":\"${tmp_hostIPv6}\", \"URL\":\"${ipv6_URL}\"}"
-		}
-		local hostIPv6=$(get_hostipv6 ${rand_numberv6})
-		[ -z $(echo $hostIPv6 | jq -r '.IP') ] && local rand_numberv6=$(expr $rand_numberv6 + 1) && [ $rand_numberv6 -gt $urlv6_number ] && local rand_numberv6=1
-		[ -z $(echo $hostIPv6 | jq -r '.IP') ] && local hostIPv6=$(get_hostipv6 ${rand_numberv6})
-		[ -z $(echo $hostIPv6 | jq -r '.IP') ] && local rand_numberv6=$(expr $rand_numberv6 + 1) && [ $rand_numberv6 -gt $urlv6_number ] && local rand_numberv6=1
-		[ -z $(echo $hostIPv6 | jq -r '.IP') ] && local hostIPv6=$(get_hostipv6 ${rand_numberv6})
-		[ -n "$list_auto_up" ] && [ "$list_auto_up" -eq "1" ] && [ -z $(echo $hostIP | jq -r '.IP') ] && /usr/libexec/wechatpush-call "auto_update_ip_list" "ipv6"
-		[ -z $(echo $hostIPv6 | jq -r '.IP') ] && ipv4_urllist=$(cat /usr/share/wechatpush/api/ipv6.list) 2>/dev/null
-		echo $hostIPv6
+			[ -n "$tmp_hostIPv6" ] && local tmp_hostIP="{\"IP\":\"${tmp_hostIPv6}\", \"URL\":\"${ipv6_URL}\"}" && break
+		done <<<"$sorted_ipv6_urllist"
+		echo $tmp_hostIP
 	fi
 }
 
@@ -686,20 +667,15 @@ getinterfaceuptime() {
 get_ip_attribution() {
 	ip="$1"
 	jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip) | .ip' "$devices_json" >/dev/null && echo "本地局域网" && return
-	ip_attribution_urls=$(cat /usr/share/wechatpush/api/ip_attribution.list)
-	local url_number=$(echo "$ip_attribution_urls" | wc -l)
-	local rand_number=$(rand 1 $url_number)
-	get_attribution() {
-		local ip_attribution_url=$(echo "$ip_attribution_urls" | sed -n "${1}p" | sed -e 's/\r//g')
+	local ip_attribution_urls=$(cat /usr/share/wechatpush/api/ip_attribution.list)
+	local sorted_attribution_urls=$(echo "$ip_attribution_urls" | awk 'BEGIN {srand()} {print rand() "\t" $0}' | sort -k1,1n | cut -f2-)
+	local ip_attribution_url
+	while IFS= read -r ip_attribution_url; do
 		local login_ip_attribution=$(eval curl --connect-timeout 2 -m 2 -k -s "$ip_attribution_url" 2>/dev/null)
 		#logfile=logfile="${dir}/wechatpush.log" # 此处保留排查时使用
 		#[ -z "$login_ip_attribution" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】归属地获取超时，当前使用的 API 为 $ip_attribution_url" >> ${logfile}
-		echo "$login_ip_attribution"
-	}
-	local ip_attribution=$(get_attribution ${rand_number})
-	[ -z "$ip_attribution" ] && local rand_number=$(expr $rand_number + 1) && [ $rand_number -gt $url_number ] && local rand_number=1
-	[ -z "$ip_attribution" ] && local ip_attribution=$(get_attribution ${rand_number})
-	echo "$ip_attribution"
+		[ -n "$login_ip_attribution" ] && echo "$login_ip_attribution" && break
+	done <<<"$sorted_attribution_urls"
 }
 
 # 查询 NetBIOS
@@ -862,7 +838,8 @@ disturb() {
 	if [ $(date +%H) -ge $do_not_disturb_endtime -a $do_not_disturb_starttime -lt $do_not_disturb_endtime ] || [ $(date +%H) -lt $do_not_disturb_starttime -a $do_not_disturb_starttime -lt $do_not_disturb_endtime ] || [ $(date +%H) -lt $do_not_disturb_starttime -a $(date +%H) -ge $do_not_disturb_endtime -a $do_not_disturb_starttime -gt $do_not_disturb_endtime ]; then
 		unset sheep_starttime
 		rm -f ${dir}/sheep_usage ${dir}/old_sheep_usage 2>/dev/null
-		disturb_text=$(jq -r '._api' ${jsonpath})
+		[ -z "$jsonpath" ] && disturb_text="【info】"
+		[ -n "$jsonpath" ] && disturb_text=$(jq -r '._api' ${jsonpath})
 		return 0
 	# 免打扰
 	else
@@ -1240,6 +1217,8 @@ get_disk() {
 				[ -n "$fstab_config" ] && local mount_point=$(uci get ${fstab_config}.target 2>/dev/null)
 				[ -n "$mount_point" ] && local disk_use=$(df -h 2>/dev/null | awk -v mount="$mount_point" '$NF == mount {sub("^/dev/", "", $1); printf "%s: %s\n", $1, $5}')
 			}
+			# 如果获取到了多个分区，屏蔽使用空间为 0% 的分区
+			[ -n "$disk_use" ] && [ $(echo "$disk_use" | wc -l) -ne "1" ] && disk_use=$(echo "$disk_use" | grep -v -w "0%")
 			[ -n "$disk_use" ] && disk_use=$(echo "$disk_use" | sed ':a;N;$!ba;s/\n/'"${str_linefeed}${str_tab}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}"'/g')
 			[ -n "$disk_use" ] && [ -n "${disk_use// /}" ] && echo -e -n "${str_linefeed}${str_tab}空间使用：${disk_use}" >>"$output_dir/get_disk"
 			# 寿命使用
@@ -1901,7 +1880,7 @@ process_login() {
 # 发送定时数据
 send() {
 	pid=$$
-	echo "$pid" > "${dir}/send_pid"
+	echo "$pid" >"${dir}/send_pid"
 	log_change "【定时数据】创建定时任务"
 	>"${dir}/send_enable.lock"
 	disturb
@@ -2117,6 +2096,7 @@ down_send() {
 
 # 推送
 diy_send() {
+	[ -z "$jsonpath" ] && return
 	(! echo "$lite_enable" | grep -q "content") && (! echo "$lite_enable" | grep -q "nowtime") && local nowtime=$(date "+%Y-%m-%d %H:%M:%S")
 	! jq -r '.' ${3} >/dev/null 2>&1 && log_change "【！！！】json 文件格式错误，这不是一个标准的 json 文件，请检查 ${3} 文件是否有特殊符号未转义或语法错误" && return 1
 	local diyurl=$(jq -r .url ${3}) && local diyurl=$(eval echo ${diyurl})

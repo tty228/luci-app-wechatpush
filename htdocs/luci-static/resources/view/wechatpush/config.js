@@ -132,6 +132,8 @@ return view.extend({
 		o = s.taboption('basic', form.Flag, 'enable', _('Enabled'));
 
 		o = s.taboption('basic', cbiRichListValue, 'jsonpath', _('Push Mode'));
+		o.value('', _('Close'),
+			_('Do not use push notifications, only use other features.'));
 		o.value('/usr/share/wechatpush/api/serverchan.json', _('WeChat serverchan'),
 			_('Using serverchan API, simple configuration, supports multiple push methods'));
 		o.value('/usr/share/wechatpush/api/qywx_mpnews.json', _('WeChat Work Image Message'),
@@ -231,6 +233,12 @@ return view.extend({
 
 		o = s.taboption('basic', form.Value, 'proxy_address', _('Proxy Address'));
 		o.description = _('When you want to use a proxy to push information, you can use this option.<br/>This may be helpful for scenarios like trusted IPs for WeChat Work.Using special characters may cause sending failure.<br/>Example:<br/>http://username:password@127.0.0.1:1080<br/>socks5://username:password@127.0.0.1:1080');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/serverchan.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/qywx_mpnews.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/wxpusher.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/pushplus.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/telegram.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/diy.json');
 
 		o = s.taboption('basic', form.Button, '_test', _('Send Test'), _('You may need to save the configuration before sending.'));
 		o.inputstyle = 'add';
@@ -249,6 +257,12 @@ return view.extend({
 				return _this.map.reset();
 			});
 		}
+		o.depends('jsonpath', '/usr/share/wechatpush/api/serverchan.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/qywx_mpnews.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/wxpusher.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/pushplus.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/telegram.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/diy.json');
 
 		o = s.taboption('basic', form.Value, 'device_name', _('Device Name'));
 		o.description = _('The device name will be displayed in the push message title to identify the source device of the message.');
@@ -357,24 +371,6 @@ return view.extend({
 		};
 		o.description = _('Access a random address from the list above,URLs in the list are specific to Chinese websites. If you need to use this feature, please replace the URLs with the ones available to you.<br/>Please use the 「Save」 button in the text box.');
 
-		o = s.taboption('content', form.Button, '_update_ipv4_list', _('Update IPv4 list'));
-		o.inputstyle = 'add';
-		o.onclick = function () {
-			var _this = this;
-			return fs.exec('/usr/libexec/wechatpush-call', ['update_ip_list', 'ipv4']).then(function (res) {
-				if (res.code === 0)
-					_this.description = _('Update successful');
-				else if (res.code === 1)
-					_this.description = _('Update failed');
-				return _this.map.reset();
-			}).catch(function (err) {
-				ui.addNotification(null, E('p', [_('Unknown error: %s.').format(err)]));
-				_this.description = _('Update failed');
-				return _this.map.reset();
-			});
-		}
-		o.depends('get_ipv4_mode', '2');
-
 		o = s.taboption('content', cbiRichListValue, 'get_ipv6_mode', _('IPv6 Dynamic Notification'));
 		o.value('', _('Close'),
 			_(' '));
@@ -407,29 +403,6 @@ return view.extend({
 			});
 		};
 		o.description = _('Access a random address from the list above,URLs in the list are specific to Chinese websites. If you need to use this feature, please replace the URLs with the ones available to you.<br/>Please use the 「Save」 button in the text box.');
-
-		o = s.taboption('content', form.Button, '_update_ipv6_list', _('Update IPv6 list'));
-		o.inputstyle = 'add';
-		o.onclick = function () {
-			var _this = this;
-			return fs.exec('/usr/libexec/wechatpush-call', ['update_ip_list', 'ipv6']).then(function (res) {
-				if (res.code === 0)
-					_this.description = _('Update successful');
-				else if (res.code === 1)
-					_this.description = _('Update failed');
-				return _this.map.reset();
-			}).catch(function (err) {
-				ui.addNotification(null, E('p', [_('Unknown error: %s.').format(err)]));
-				_this.description = _('Update failed');
-				return _this.map.reset();
-			});
-		}
-		o.depends('get_ipv6_mode', '2');
-
-		o = s.taboption('content', form.Flag, 'auto_update_ip_list', _('Automatically update API list'));
-		o.description = _('When multiple IP retrieval attempts fail, try to automatically update the list file from GitHub');
-		o.depends('get_ipv4_mode', '2');
-		o.depends('get_ipv6_mode', '2');
 
 		o = s.taboption('content', form.MultiValue, 'device_notification', _('Device Online/Offline Notification'));
 		o.value('online', _('Online Notification'));

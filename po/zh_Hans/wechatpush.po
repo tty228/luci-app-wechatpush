@@ -56,6 +56,10 @@ msgstr "免打扰"
 msgid "Push Mode"
 msgstr "推送模式"
 
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:134
+msgid "Do not use push notifications, only use other features."
+msgstr "不使用推送通知，仅使用其他功能"
+
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:135
 msgid "WeChat serverchan"
 msgstr "微信 Server 酱"
