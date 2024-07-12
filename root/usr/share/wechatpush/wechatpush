@@ -314,6 +314,7 @@ main() {
 
 		sleep $sleeptime
 
+		# 等待定时任务推送完成
 		while [ -f "${dir}/send_pid" ]; do
 			pid=$(cat "${dir}/send_pid")
 			if ps | grep "^\s*${pid}\s" >/dev/null; then
