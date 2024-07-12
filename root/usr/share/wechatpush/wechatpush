@@ -666,7 +666,7 @@ getinterfaceuptime() {
 # 查询 IP 归属地
 get_ip_attribution() {
 	ip="$1"
-	#jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip) | .ip' "$devices_json" >/dev/null && echo "本地局域网" && return
+	jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip) | .ip' "$devices_json" >/dev/null && echo "本地局域网" && return
 	local ip_attribution_urls=$(cat /usr/share/wechatpush/api/ip_attribution.list)
 	local sorted_attribution_urls=$(echo "$ip_attribution_urls" | awk 'BEGIN {srand()} {print rand() "\t" $0}' | sort -k1,1n | cut -f2-)
 	local ip_attribution_url
