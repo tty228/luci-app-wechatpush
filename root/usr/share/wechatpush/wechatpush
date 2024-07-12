@@ -1498,51 +1498,6 @@ down() {
 	silent_run LockFile unlock
 }
 
-# 设备离线通知
-down_send() {
-	# 如果没有离线设备，退出
-	[ "$(jq '.devices | map(select(.status == "offline")) | length' "$devices_json")" -eq 0 ] && return
-
-	local IPLIST=$(jq -r '.devices[] | select(.status == "offline") | .ip' "$devices_json" | sort -u)
-	for ip in $IPLIST; do
-		local mac=$(getmac "$ip")
-		blackwhitelist "$mac"
-		local ip_blackwhite=$?
-		[ -z "$notification_offline" ] || [ -z "$ip_blackwhite" ] && continue
-		[ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne "0" ] && continue
-
-		local name=$(getname "$ip" "$mac")
-		local time_up=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "offline") | .uptime' "$devices_json")
-		local ip_total=$(usage get "$mac")
-		[ -n "$ip_total" ] && ip_total="${str_linefeed}${str_tab}总计流量： ${str_space}${str_space}${str_space}${str_space}${ip_total}"
-		local time1=$(date +%s)
-		local time1=$(time_for_humans $(expr ${time1} - ${time_up}))
-
-		if [ -z "$title" ]; then
-			title="${name} 断开连接"
-			content_title="${str_splitline}${str_title_start} 设备断开连接${str_title_end}"
-		elif echo "$title" | grep -q "断开连接"; then
-			title="${name} ${title}"
-			content_title=""
-		else
-			title="设备状态变化"
-			content_title="${str_splitline}${str_title_start} 设备断开连接${str_title_end}"
-		fi
-
-		local content_name="${str_linefeed}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${name}"
-		local content_ip="${str_linefeed}${str_tab}客户端IP：${str_space}${str_space}${str_space}${str_space}${ip}"
-		local content_mac="${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}"
-		local content_time="${str_linefeed}${str_tab}在线时间：${str_space}${str_space}${str_space}${str_space}${time1}"
-
-		content="${content}${content_title}${content_name}${content_ip}${content_mac}${content_time}"
-
-		log_change "${disturb_text}设备 ${name} ${ip} 断开连接 "
-	done
-	silent_run LockFile lock
-	jq 'del(.devices[] | select(.status == "offline"))' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
-	silent_run LockFile unlock
-}
-
 # 当前设备列表
 current_device() {
 	(echo "$lite_enable" | grep -q "content") || (echo "$lite_enable" | grep -q "device") && return
@@ -1674,71 +1629,6 @@ get_client_usage() {
 # ------------------------------------
 # 自动封禁相关
 #
-# 登录提醒通知
-login_send() {
-	local login_ip=$1
-	local login_time=$2
-	local log_type=$3
-
-	local login_title
-	local login_content
-
-	>"${dir}/send_enable.lock"
-
-	[ -z "$login_ip" ] && return
-	echo "$login_ip_white_list" | grep -w -q "$login_ip" && [ -n "$login_log_enable" ] && return
-
-	[[ "$log_type" == "web"* ]] && local log_type_short="Web" || local log_type_short="SSH"
-	if [ -n "$login_disturb" ] && [ "$login_disturb" -eq 2 ]; then
-		[ -f "$logfile" ] && login_log=$(grep -w "$login_ip" "$logfile" | grep -v "\【info\】" | tail -n 1)
-		[ -n "$login_log" ] && log_timestamp=$(date -d "$(echo "$login_log" | awk '{print $1, $2}')" +%s) || log_timestamp=0
-		[ $(($(date +%s) - log_timestamp)) -lt $login_notification_delay ] && local log_only="1" && [ -n "$login_log_enable" ] && return
-	fi
-	[ -n "$log_only" ] && log_change "【info】设备 ${login_ip} 通过 ${log_type_short} 登录了路由器 " && return
-
-	# 查询 IP 归属地
-	local login_ip_attribution=$(get_ip_attribution "${login_ip}")
-	# 登录方式
-	if [[ "$log_type" == "web"* ]]; then
-		# Web 登录、非法登录
-		local login_mode=$(logread notice | grep -E ".* $login_time.*$login_ip.*" | awk '{print $13}' | tail -n 1)
-		[ "$login_mode" = "/" ] && login_mode="/ (首页登录)"
-	elif [[ "$log_type" == "ssh_login"* ]]; then
-		# SSH 登录
-		local login_mode=$(logread notice | grep -E ".* $login_time.*$login_ip.*" | awk '{print $8}' | tail -n 1)
-	else
-		local login_mode=$(logread notice | grep -E ".* $login_time.*$login_ip.*" | awk '{for(i=8;i<NF;i++) if($i=="from") break; else printf $i " "}' | tail -n 1)
-	fi
-
-	if [ -z "$login_disturb" ] || [ "$login_disturb" -ne "1" ]; then
-		if [[ "$log_type" == *"failed"* ]]; then
-			local log_message="频繁尝试登录"
-			local login_title="${login_ip} ${log_message}"
-			local login_content_info="${str_splitline}${str_title_start} 封禁信息${str_title_end}"
-		else
-			local log_message="登录了路由器"
-			local login_title="${login_ip} ${log_message}"
-			local login_content_info="${str_splitline}${str_title_start} 登录信息${str_title_end}"
-		fi
-
-		log_change "${disturb_text}设备 ${login_ip} (${login_ip_attribution}) 通过 ${log_type_short} ${login_mode} ${log_message}"
-
-		local login_content_time="${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${login_time}"
-		local login_content_ip="${str_linefeed}${str_tab}设备 IP：${str_space}${str_space}${login_ip}"
-		[ -n "$login_ip_attribution" ] && local login_content_attribution="${str_linefeed}${str_tab}归属地：${str_space}${str_space}${login_ip_attribution}"
-		local login_content_mode="${str_linefeed}${str_tab}登录方式：${str_space}${log_type_short} ${login_mode}"
-
-		login_content="${login_content_info}${login_content_time}${login_content_ip}${login_content_attribution}${login_content_mode}"
-	fi
-
-	# 发送通知
-	disturb
-	disturb_RETVAL=$?
-	[ -z "$login_title" ] && return
-	[ -n "$device_name" ] && login_title="【$device_name】$login_title"
-	(echo "$lite_enable" | grep -q "login_content") && login_content="$login_title"
-	[ "$disturb_RETVAL" -eq 0 ] && [ -n "$login_title" ] && diy_send "${login_title}" "${login_content}" "${jsonpath}" >/dev/null 2>&1
-}
 
 # 添加白名单，懒得写删除项和信息显示了，纯粹就是懒
 add_ip_white() {
@@ -2111,6 +2001,117 @@ send() {
 	deltemp
 	rm -f "${dir}/send_pid"
 	return $RETVAL
+}
+
+# 登录提醒通知
+login_send() {
+	local login_ip=$1
+	local login_time=$2
+	local log_type=$3
+
+	local login_title
+	local login_content
+
+	>"${dir}/send_enable.lock"
+
+	[ -z "$login_ip" ] && return
+	echo "$login_ip_white_list" | grep -w -q "$login_ip" && [ -n "$login_log_enable" ] && return
+
+	[[ "$log_type" == "web"* ]] && local log_type_short="Web" || local log_type_short="SSH"
+	if [ -n "$login_disturb" ] && [ "$login_disturb" -eq 2 ]; then
+		[ -f "$logfile" ] && login_log=$(grep -w "$login_ip" "$logfile" | grep -v "\【info\】" | tail -n 1)
+		[ -n "$login_log" ] && log_timestamp=$(date -d "$(echo "$login_log" | awk '{print $1, $2}')" +%s) || log_timestamp=0
+		[ $(($(date +%s) - log_timestamp)) -lt $login_notification_delay ] && local log_only="1" && [ -n "$login_log_enable" ] && return
+	fi
+	[ -n "$log_only" ] && log_change "【info】设备 ${login_ip} 通过 ${log_type_short} 登录了路由器 " && return
+
+	# 查询 IP 归属地
+	local login_ip_attribution=$(get_ip_attribution "${login_ip}")
+	# 登录方式
+	if [[ "$log_type" == "web"* ]]; then
+		# Web 登录、非法登录
+		local login_mode=$(logread notice | grep -E ".* $login_time.*$login_ip.*" | awk '{print $13}' | tail -n 1)
+		[ "$login_mode" = "/" ] && login_mode="/ (首页登录)"
+	elif [[ "$log_type" == "ssh_login"* ]]; then
+		# SSH 登录
+		local login_mode=$(logread notice | grep -E ".* $login_time.*$login_ip.*" | awk '{print $8}' | tail -n 1)
+	else
+		local login_mode=$(logread notice | grep -E ".* $login_time.*$login_ip.*" | awk '{for(i=8;i<NF;i++) if($i=="from") break; else printf $i " "}' | tail -n 1)
+	fi
+
+	if [ -z "$login_disturb" ] || [ "$login_disturb" -ne "1" ]; then
+		if [[ "$log_type" == *"failed"* ]]; then
+			local log_message="频繁尝试登录"
+			local login_title="${login_ip} ${log_message}"
+			local login_content_info="${str_splitline}${str_title_start} 封禁信息${str_title_end}"
+		else
+			local log_message="登录了路由器"
+			local login_title="${login_ip} ${log_message}"
+			local login_content_info="${str_splitline}${str_title_start} 登录信息${str_title_end}"
+		fi
+
+		log_change "${disturb_text}设备 ${login_ip} (${login_ip_attribution}) 通过 ${log_type_short} ${login_mode} ${log_message}"
+
+		local login_content_time="${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${login_time}"
+		local login_content_ip="${str_linefeed}${str_tab}设备 IP：${str_space}${str_space}${login_ip}"
+		[ -n "$login_ip_attribution" ] && local login_content_attribution="${str_linefeed}${str_tab}归属地：${str_space}${str_space}${login_ip_attribution}"
+		local login_content_mode="${str_linefeed}${str_tab}登录方式：${str_space}${log_type_short} ${login_mode}"
+
+		login_content="${login_content_info}${login_content_time}${login_content_ip}${login_content_attribution}${login_content_mode}"
+	fi
+
+	# 发送通知
+	disturb
+	disturb_RETVAL=$?
+	[ -z "$login_title" ] && return
+	[ -n "$device_name" ] && login_title="【$device_name】$login_title"
+	(echo "$lite_enable" | grep -q "login_content") && login_content="$login_title"
+	[ "$disturb_RETVAL" -eq 0 ] && [ -n "$login_title" ] && diy_send "${login_title}" "${login_content}" "${jsonpath}" >/dev/null 2>&1
+}
+
+# 设备离线通知
+down_send() {
+	# 如果没有离线设备，退出
+	[ "$(jq '.devices | map(select(.status == "offline")) | length' "$devices_json")" -eq 0 ] && return
+
+	local IPLIST=$(jq -r '.devices[] | select(.status == "offline") | .ip' "$devices_json" | sort -u)
+	for ip in $IPLIST; do
+		local mac=$(getmac "$ip")
+		blackwhitelist "$mac"
+		local ip_blackwhite=$?
+		[ -z "$notification_offline" ] || [ -z "$ip_blackwhite" ] && continue
+		[ -z "$ip_blackwhite" ] || [ "$ip_blackwhite" -ne "0" ] && continue
+
+		local name=$(getname "$ip" "$mac")
+		local time_up=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "offline") | .uptime' "$devices_json")
+		local ip_total=$(usage get "$mac")
+		[ -n "$ip_total" ] && ip_total="${str_linefeed}${str_tab}总计流量： ${str_space}${str_space}${str_space}${str_space}${ip_total}"
+		local time1=$(date +%s)
+		local time1=$(time_for_humans $(expr ${time1} - ${time_up}))
+
+		if [ -z "$title" ]; then
+			title="${name} 断开连接"
+			content_title="${str_splitline}${str_title_start} 设备断开连接${str_title_end}"
+		elif echo "$title" | grep -q "断开连接"; then
+			title="${name} ${title}"
+			content_title=""
+		else
+			title="设备状态变化"
+			content_title="${str_splitline}${str_title_start} 设备断开连接${str_title_end}"
+		fi
+
+		local content_name="${str_linefeed}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${name}"
+		local content_ip="${str_linefeed}${str_tab}客户端IP：${str_space}${str_space}${str_space}${str_space}${ip}"
+		local content_mac="${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}"
+		local content_time="${str_linefeed}${str_tab}在线时间：${str_space}${str_space}${str_space}${str_space}${time1}"
+
+		content="${content}${content_title}${content_name}${content_ip}${content_mac}${content_time}"
+
+		log_change "${disturb_text}设备 ${name} ${ip} 断开连接 "
+	done
+	silent_run LockFile lock
+	jq 'del(.devices[] | select(.status == "offline"))' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
+	silent_run LockFile unlock
 }
 
 # 推送
