@@ -487,7 +487,7 @@ deltemp() {
 	unset title content gateway_iplist
 	rm -f "${dir}/title" "${dir}/content" "${dir}/send_enable.lock" "${dir}/send.lock" "${tempjsonpath}" "${dir}/cookies.txt" >/dev/null 2>&1
 	[ -f "$logfile" ] && local logrow=$(grep -c "" "$logfile") || local logrow="0"
-	[ "$logrow" -gt 500 ] && sed -i '1,200d' "$logfile" && log_change "【清理】日志超出上限，删除前 200 条"
+	[ "$logrow" -gt 500 ] && tail -n 300 "$logfile" > "${logfile}.tmp" && mv "${logfile}.tmp" "$logfile" && log_change "【清理】日志超出上限，保留最后 300 条"
 }
 
 # ------------------------------------
@@ -1682,9 +1682,6 @@ login_send() {
 	# 设置 IP 黑名单
 	set_ip_black
 
-	# 获取系统日志
-	sys_log=$(logread notice)
-
 	local login_title
 	local login_content
 
@@ -1702,7 +1699,7 @@ login_send() {
 					[ -n "$login_log" ] && log_timestamp=$(date -d "$(echo "$login_log" | awk '{print $1, $2}')" +%s) || log_timestamp=0
 					[ $(($(date +%s) - log_timestamp)) -lt $login_notification_delay ] && local log_only="1" && [ -n "$login_log_enable" ] && continue
 				fi
-				[ -n "$log_only" ] && log_change "【info】设备 ${login_ip} 通过 ${log_type_short} ${login_mode} 登录了路由器 " && continue
+				[ -n "$log_only" ] && log_change "【info】设备 ${login_ip} 通过 ${log_type_short} 登录了路由器 " && continue
 
 				# 查询 IP 归属地
 				local login_ip_attribution=$(get_ip_attribution "${login_ip}")
@@ -1717,6 +1714,7 @@ login_send() {
 				else
 					local login_mode=$(logread notice | grep -E ".* $login_time.*$login_ip.*" | awk '{for(i=8;i<NF;i++) if($i=="from") break; else printf $i " "}' | tail -n 1)
 				fi
+				
 
 				if [[ "$log_type" == *"failed" ]]; then
 					local log_message="频繁尝试登录"
@@ -1728,7 +1726,7 @@ login_send() {
 					local login_content_info="${str_splitline}${str_title_start} 登录信息${str_title_end}"
 				fi
 
-				echo "$(date "+%Y-%m-%d") ${login_time} ${disturb_text}设备 ${login_ip} (${login_ip_attribution}) 通过 ${log_type_short} ${login_mode} ${log_message}" >>"${logfile}"
+				log_change "${disturb_text}设备 ${login_ip} (${login_ip_attribution}) 通过 ${log_type_short} ${login_mode} ${log_message}"
 
 				local login_content_time="${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${login_time}"
 				local login_content_ip="${str_linefeed}${str_tab}设备 IP：${str_space}${str_space}${login_ip}"
@@ -1953,7 +1951,7 @@ monitor_logins() {
 					# 如果未能提取到 IP，从日志标识符提取失败用户的 ID，并再次提取 IP
 					if [ -z "$ssh_failed_ip" ]; then
 						ssh_failed_num=$(echo "$line" | sed -n 's/.*authpriv\.warn dropbear\[\([0-9]\+\)\]: Login attempt for nonexistent user/\1/p')
-						[ -n "$ssh_failed_num" ] && ssh_failed_ip=$(logread notice | grep "authpriv\.info dropbear\[${ssh_failed_num}\].*Child connection from" | awk '{print $NF}' | sed -nr 's#^(.*):[0-9]{1,5}#\1#gp' | sed -e 's/%.*//' | sort -u)
+						[ -n "$ssh_failed_num" ] && ssh_failed_ip=$(logread notice | grep "authpriv\.info dropbear\[${ssh_failed_num}\].*Child connection from" | awk '{print $NF}' | sed -nr 's#^(.*):[0-9]{1,5}#\1#gp' | sed -e 's/%.*//' | tail -n 1)
 					fi
 
 					# 如果成功提取到 IP 地址，调用 process_login 处理
