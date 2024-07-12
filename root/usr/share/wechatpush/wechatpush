@@ -487,7 +487,7 @@ deltemp() {
 	unset title content gateway_iplist
 	rm -f "${dir}/title" "${dir}/content" "${dir}/send_enable.lock" "${dir}/send.lock" "${tempjsonpath}" "${dir}/cookies.txt" >/dev/null 2>&1
 	[ -f "$logfile" ] && local logrow=$(grep -c "" "$logfile") || local logrow="0"
-	[ "$logrow" -gt 500 ] && tail -n 300 "$logfile" > "${logfile}.tmp" && mv "${logfile}.tmp" "$logfile" && log_change "【清理】日志超出上限，保留最后 300 条"
+	[ "$logrow" -gt 500 ] && tail -n 300 "$logfile" >"${logfile}.tmp" && mv "${logfile}.tmp" "$logfile" && log_change "【清理】日志超出上限，保留最后 300 条"
 }
 
 # ------------------------------------
@@ -1714,26 +1714,27 @@ login_send() {
 				else
 					local login_mode=$(logread notice | grep -E ".* $login_time.*$login_ip.*" | awk '{for(i=8;i<NF;i++) if($i=="from") break; else printf $i " "}' | tail -n 1)
 				fi
-				
 
-				if [[ "$log_type" == *"failed" ]]; then
-					local log_message="频繁尝试登录"
-					local login_title="${login_ip} ${log_message}"
-					local login_content_info="${str_splitline}${str_title_start} 封禁信息${str_title_end}"
-				else
-					local log_message="登录了路由器"
-					local login_title="${login_ip} ${log_message}"
-					local login_content_info="${str_splitline}${str_title_start} 登录信息${str_title_end}"
+				if [ -z "$login_disturb" ] || [ "$login_disturb" -ne "1" ]; then
+					if [[ "$log_type" == *"failed" ]]; then
+						local log_message="频繁尝试登录"
+						local login_title="${login_ip} ${log_message}"
+						local login_content_info="${str_splitline}${str_title_start} 封禁信息${str_title_end}"
+					else
+						local log_message="登录了路由器"
+						local login_title="${login_ip} ${log_message}"
+						local login_content_info="${str_splitline}${str_title_start} 登录信息${str_title_end}"
+					fi
+
+					log_change "${disturb_text}设备 ${login_ip} (${login_ip_attribution}) 通过 ${log_type_short} ${login_mode} ${log_message}"
+
+					local login_content_time="${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${login_time}"
+					local login_content_ip="${str_linefeed}${str_tab}设备 IP：${str_space}${str_space}${login_ip}"
+					[ -n "$login_ip_attribution" ] && local login_content_attribution="${str_linefeed}${str_tab}归属地：${str_space}${str_space}${login_ip_attribution}"
+					local login_content_mode="${str_linefeed}${str_tab}登录方式：${str_space}${log_type_short} ${login_mode}"
+
+					login_content="${login_content_info}${login_content_time}${login_content_ip}${login_content_attribution}${login_content_mode}"
 				fi
-
-				log_change "${disturb_text}设备 ${login_ip} (${login_ip_attribution}) 通过 ${log_type_short} ${login_mode} ${log_message}"
-
-				local login_content_time="${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${login_time}"
-				local login_content_ip="${str_linefeed}${str_tab}设备 IP：${str_space}${str_space}${login_ip}"
-				[ -n "$login_ip_attribution" ] && local login_content_attribution="${str_linefeed}${str_tab}归属地：${str_space}${str_space}${login_ip_attribution}"
-				local login_content_mode="${str_linefeed}${str_tab}登录方式：${str_space}${log_type_short} ${login_mode}"
-
-				login_content="${login_content_info}${login_content_time}${login_content_ip}${login_content_attribution}${login_content_mode}"
 
 			done <"$log_file"
 			rm -f "$log_file" >/dev/null 2>&1

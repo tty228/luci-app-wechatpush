@@ -724,20 +724,20 @@ msgstr "CPU 报警免打扰时间（秒）"
 msgid "No repeat notifications within the set time after the initial push notification."
 msgstr "首次推送通知后，在设定时间内不再重复提醒"
 
-#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:667
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:700
 msgid "Do Not Disturb for Login Reminders"
 msgstr "登录提醒免打扰"
 
-#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:670
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:703
 msgid "Only record in the log"
 msgstr "仅记录到日志"
 
-#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:671
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:704
 msgid "Ignore all login reminders and only record in the log"
-msgstr "忽略所有登录提醒，仅记录到日志"
+msgstr "忽略所有登录提醒（包括失败的登录），仅记录到日志"
 
-#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:672
-msgid "Send notification only on the first login"
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:706
+msgid "Send notification only on the first login."
 msgstr "仅在首次登录时推送通知"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:673

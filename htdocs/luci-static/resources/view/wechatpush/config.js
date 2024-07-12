@@ -701,9 +701,9 @@ return view.extend({
 		o.value('', _('Close'),
 			_(' '));
 		o.value('1', _('Only record in the log'),
-			_('Ignore all login reminders and only record in the log'));
+			_('Ignore all login notifications (including failed logins), and only record them in the log.'));
 		o.value('2', _('Send notification only on the first login'),
-			_('Send notification only once within the specified time interval'));
+			_('Send notification only once within the specified time interval.'));
 
 		o = s.taboption('disturb', form.Value, 'login_notification_delay', _('Login reminder do not disturb time (s)'));
 		o.rmempty = false;
