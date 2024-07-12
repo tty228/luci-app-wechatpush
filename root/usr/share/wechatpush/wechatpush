@@ -88,7 +88,7 @@ read_config() {
 	[ -z "$server_port" ] && server_port="22"
 	output_dir="${dir}/json_output"
 	mkdir -p "$output_dir"
-	if (echo "$lite_enable" | grep -q "content"); then
+	if (echo "$lite_enable" | grep -q "content") || [ -z "$jsonpath" ]; then
 		str_title_start="" && str_title_end="" && str_splitline="" && str_linefeed="" && str_tab=""
 	else
 		read_json "str_title_start" "$jsonpath"
@@ -121,7 +121,7 @@ init() {
 	[ ! -f "/usr/sbin/wrtbwmon" ] && log_change "【info】未安装 wrtbwmon ，流量统计不可用"
 	[ -z "$ip_version" ] && log_change "【！！！】无法获取依赖项 iputils-arping 版本号，请确认插件是否正常运行"
 	[ -z "$cu_version" ] && log_change "【！！！】无法获取依赖项 curl 版本号，请确认插件是否正常运行"
-	[ -z "${sckey}${tg_token}${pushplus_token}${corpid}${wxpusher_apptoken}${wxpusher_uids}${wxpusher_topicIds}" -a "${jsonpath}" != "/usr/share/wechatpush/api/diy.json" ] && log_change "【！！！】请填写正确的 key" && return 1
+	[ -n "$jsonpath" ] && [ -z "${sckey}${tg_token}${pushplus_token}${corpid}${wxpusher_apptoken}${wxpusher_uids}${wxpusher_topicIds}" -a "${jsonpath}" != "/usr/share/wechatpush/api/diy.json" ] && log_change "【！！！】请填写正确的 key" && return 1
 	local interfacelist=$(getinterfacelist) && [ -z "$interfacelist" ] && log_change "【！！！】存在多个接口或配置错误，可能无法获取接口在线时间等信息，请确认插件是否正常运行"
 	[ -n "$notification_temp" ] && [ -n "$temperature_threshold" ] && local cpu_temp=$(soc_temp) || local cpu_temp="null"
 	[ -z "$cpu_temp" ] && log_change "【！！！】无法读取设备温度，请检查命令"
@@ -838,7 +838,8 @@ disturb() {
 	if [ $(date +%H) -ge $do_not_disturb_endtime -a $do_not_disturb_starttime -lt $do_not_disturb_endtime ] || [ $(date +%H) -lt $do_not_disturb_starttime -a $do_not_disturb_starttime -lt $do_not_disturb_endtime ] || [ $(date +%H) -lt $do_not_disturb_starttime -a $(date +%H) -ge $do_not_disturb_endtime -a $do_not_disturb_starttime -gt $do_not_disturb_endtime ]; then
 		unset sheep_starttime
 		rm -f ${dir}/sheep_usage ${dir}/old_sheep_usage 2>/dev/null
-		disturb_text=$(jq -r '._api' ${jsonpath})
+		[ -z "$jsonpath" ] && disturb_text="【info】"
+		[ -n "$jsonpath" ] && disturb_text=$(jq -r '._api' ${jsonpath})
 		return 0
 	# 免打扰
 	else
@@ -2095,6 +2096,7 @@ down_send() {
 
 # 推送
 diy_send() {
+	[ -z "$jsonpath" ] && return
 	(! echo "$lite_enable" | grep -q "content") && (! echo "$lite_enable" | grep -q "nowtime") && local nowtime=$(date "+%Y-%m-%d %H:%M:%S")
 	! jq -r '.' ${3} >/dev/null 2>&1 && log_change "【！！！】json 文件格式错误，这不是一个标准的 json 文件，请检查 ${3} 文件是否有特殊符号未转义或语法错误" && return 1
 	local diyurl=$(jq -r .url ${3}) && local diyurl=$(eval echo ${diyurl})

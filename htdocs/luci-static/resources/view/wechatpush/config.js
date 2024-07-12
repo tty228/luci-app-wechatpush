@@ -132,6 +132,8 @@ return view.extend({
 		o = s.taboption('basic', form.Flag, 'enable', _('Enabled'));
 
 		o = s.taboption('basic', cbiRichListValue, 'jsonpath', _('Push Mode'));
+		o.value('', _('Close'),
+			_('Do not use push notifications, only use other features.'));
 		o.value('/usr/share/wechatpush/api/serverchan.json', _('WeChat serverchan'),
 			_('Using serverchan API, simple configuration, supports multiple push methods'));
 		o.value('/usr/share/wechatpush/api/qywx_mpnews.json', _('WeChat Work Image Message'),
@@ -231,6 +233,12 @@ return view.extend({
 
 		o = s.taboption('basic', form.Value, 'proxy_address', _('Proxy Address'));
 		o.description = _('When you want to use a proxy to push information, you can use this option.<br/>This may be helpful for scenarios like trusted IPs for WeChat Work.Using special characters may cause sending failure.<br/>Example:<br/>http://username:password@127.0.0.1:1080<br/>socks5://username:password@127.0.0.1:1080');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/serverchan.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/qywx_mpnews.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/wxpusher.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/pushplus.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/telegram.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/diy.json');
 
 		o = s.taboption('basic', form.Button, '_test', _('Send Test'), _('You may need to save the configuration before sending.'));
 		o.inputstyle = 'add';
@@ -249,6 +257,12 @@ return view.extend({
 				return _this.map.reset();
 			});
 		}
+		o.depends('jsonpath', '/usr/share/wechatpush/api/serverchan.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/qywx_mpnews.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/wxpusher.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/pushplus.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/telegram.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/diy.json');
 
 		o = s.taboption('basic', form.Value, 'device_name', _('Device Name'));
 		o.description = _('The device name will be displayed in the push message title to identify the source device of the message.');
