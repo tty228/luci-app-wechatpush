@@ -737,15 +737,15 @@ msgid "Only record in the log"
 msgstr "仅记录到日志"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:704
-msgid "Ignore all login reminders and only record in the log"
+msgid "Ignore all login notifications (including failed logins), and only record them in the log."
 msgstr "忽略所有登录提醒（包括失败的登录），仅记录到日志"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:706
-msgid "Send notification only on the first login."
+msgid "Send notification only on the first login"
 msgstr "仅在首次登录时推送通知"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:673
-msgid "Send notification only once within the specified time interval"
+msgid "Send notification only once within the specified time interval."
 msgstr "在设定时间间隔内，仅首次发送推送通知"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:675
