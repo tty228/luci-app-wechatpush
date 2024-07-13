@@ -42,7 +42,7 @@ return view.extend({
 		);
 
 		var log_path = '/tmp/wechatpush/wechatpush.log';
-		var lastLogContent = ''; // To store the last fetched log content
+		var lastLogContent = '';
 
 		var clear_log_button = E('div', {}, [
 			E('button', {
@@ -60,7 +60,7 @@ return view.extend({
 							// 立即刷新日志显示框
 							var log = E('pre', { 'wrap': 'pre' }, [_('Log is clean.')]);
 							dom.content(log_textarea, log);
-							lastLogContent = ''; // Reset last content after clearing
+							lastLogContent = '';
 						})
 						.catch(function () {
 							button.textContent = _('Failed to clear log.');
