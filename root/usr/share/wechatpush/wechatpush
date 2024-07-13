@@ -573,7 +573,7 @@ getmac() {
 	# 已保存的 MAC
 	mac=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip) | .mac' "$devices_json")
 	# 某些路由器中继模式，会导致 MAC 重复，如果是重复值，尝试重新获取
-	local mac_count=$(jq -r --arg mac "$tmp_mac" '.devices[] | select(.mac == $mac) | .mac' "$devices_json" | wc -l)
+	local mac_count=$(jq -r --arg mac "$mac" '.devices[] | select(.mac == $mac) | .mac' "$devices_json" | wc -l)
 	[ "$mac_count" -eq 1 ] && process_and_check "$mac" && return
 
 	# DHCP
