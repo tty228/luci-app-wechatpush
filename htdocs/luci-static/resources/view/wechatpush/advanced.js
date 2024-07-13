@@ -74,38 +74,6 @@ return view.extend({
 		s.anonymous = true
 		s.addremove = false
 
-		o = s.option(form.Value, 'up_timeout', _('Device online detection timeout (s)'));
-		o.placeholder = "2"
-		o.optional = false
-		o.datatype = "uinteger"
-		o.rmempty = false;
-
-		o = s.option(form.Value, "down_timeout", _('Device offline detection timeout (s)'))
-		o.placeholder = "10"
-		o.optional = false
-		o.datatype = "uinteger"
-		o.rmempty = false;
-
-		o = s.option(form.Value, "timeout_retry_count", _('Offline detection count'))
-		o.placeholder = "2"
-		o.optional = false
-		o.datatype = "uinteger"
-		o.rmempty = false;
-		o.description = _("If the device has good signal strength and no Wi-Fi sleep issues, you can reduce the above values.<br/>Due to the mysterious nature of Wi-Fi sleep during the night, if you encounter frequent disconnections, please adjust the parameters accordingly.<br/>..╮(╯_╰）╭..")
-
-		o = s.option(form.DynamicList, 'always_check_ip_list', _('IP address to always scan'));
-		o.datatype = 'ipaddr';
-		o.description = _('The IPs in the list are always subjected to online detection regardless of whether they exist in the ARP list, suitable for secondary routing scenarios.');
-
-		hosts.forEach(function (host) {
-			o.value(host.ip, this.formatHostIPMAC(host));
-		}, this);
-
-		o = s.option(form.Flag, "only_timeout_push", _("Offline timeout applies only to the devices that receive push notifications"))
-		o.default = 0
-		o.rmempty = true
-		o.description = _("When this option is selected, the offline timeout and offline detection count apply only to the devices that require push notifications. Other devices will use default values, which can significantly reduce the time required for detection. However, it may result in inaccurate online time displayed in the online devices list. It is recommended to enable this option only when there are many devices and frequent offline occurrences are observed for specific devices of interest.")
-
 		o = s.option(form.Flag, "passive_mode", _("Disable active detection"))
 		o.default = 0
 		o.rmempty = true
@@ -156,11 +124,48 @@ return view.extend({
 			});
 		};
 
+		o = s.option(form.Value, 'up_timeout', _('Device online detection timeout (s)'));
+		o.placeholder = "2"
+		o.optional = false
+		o.datatype = "uinteger"
+		o.rmempty = false;
+		o.depends('passive_mode', '0');
+
+		o = s.option(form.Value, "down_timeout", _('Device offline detection timeout (s)'))
+		o.placeholder = "10"
+		o.optional = false
+		o.datatype = "uinteger"
+		o.rmempty = false;
+		o.depends('passive_mode', '0');
+
+		o = s.option(form.Value, "timeout_retry_count", _('Offline detection count'))
+		o.placeholder = "2"
+		o.optional = false
+		o.datatype = "uinteger"
+		o.rmempty = false;
+		o.description = _("If the device has good signal strength and no Wi-Fi sleep issues, you can reduce the above values.<br/>Due to the mysterious nature of Wi-Fi sleep during the night, if you encounter frequent disconnections, please adjust the parameters accordingly.<br/>..╮(╯_╰）╭..")
+		o.depends('passive_mode', '0');
+
+		o = s.option(form.Flag, "only_timeout_push", _("Offline timeout applies only to the devices that receive push notifications"))
+		o.default = 0
+		o.rmempty = true
+		o.description = _("When this option is selected, the offline timeout and offline detection count apply only to the devices that require push notifications. Other devices will use default values, which can significantly reduce the time required for detection. However, it may result in inaccurate online time displayed in the online devices list. It is recommended to enable this option only when there are many devices and frequent offline occurrences are observed for specific devices of interest.")
+		o.depends('passive_mode', '0');
+
+		o = s.option(form.DynamicList, 'always_check_ip_list', _('IP address to always scan'));
+		o.datatype = 'ipaddr';
+		o.description = _('The IPs in the list are always subjected to online detection regardless of whether they exist in the ARP list, suitable for secondary routing scenarios.');
+		hosts.forEach(function (host) {
+			o.value(host.ip, this.formatHostIPMAC(host));
+		}, this);
+		o.depends('passive_mode', '0');
+
 		o = s.option(form.MultiValue, 'device_info_helper', _('Assist in obtaining device information'));
 		o.value('gateway_info', _('Retrieve hostname list from modem'));
 		o.value('scan_local_ip', _('Scan local IP'));
 		o.modalonly = true;
 		o.description = _('When OpenWrt is used as a bypass gateway and cannot obtain device hostnames or a complete list of local network devices.<br/>the \"Retrieve hostname list from modem\" option has only been tested with HG5143F/HN8145V China Telecom gateways and may not be universally applicable.<br/>The \"Scan local IP\" option may not retrieve hostnames, so please use device name annotations in conjunction with it.');
+		o.depends('passive_mode', '0');
 
 		o = s.option(form.Value, "gateway_host_url", _('Optical modem login URL'));
 		o.rmempty = true;
