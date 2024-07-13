@@ -37,6 +37,6 @@ if [ "$1" == "clear_log" ]; then
 	>"${logfile}"
 elif [ "$1" == "down_oui" ]; then
 	# 更新 MAC 信息列表
-	[ $(file_date "$oui_base") -lt 86400 ] && echo "$(date "+%Y-%m-%d %H:%M:%S") 【info】MAC 信息文件无需更新" >>"${logfile}" && exit 2
+	[ $(file_date "$oui_base") -lt 604800 ] && echo "$(date "+%Y-%m-%d %H:%M:%S") 【info】MAC 信息文件无需更新" >>"${logfile}" && exit 2
 	down_oui >/dev/null 2>&1 &
 fi
