@@ -587,8 +587,9 @@ getmac() {
 	# 定时推送时不查询
 	[ -f "${dir}/send_pid" ] && echo "unknown" && return
 
-	# 因 NetBIOS 查询时间过长，跳过离线设备
-	jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "online") | .ip' "$devices_json" >/dev/null && mac=$(nmblookup_timeout "${ip}" "mac" "5" 2>/dev/null)
+	# 离线、在线时间超过 10 分钟不查询
+	local uptime=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "online") | .uptime' "$devices_json")
+	[ -n "$uptime" ] && local time_up=$(expr $(date +%s) - $uptime) && [ "$time_up" -lt 600 ] && mac=$(nmblookup_timeout "${ip}" "mac" "5" 2>/dev/null)
 	process_and_check "$mac" && return
 
 	# 默认返回 unknown
@@ -634,8 +635,9 @@ getname() {
 
 	# 因 NetBIOS 查询时间过长，跳过离线设备
 	# 设备刚上线时设备信息未保存，json 中无法检查在线状态，应避免使用 oui 数据库，否则无法使用 NetBIOS 查询
-	# 应避免对 unknown 设备反复查询主机名，无用的挣扎，待优化
-	if jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "online") | .ip' "$devices_json" >/dev/null; then
+	# 离线、在线时间超过 10 分钟不查询
+	local uptime=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "online") | .uptime' "$devices_json")
+	if [ -n "$uptime" ] && time_up=$(expr $(date +%s) - $uptime) && [ "$time_up" -lt 600 ]; then
 		tmp_name=$(nmblookup_timeout "${ip}" "name" "5" 2>/dev/null)
 		process_and_check "$tmp_name" && return
 
