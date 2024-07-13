@@ -570,11 +570,11 @@ getmac() {
 	local mac
 	[ -z "$ip" ] && return 1
 
+	# 已保存的 MAC
+	mac=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip) | .mac' "$devices_json")
 	# 某些路由器中继模式，会导致 MAC 重复，如果是重复值，尝试重新获取
 	local mac_count=$(jq -r --arg mac "$tmp_mac" '.devices[] | select(.mac == $mac) | .mac' "$devices_json" | wc -l)
-	# 已保存的 MAC
-	[ "$mac_count" -eq 1 ] && mac=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip) | .mac' "$devices_json")
-	process_and_check "$mac" && return
+	[ "$mac_count" -eq 1 ] && process_and_check "$mac" && return
 
 	# DHCP
 	[ -f "/tmp/dhcp.leases" ] && mac=$(grep -w "${ip}" "/tmp/dhcp.leases" | awk '{print $2}')
