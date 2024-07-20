@@ -150,7 +150,7 @@ return view.extend({
 			_('By modifying the JSON file, you can use a custom API'));
 
 		o = s.taboption('basic', form.Value, 'sckey', _('「wechatpush」sendkey'));
-		o.description = _('Get Instructions') + ' <a href="https://sct.ftqq.com/" target="_blank">' + _('Click here') + '</a>';
+		o.description = _('Get Instructions') + ' <a href="https://sct.ftqq.com/r/13285" target="_blank">' + _('Click here') + '</a>';
 		o.rmempty = false;
 		o.depends('jsonpath', '/usr/share/wechatpush/api/serverchan.json');
 
