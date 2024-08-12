@@ -759,8 +759,9 @@ getping() {
 getcpu() {
 	local AT=$(cat /proc/stat | grep "^cpu " | awk '{print $2+$3+$4+$5+$6+$7+$8 " " $2+$3+$4+$7+$8}')
 	sleep 1
-	local BT=$(cat /proc/stat | grep "^cpu " | awk '{print $2+$3+$4+$5+$6+$7+$8 " " $2+$3+$4+$7+$8}')
-	printf "%.01f%%" $(echo ${AT} ${BT} | awk '{print (($4-$2)/($3-$1))*100}')
+   	local BT=$(cat /proc/stat | grep "^cpu " | awk '{print $2+$3+$4+$5+$6+$7+$8 " " $2+$3+$4+$7+$8}')
+   	local CPU_USAGE=$(echo ${AT} ${BT} | awk '{printf "%.01f%%", (($4-$2)/($3-$1))*100}')
+   	echo $CPU_USAGE
 }
 
 # 获取SOC温度 （取所有传感器温度最大值）
