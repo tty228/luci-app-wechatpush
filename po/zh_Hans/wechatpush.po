@@ -68,6 +68,14 @@ msgstr "微信 Server 酱"
 msgid "Using serverchan API, simple configuration, supports multiple push methods"
 msgstr "使用 Server酱 接口，配置较简单，支持多项推送方式"
 
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js
+msgid "Serverchan3 APP"
+msgstr "Server 酱 APP"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js
+msgid "Using serverchan3 API, simple configuration, support push to ServerChan App"
+msgstr "使用 ServerChan3 接口，配置较简单，支持推送到Server酱 APP"
+
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:137
 msgid "WeChat Work Image Message"
 msgstr "企业微信 图文消息"
@@ -107,6 +115,26 @@ msgstr "通过修改 JSON 文件，使用自定义接口"
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:150
 msgid "「wechatpush」sendkey"
 msgstr "「Server酱」sendkey"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js
+msgid "「Serverchan3」sendkey"
+msgstr "「Server酱3」sendkey"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js
+msgid "「Serverchan3」uid"
+msgstr "「Server酱3」uid"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js
+msgid "ServerChan3 uid"
+msgstr "Server酱3 用户独立uid"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js
+msgid "「Serverchan3」tags"
+msgstr "「Server酱3」消息标签"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js
+msgid "ServerChan3 message tags, split with |"
+msgstr "Server酱3 使用标签来标记消息类型，支持多个使用|分隔"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:151
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:156
