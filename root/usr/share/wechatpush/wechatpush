@@ -37,7 +37,7 @@ wait_and_cat() {
 read_config() {
 	get_config \
 		"enable" "lite_enable" "device_name" "proxy_address" "sleeptime" "oui_data" "reset_regularly" "debuglevel" \
-		"jsonpath" "sckey" "corpid" "userid" "agentid" "corpsecret" "mediapath" "wxpusher_apptoken" "wxpusher_uids" "wxpusher_topicIds" "pushplus_token" "tg_token" "chat_id" \
+		"jsonpath" "sckey" "sc3key" "sc3uid" "sc3tags" "corpid" "userid" "agentid" "corpsecret" "mediapath" "wxpusher_apptoken" "wxpusher_uids" "wxpusher_topicIds" "pushplus_token" "tg_token" "chat_id" \
 		"get_ipv4_mode" "ipv4_interface" "get_ipv6_mode" "ipv6_interface" \
 		"device_notification" "cpu_notification" "cpu_load_threshold" "temperature_threshold" \
 		"client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" \
@@ -121,7 +121,7 @@ init() {
 	[ ! -f "/usr/sbin/wrtbwmon" ] && log_change "【info】未安装 wrtbwmon ，流量统计不可用"
 	[ -z "$ip_version" ] && log_change "【！！！】无法获取依赖项 iputils-arping 版本号，请确认插件是否正常运行"
 	[ -z "$cu_version" ] && log_change "【！！！】无法获取依赖项 curl 版本号，请确认插件是否正常运行"
-	[ -n "$jsonpath" ] && [ -z "${sckey}${tg_token}${pushplus_token}${corpid}${wxpusher_apptoken}${wxpusher_uids}${wxpusher_topicIds}" -a "${jsonpath}" != "/usr/share/wechatpush/api/diy.json" ] && log_change "【！！！】请填写正确的 key" && return 1
+	[ -n "$jsonpath" ] && [ -z "${sckey}${sc3key}${sc3uid}${sc3tags}${tg_token}${pushplus_token}${corpid}${wxpusher_apptoken}${wxpusher_uids}${wxpusher_topicIds}" -a "${jsonpath}" != "/usr/share/wechatpush/api/diy.json" ] && log_change "【！！！】请填写正确的 key" && return 1
 	local interfacelist=$(getinterfacelist) && [ -z "$interfacelist" ] && log_change "【！！！】存在多个接口或配置错误，可能无法获取接口在线时间等信息，请确认插件是否正常运行"
 	[ -n "$notification_temp" ] && [ -n "$temperature_threshold" ] && local cpu_temp=$(soc_temp) || local cpu_temp="null"
 	[ -z "$cpu_temp" ] && log_change "【！！！】无法读取设备温度，请检查命令"

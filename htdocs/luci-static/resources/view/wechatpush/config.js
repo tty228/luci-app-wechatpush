@@ -136,6 +136,8 @@ return view.extend({
 			_('Do not use push notifications, only use other features.'));
 		o.value('/usr/share/wechatpush/api/serverchan.json', _('WeChat serverchan'),
 			_('Using serverchan API, simple configuration, supports multiple push methods'));
+		o.value('/usr/share/wechatpush/api/serverchan3.json', _('Serverchan3 APP'),
+			_('Using serverchan3 API, simple configuration, support push to ServerChan App'));
 		o.value('/usr/share/wechatpush/api/qywx_mpnews.json', _('WeChat Work Image Message'),
 			_('Using WeChat Work application message, more complex configuration, and starting from June 20, 2022, additional configuration for trusted IP is required. Trusted IP cannot be shared. This channel is no longer recommended.'));
 		o.value('/usr/share/wechatpush/api/qywx_markdown.json', _('WeChat Work Markdown Version'),
@@ -153,6 +155,20 @@ return view.extend({
 		o.description = _('Get Instructions') + ' <a href="https://sct.ftqq.com/r/13285" target="_blank">' + _('Click here') + '</a>';
 		o.rmempty = false;
 		o.depends('jsonpath', '/usr/share/wechatpush/api/serverchan.json');
+
+		o = s.taboption('basic', form.Value, 'sc3key', _('「Serverchan3」sendkey'));
+		o.description = _('Get Instructions') + ' <a href="https://sc3.ft07.com/" target="_blank">' + _('Click here') + '</a>';
+		o.rmempty = false;
+		o.depends('jsonpath', '/usr/share/wechatpush/api/serverchan3.json');
+
+		o = s.taboption('basic', form.Value, 'sc3uid', _('「Serverchan3」uid'));
+		o.description = _('ServerChan3 uid');
+		o.rmempty = false;
+		o.depends('jsonpath', '/usr/share/wechatpush/api/serverchan3.json');
+
+		o = s.taboption('basic', form.Value, 'sc3tags', _('「Serverchan3」tags'));
+		o.description = _('ServerChan3 message tags, split with |');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/serverchan3.json');
 
 		o = s.taboption('basic', form.Value, 'corpid', _('corpid'));
 		o.description = _('Get Instructions') + ' <a href="https://work.weixin.qq.com/api/doc/10013" target="_blank">' + _('Click here') + '</a>';
@@ -234,6 +250,7 @@ return view.extend({
 		o = s.taboption('basic', form.Value, 'proxy_address', _('Proxy Address'));
 		o.description = _('When you want to use a proxy to push information, you can use this option.<br/>This may be helpful for scenarios like trusted IPs for WeChat Work.Using special characters may cause sending failure.<br/>Example:<br/>http://username:password@127.0.0.1:1080<br/>socks5://username:password@127.0.0.1:1080');
 		o.depends('jsonpath', '/usr/share/wechatpush/api/serverchan.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/serverchan3.json');
 		o.depends('jsonpath', '/usr/share/wechatpush/api/qywx_mpnews.json');
 		o.depends('jsonpath', '/usr/share/wechatpush/api/wxpusher.json');
 		o.depends('jsonpath', '/usr/share/wechatpush/api/pushplus.json');
@@ -258,6 +275,7 @@ return view.extend({
 			});
 		}
 		o.depends('jsonpath', '/usr/share/wechatpush/api/serverchan.json');
+		o.depends('jsonpath', '/usr/share/wechatpush/api/serverchan3.json');
 		o.depends('jsonpath', '/usr/share/wechatpush/api/qywx_mpnews.json');
 		o.depends('jsonpath', '/usr/share/wechatpush/api/wxpusher.json');
 		o.depends('jsonpath', '/usr/share/wechatpush/api/pushplus.json');
