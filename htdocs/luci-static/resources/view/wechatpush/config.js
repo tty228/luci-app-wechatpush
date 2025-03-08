@@ -494,7 +494,7 @@ return view.extend({
 		o.depends('client_usage_disturb', '1');
 
 		// 自动封禁
-		o = s.taboption('ipset', form.Flag, 'login_web_black', _('Automatically ban devices with illegal logins (Note: The whitelist for bans is located under the "Do Not Disturb" tab).'));
+		o = s.taboption('ipset', form.Flag, 'login_web_black', _('Auto-ban unauthorized login devices'));
 		o.default = '0';
 		o.depends({ login_notification: "web_login_failed", '!contains': true });
 		o.depends({ login_notification: "ssh_login_failed", '!contains': true });
@@ -504,7 +504,7 @@ return view.extend({
 		o.rmempty = false;
 		o.datatype = 'and(uinteger,min(0))';
 		o.depends('login_web_black', '1');
-		o.description = _('\"0\" in ipset means permanent blacklist, use with caution. If misconfigured, change the device IP and clear rules in LUCI.');
+		o.description = _('\"0\" in ipset means permanent blacklist, use with caution. If misconfigured, change the device IP and clear rules in LUCI.<br/>Note: The whitelist for bans is located under the \"Do Not Disturb\" tab.');
 
 		o = s.taboption('ipset', form.Flag, 'port_knocking_enable', _('Port knocking'));
 		o.default = '0';

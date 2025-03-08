@@ -509,16 +509,16 @@ msgid "Please select device MAC"
 msgstr "请选择设备 MAC"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:479
-msgid "Automatically ban devices with illegal logins (Note: The whitelist for bans is located under the \"Do Not Disturb\" tab)."
-msgstr "自动封禁非法登录设备（注：封禁白名单位于 “免打扰” 选项卡）"
+msgid "Auto-ban unauthorized login devices"
+msgstr "自动封禁非法登录设备"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:484
 msgid "Blacklisting time (s)"
 msgstr "拉黑时间（秒）"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:489
-msgid "\"0\" in ipset means permanent blacklist, use with caution. If misconfigured, change the device IP and clear rules in LUCI."
-msgstr "ipset 中, \"0\" 为永久拉黑，慎用。如不幸误操作，请更改设备 IP 进入 LUCI 界面清空规则"
+msgid "\"0\" in ipset means permanent blacklist, use with caution. If misconfigured, change the device IP and clear rules in LUCI.<br/>Note: The whitelist for bans is located under the \"Do Not Disturb\" tab."
+msgstr "ipset 中, \"0\" 为永久拉黑，慎用。如不幸误操作，请更改设备 IP 进入 LUCI 界面清空规则。<br/>注：封禁白名单位于 “免打扰” 选项卡。"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:491
 msgid "Port knocking"
