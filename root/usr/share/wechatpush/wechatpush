@@ -240,8 +240,14 @@ main() {
 			ip_changes getip && exit $?
 		}
 		silent_run read_config
-		[ $1 == "send" ] && send && exit $?
-		[ $1 == "test" ] && send test && exit $?
+		[ "$1" == "send" ] && {
+			send
+			exit $?
+		}
+		[ "$1" == "test" ] && {
+			send test
+			exit $?
+		}
 	else
 		silent_run read_config
 	fi
@@ -1227,7 +1233,7 @@ get_disk() {
 			}
 			# 如果获取到了多个分区，屏蔽使用空间为 0% 的分区
 			[ -n "$disk_use" ] && [ $(echo "$disk_use" | wc -l) -ne "1" ] && disk_use=$(echo "$disk_use" | grep -v -w "0%")
-			[ -n "$disk_use" ] && disk_use=$(echo "$disk_use" | sed ':a;N;$!ba;s/\n/'"${str_linefeed}${str_tab}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}"'/g')
+			[ -n "$disk_use" ] && disk_use=$(echo "$disk_use" | sed ':a;N;$!ba;s/\n/'"${str_linefeed}${str_tab}${str_space}${str_tab}${str_space}${str_space}"'/g')
 			[ -n "$disk_use" ] && [ -n "${disk_use// /}" ] && echo -e -n "${str_linefeed}${str_tab}空间使用：${disk_use}" >>"$output_dir/get_disk"
 			# 寿命使用
 			local disk_health=$(jq -r .nvme_smart_health_information_log.percentage_used ${file_path})
@@ -1491,10 +1497,10 @@ current_device() {
 	local logrow=$(jq '.devices | map(select(.status == "online")) | length' "$devices_json")
 	[ $logrow -eq "0" ] && return
 
-	[ -f "${dir}/usage.db" ] && local ip_total_db="总计流量${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}"
+	[ -f "${dir}/usage.db" ] && local ip_total_db="总计流量${str_space}${str_tab}${str_space}${str_space}${str_space}"
 	local explain="${str_splitline}${str_title_start} 现有在线设备 ${logrow} 台，具体如下${str_title_end}"
 	[ $logrow -eq "0" ] && local explain="${send_content}${str_splitline}${str_title_start} 当前无在线设备${str_title_end}"
-	local header="${str_linefeed}${str_tab}IP 地址${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${ip_total_db}${str_space}${str_space}${str_space}${str_space}在线时间${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}客户端名"
+	local header="${str_linefeed}${str_space}IP 地址${str_space}${str_tab}${str_space}${ip_total_db}${str_space}${str_tab}${str_space}${str_space}在线时间${str_space}${str_tab}${str_space}${str_space}${str_space}${str_space}客户端名"
 
 	content="${content}${explain}${header}"
 
@@ -1531,9 +1537,9 @@ current_device() {
 				total="${total}${str_space}"
 			done
 			unset i n
-			total="${total}${str_space}|${str_space}"
+			total="${total}${str_space}${str_tab}${str_space}"
 		fi
-		content="${content}${str_linefeed}${str_space}${ip}${str_space}|${str_space}${total}${time_online}${str_space}|${str_space}${name}"
+		content="${content}${str_linefeed}${str_space}${ip}${str_space}${str_tab}${str_space}${total}${time_online}${str_space}${str_tab}${str_space}${name}"
 	done
 	[ -f "${dir}/send_pid" ] && echo "$content" >"$output_dir/current_device" && unset content
 }
@@ -1893,6 +1899,7 @@ send() {
 	>"${dir}/send_enable.lock"
 	disturb
 	disturb_RETVAL=$?
+	[ "$disturb_RETVAL" -ne "0" ] && log_change "${disturb_text}免打扰时间，退出定时推送" && return
 	get_config "send_title" "send_notification"
 
 	[ -z "$1" ] && cpuload=$(getcpu)
@@ -1983,9 +1990,9 @@ send() {
 
 	[ -n "$device_name" ] && send_title="【$device_name】${send_title}"
 	[ -z "$send_content" ] && send_content="${str_splitline}${str_title_start} 我遇到了一个难题${str_title_end}${str_linefeed}${str_tab}定时发送选项错误，你没有选择需要发送的项目，该怎么办呢${str_splitline}"
-	[ "$disturb_RETVAL" -eq "0" ] && diy_send "${send_title}" "${send_content}" "${jsonpath}" "$1" >/dev/null 2>&1
+	diy_send "${send_title}" "${send_content}" "${jsonpath}" "$1" >/dev/null 2>&1
 	RETVAL=$?
-	[ $RETVAL -eq 1 ] && [ "$send_disturb" -eq "0" ] && log_change "【！！！】定时推送失败，请检查网络或设置信息" || log_change "${disturb_text}定时推送任务完成"
+	[ $RETVAL -eq 1 ] && log_change "【！！！】定时推送失败，请检查网络或设置信息" || log_change "${disturb_text}定时推送任务完成"
 	deltemp
 	rm -f "${dir}/send_pid"
 	return $RETVAL
