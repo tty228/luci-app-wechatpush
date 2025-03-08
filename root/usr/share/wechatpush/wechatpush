@@ -135,6 +135,33 @@ init() {
 	# 如果设备列表文件为空，初始化
 	[ ! -s "$devices_json" ] && echo '{"address": [], "devices": [], "disks": []}' >"$devices_json"
 
+	# 判断 WLAN 接口频段
+	if [ -n "$wlan_interface" ]; then
+		# 初始化一个空的 JSON 数组
+		local wlan_info="[]"
+
+		# 遍历每个接口
+		for iface in $wlan_interface; do
+			local info=$(iw dev $iface info 2>/dev/null)
+			local channel=$(echo "$info" | grep "channel" | awk '{print $2}')
+			local band="unknown"
+
+			# 判断频段
+			if [[ -n "$channel" ]]; then
+				if [[ "$channel" -ge 1 && "$channel" -le 14 ]]; then
+					band="2.4G"
+				elif [[ "$channel" -ge 36 ]]; then
+					band="5G"
+				fi
+			fi
+
+			# 将接口信息添加到 JSON 数组
+			wlan_info=$(echo "$wlan_info" | jq --arg iface "$iface" --arg band "$band" '. += [{"interface": $iface, "band": $band}]')
+		done
+
+		jq --argjson wlan_info "$wlan_info" '.wlan = $wlan_info' "$devices_json" > "${devices_json}.tmp" && mv "${devices_json}.tmp" "$devices_json"
+	fi
+
 	# 文件下载
 	/usr/libexec/wechatpush-call "down_oui"
 
@@ -566,7 +593,7 @@ getinterface() {
 	fi
 
 	# 查询 ARP 表获取接口
-	interface=$(cat /proc/net/arp | grep "0x2\|0x6" | grep -i -w "$mac" | awk '{print $6}')
+	interface=$(cat /proc/net/arp | grep "0x2\|0x6" | grep -v "^169.254." | grep -i -w "$mac" | awk '{print $6}' | grep -v "^$" | sort -u)
 	process_and_check "$interface" && return
 }
 
@@ -765,9 +792,9 @@ getping() {
 getcpu() {
 	local AT=$(cat /proc/stat | grep "^cpu " | awk '{print $2+$3+$4+$5+$6+$7+$8 " " $2+$3+$4+$7+$8}')
 	sleep 1
-   	local BT=$(cat /proc/stat | grep "^cpu " | awk '{print $2+$3+$4+$5+$6+$7+$8 " " $2+$3+$4+$7+$8}')
-   	local CPU_USAGE=$(echo ${AT} ${BT} | awk '{printf "%.01f%%", (($4-$2)/($3-$1))*100}')
-   	echo $CPU_USAGE
+	local BT=$(cat /proc/stat | grep "^cpu " | awk '{print $2+$3+$4+$5+$6+$7+$8 " " $2+$3+$4+$7+$8}')
+	local CPU_USAGE=$(echo ${AT} ${BT} | awk '{printf "%.01f%%", (($4-$2)/($3-$1))*100}')
+	echo $CPU_USAGE
 }
 
 # 获取SOC温度 （取所有传感器温度最大值）
