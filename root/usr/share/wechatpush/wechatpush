@@ -1035,27 +1035,33 @@ cpu_load() {
 		[ -z "$temp_last_overload_time" ] && temp_last_overload_time=$(date +%s)
 		local cpu_temp=$(soc_temp)
 
-		if [ -n "$cpu_temp" ] && [ $(expr $cpu_temp \> $temperature_threshold) -eq "1" ]; then
+		if [ -n "$cpu_temp" ] && awk -v t="$cpu_temp" -v th="$temperature_threshold" 'BEGIN { exit !(t > th) }'; then
 			log_change "【！！警报！！】 CPU 温度过高: ${cpu_temp}"
+
+			# 检查是否达到持续时间阈值
+			if [ "$cpu_threshold_duration" -eq 0 ] || [ "$(($(date +%s) - $temp_last_overload_time))" -ge "$cpu_threshold_duration" ]; then
+				# 检查是否达到推送间隔阈值
+				if [ -z "$temperaturecd_time" ] || [ "$(($(date +%s) - $temperaturecd_time))" -ge "$cpu_notification_delay" ]; then
+					if [ -n "$title" ] && (echo "$title" | grep -q "过高"); then
+						title="设备报警！"
+					else
+						title="CPU 温度过高！"
+					fi
+
+					temperaturecd_time=$(date +%s) # 记录本次推送的时间戳
+					log_change "${disturb_text} CPU 温度过高: ${cpu_temp}"
+
+					local cpu_overload_duration=$(time_for_humans $(($(date +%s) - $temp_last_overload_time)))
+					local cpu_overload_info="${str_splitline}${str_title_start} CPU 温度过高${str_title_end}"
+					cpu_overload_info="${cpu_overload_info}${str_linefeed}${str_tab}CPU 温度已连续 ${cpu_overload_duration} 超过预设"
+					cpu_overload_info="${cpu_overload_info}${str_linefeed}${str_tab}接下来 ${cpu_notification_duration} 不再提示"
+					cpu_overload_info="${cpu_overload_info}${str_linefeed}${str_tab}当前温度：${cpu_temp}℃"
+					content="${content}${cpu_overload_info}"
+				fi
+			fi
 		else
+			# 温度正常，重置计时器
 			temp_last_overload_time=$(date +%s)
-		fi
-
-		if [ -n "$cpu_temp" ] && [ "$(($(date +%s) - $temp_last_overload_time))" -ge "$cpu_threshold_duration" ] && [ -z "$temperaturecd_time" ]; then
-			title="CPU 温度过高！"
-			temperaturecd_time=$(date +%s)
-			log_change "${disturb_text} CPU 温度过高: ${cpu_temp}"
-
-			local cpu_overload_duration=$(time_for_humans $(($(date +%s) - $cpu_last_overload_time)))
-
-			local cpu_overload_info="${str_splitline}${str_title_start} CPU 温度过高${str_title_end}"
-			local cpu_overload_info="${cpu_overload_info}${str_linefeed}${str_tab}CPU 温度已连续 ${cpu_overload_duration} 超过预设"
-			local cpu_overload_info="${cpu_overload_info}${str_linefeed}${str_tab}接下来 ${cpu_notification_duration} 不再提示"
-			local cpu_overload_info="${cpu_overload_info}${str_linefeed}${str_tab}当前温度：${cpu_temp}℃"
-
-			content="${content}${cpu_overload_info}"
-		elif [ -n "$temperaturecd_time" ] && [ "$(($(date +%s) - $temperaturecd_time))" -ge "$cpu_notification_delay" ]; then
-			unset temperaturecd_time
 		fi
 	fi
 
@@ -1063,37 +1069,36 @@ cpu_load() {
 		[ -z "$cpu_last_overload_time" ] && cpu_last_overload_time=$(date +%s)
 		local cpu_fuzai=$(cat /proc/loadavg | awk '{print $1}') 2>/dev/null
 
-		if [ -n "$cpu_fuzai" ] && [ $(expr $cpu_fuzai \> $cpu_load_threshold) -eq "1" ]; then
+		if [ -n "$cpu_fuzai" ] && awk -v t="$cpu_fuzai" -v th="$cpu_load_threshold" 'BEGIN { exit !(t > th) }'; then
 			log_change "【！！警报！！】 CPU 负载过高: ${cpu_fuzai}"
 			cputop log
-		elif [ -n "$cpu_fuzai" ]; then
-			cpu_last_overload_time=$(date +%s)
-		fi
 
-		if [ -n "$cpu_fuzai" ] && [ "$(($(date +%s) - $cpu_last_overload_time))" -ge "$cpu_threshold_duration" ] && [ -z "$cpucd_time" ]; then
-			unset getlogtop
+			# 检查是否达到持续时间阈值
+			if [ "$cpu_threshold_duration" -eq 0 ] || [ "$(($(date +%s) - $cpu_last_overload_time))" -ge "$cpu_threshold_duration" ]; then
+				# 检查是否达到推送间隔阈值
+				if [ -z "$cpucd_time" ] || [ "$(($(date +%s) - $cpucd_time))" -ge "$cpu_notification_delay" ]; then
+					if [ -n "$title" ] && (echo "$title" | grep -q "过高"); then
+						title="设备报警！"
+					else
+						title="CPU 负载过高！"
+					fi
 
-			if [ -n "$title" ] && (echo "$title" | grep -q "过高"); then
-				title="设备报警！"
-			else
-				title="CPU 负载过高！"
+					cpucd_time=$(date +%s) # 记录本次推送的时间戳
+					log_change "${disturb_text} CPU 负载过高: ${cpu_fuzai}"
+
+					local cpu_load_duration=$(time_for_humans $(($(date +%s) - $cpu_last_overload_time)))
+					local cpu_load_info="${str_splitline}${str_title_start} CPU 负载过高${str_title_end}"
+					cpu_load_info="${cpu_load_info}${str_linefeed}${str_tab}CPU 负载已连续 ${cpu_load_duration} 超过预设"
+					cpu_load_info="${cpu_load_info}${str_linefeed}${str_tab}接下来 ${cpu_notification_duration} 不再提示"
+					cpu_load_info="${cpu_load_info}${str_linefeed}${str_tab}当前负载：${cpu_fuzai}"
+					content="${content}${cpu_load_info}"
+
+					cputop
+				fi
 			fi
-
-			cpucd_time=$(date +%s)
-			log_change "${disturb_text} CPU 负载过高: ${cpu_fuzai}"
-
-			local cpu_load_duration=$(time_for_humans $(($(date +%s) - $cpu_last_overload_time)))
-
-			local cpu_load_info="${str_splitline}${str_title_start} CPU 负载过高${str_title_end}"
-			local cpu_load_info="${cpu_load_info}${str_linefeed}${str_tab}CPU 负载已连续 ${cpu_load_duration} 超过预设"
-			local cpu_load_info="${cpu_load_info}${str_linefeed}${str_tab}接下来 ${cpu_notification_duration} 不再提示"
-			local cpu_load_info="${cpu_load_info}${str_linefeed}${str_tab}当前负载：${cpu_fuzai}"
-
-			content="${content}${cpu_load_info}"
-
-			cputop
-		elif [ -n "$cpucd_time" ] && [ "$(($(date +%s) - $cpucd_time))" -ge "$cpu_notification_delay" ]; then
-			unset cpucd_time
+		else
+			# 负载正常，重置计时器
+			cpu_last_overload_time=$(date +%s)
 		fi
 	fi
 }
