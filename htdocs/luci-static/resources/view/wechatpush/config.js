@@ -340,6 +340,11 @@ return view.extend({
 		o.description = _('Please enter the device MAC and device alias separated by a space, such as:<br/> XX:XX:XX:XX:XX:XX My Phone<br/> 192.168.1.2 My PC<br />Please use the 「Save」 button in the text box.');
 
 		// 推送内容
+		o = s.taboption('content', form.MultiValue, 'lite_enable', _('Simplified mode'));
+		o.value('device', _('Simplify the current device list'));
+		o.value('nowtime', _('Simplify the current time'));
+		o.value('content', _('Push only the title'));
+
 		o = s.taboption('content', form.Button, '_getip', _('Test IP acquisition command'), _('You may need to save the configuration before sending.'));
 		o.inputstyle = 'action';
 		o.onclick = function () {
@@ -489,7 +494,7 @@ return view.extend({
 		o.depends('client_usage_disturb', '1');
 
 		// 自动封禁
-		o = s.taboption('ipset', form.Flag, 'login_web_black', _('Auto-ban unauthorized login devices'));
+		o = s.taboption('ipset', form.Flag, 'login_web_black', _('Automatically ban devices with illegal logins (Note: The whitelist for bans is located under the "Do Not Disturb" tab).'));
 		o.default = '0';
 		o.depends({ login_notification: "web_login_failed", '!contains': true });
 		o.depends({ login_notification: "ssh_login_failed", '!contains': true });
@@ -600,11 +605,6 @@ return view.extend({
 		}
 
 		// 免打扰
-		o = s.taboption('disturb', form.MultiValue, 'lite_enable', _('Simplified mode'));
-		o.value('device', _('Simplify the current device list'));
-		o.value('nowtime', _('Simplify the current time'));
-		o.value('content', _('Push only the title'));
-
 		o = s.taboption('disturb', cbiRichListValue, 'do_not_disturb_mode', _('Do Not Disturb time setting'));
 		o.value('', _('Close'),
 			_(' '));

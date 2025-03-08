@@ -509,8 +509,8 @@ msgid "Please select device MAC"
 msgstr "请选择设备 MAC"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:479
-msgid "Auto-ban unauthorized login devices"
-msgstr "自动封禁非法登录设备"
+msgid "Automatically ban devices with illegal logins (Note: The whitelist for bans is located under the \"Do Not Disturb\" tab)."
+msgstr "自动封禁非法登录设备（注：封禁白名单位于 “免打扰” 选项卡）"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:484
 msgid "Blacklisting time (s)"
