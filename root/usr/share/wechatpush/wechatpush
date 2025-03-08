@@ -1491,7 +1491,7 @@ current_device() {
 	[ $logrow -eq "0" ] && local explain="${send_content}${str_splitline}${str_title_start} 当前无在线设备${str_title_end}"
 	local header="${str_linefeed}${str_tab}IP 地址${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${ip_total_db}${str_space}${str_space}${str_space}${str_space}在线时间${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}客户端名"
 
-	content="${explain}${header}"
+	content="${content}${explain}${header}"
 
 	if [ -z "$defaultSortColumn" ] || [ "$defaultSortColumn" = "ip" ]; then
 		# 按 IP 排序
