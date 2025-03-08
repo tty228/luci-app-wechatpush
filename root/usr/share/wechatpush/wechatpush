@@ -2040,16 +2040,16 @@ login_send() {
 
 	if [ -z "$login_disturb" ] || [ "$login_disturb" -ne "1" ]; then
 		if [[ "$log_type" == *"failed"* ]]; then
-			local log_message="频繁尝试登录"
-			local login_title="${login_ip} ${log_message}"
+			local login_title="${login_ip} 频繁尝试 ${log_type_short} 登录"
 			local login_content_info="${str_splitline}${str_title_start} 封禁信息${str_title_end}"
+			log_change "${disturb_text}设备 ${login_ip} (${login_ip_attribution}) 频繁尝试 ${log_type_short} ${login_mode} 登录"
 		else
-			local log_message="登录了路由器"
-			local login_title="${login_ip} ${log_message}"
+			local login_title="${login_ip} 通过 ${log_type_short} 登录了路由器"
 			local login_content_info="${str_splitline}${str_title_start} 登录信息${str_title_end}"
+			log_change "${disturb_text}设备 ${login_ip} (${login_ip_attribution}) 通过 ${log_type_short} ${login_mode} 登录了路由器"
 		fi
 
-		log_change "${disturb_text}设备 ${login_ip} (${login_ip_attribution}) 通过 ${log_type_short} ${login_mode} ${log_message}"
+		
 
 		local login_content_time="${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${login_time}"
 		local login_content_ip="${str_linefeed}${str_tab}设备 IP：${str_space}${str_space}${login_ip}"
