@@ -14,11 +14,45 @@ file_date() {
 	expr $(date +%s) - ${datetime}
 }
 
+# 下载
+download_file() {
+    url=$1
+    output_file=$2
+    retries=2
+    retval=1
+
+    # 尝试使用 curl 下载
+    i=0
+    while [ $i -lt $retries ]; do
+        curl -fsSL --connect-timeout 15 --max-time 30 -o "${output_file}" "${url}" >/dev/null 2>&1
+        retval=$?
+        if [ $retval -eq 0 ]; then
+            return 0
+        fi
+        i=$((i + 1))
+        sleep 1  # 等待1秒后重试
+    done
+
+    # 如果 curl 失败，尝试使用 wget 下载
+    i=0
+    while [ $i -lt $retries ]; do
+        wget --no-check-certificate -T 15 -O "${output_file}" "${url}" >/dev/null 2>&1
+        retval=$?
+        if [ $retval -eq 0 ]; then
+            return 0
+        fi
+        i=$((i + 1))
+        sleep 1  # 等待1秒后重试
+    done
+
+    return $retval
+}
+
 # 更新 MAC 信息文件
 down_oui() {
 	if [ -n "${oui_data}" ] && [ "${oui_data}" -ne "3" ]; then
 		echo "$(date "+%Y-%m-%d %H:%M:%S") 【info】开始后台更新 MAC 信息文件" >>"${logfile}"
-		curl -fsSL --connect-timeout 15 --max-time 30 -o "${dir}/oui.txt" "${oui_url}" >/dev/null 2>&1
+		download_file "${oui_url}" "${dir}/oui.txt"
 		local RETVAL=$?
 		[ ${RETVAL} -ne 0 ] && echo "$(date "+%Y-%m-%d %H:%M:%S") 【!!!】设备 MAC 信息文件下载失败，返回码为 ${RETVAL}" >>"${logfile}" && return 1
 		echo "$(date "+%Y-%m-%d %H:%M:%S") 【info】设备 MAC 信息文件下载成功，处理中" >>"${logfile}"
