@@ -703,7 +703,7 @@ return view.extend({
 		o.description = _('Send notification after the first login and do not repeat within the specified time<br/>Take a shortcut and read the login time from the log');
 		o.depends('login_disturb', '2');
 
-		o = fwtool.addIPOption(s, 'disturb', 'login_ip_white_list', _('Login reminder whitelist'), null, 'ipv4', hosts, true);
+		o = fwtool.addIPOption(s, 'disturb', 'login_ip_white_list', _('Login Alert (Auto-Ban) Whitelist'), null, 'ipv4', hosts, true);
 		o.datatype = 'ipaddr';
 		o.depends({ login_notification: "web_logged", '!contains': true });
 		o.depends({ login_notification: "ssh_logged", '!contains': true });
