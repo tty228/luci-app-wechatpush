@@ -162,6 +162,7 @@ return view.extend({
 
 		o = s.option(form.MultiValue, 'device_info_helper', _('Assist in obtaining device information'));
 		o.value('gateway_info', _('Retrieve hostname list from modem'));
+		o.value('miwifi_info', _('Retrieve hostname list from miwifi'));
 		o.value('scan_local_ip', _('Scan local IP'));
 		o.modalonly = true;
 		o.description = _('When OpenWrt is used as a bypass gateway and cannot obtain device hostnames or a complete list of local network devices.<br/>the \"Retrieve hostname list from modem\" option has only been tested with HG5143F/HN8145V China Telecom gateways and may not be universally applicable.<br/>The \"Scan local IP\" option may not retrieve hostnames, so please use device name annotations in conjunction with it.');
@@ -205,6 +206,15 @@ return view.extend({
 		o.description = _("Use a regular account, no need for super password")
 		o.depends({ device_info_helper: "gateway_info", '!contains': true });
 
+		o = s.option(form.Value, "miwifi_ip", _('MiWiFi IP Address'));
+		o.rmempty = true;
+		o.default = "192.168.31.1";
+		o.depends({ device_info_helper: "miwifi_info", '!contains': true });
+
+		o = s.option(form.Value, "miwifi_password", _('MiWiFi Login Password'))
+		o.rmempty = true
+		o.depends({ device_info_helper: "miwifi_info", '!contains': true });
+
 		o = s.option(form.Value, "scan_ip_range", _('IP range to be scanned'))
 		o.rmempty = true
 		o.placeholder = _('192.168.1.1-100');
@@ -216,6 +226,7 @@ return view.extend({
 		o.datatype = 'and(uinteger,min(60))'
 		o.description = _("Generally, frequent capturing is not necessary. Adjust it as needed.")
 		o.depends({ device_info_helper: "gateway_info", '!contains': true });
+		o.depends({ device_info_helper: "miwifi_info", '!contains': true });
 		o.depends({ device_info_helper: "scan_local_ip", '!contains': true });
 
 		o = s.option(form.Flag, "unattended_enable", _("Unattended tasks"))

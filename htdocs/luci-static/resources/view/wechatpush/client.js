@@ -33,7 +33,14 @@ return view.extend({
 				var data = JSON.parse(content);
 				// 解析设备的接口信息
 				data.devices.forEach(function (device) {
-					if (data.wlan && Array.isArray(data.wlan)) {
+					// 检查 type 字段
+					if (device.type === "5G") {
+						device.interface = "5G";
+					} else if (device.type === "2.4G") {
+						device.interface = "2.4G";
+					} else if (device.type === "WiFi") {
+						device.interface = "WiFi";
+					} else if (data.wlan && Array.isArray(data.wlan)) {
 						// 查找设备的接口信息
 						var deviceInterfaces = data.wlan.filter(function (wlan) {
 							return wlan.interface === device.interface;
@@ -252,6 +259,8 @@ return view.extend({
 								icon.innerHTML = '📶 2.4G';
 							} else if (device['interface'] === '5G') {
 								icon.innerHTML = '🛜 5G';
+							} else if (device['interface'] === 'WiFi') {
+								icon.innerHTML = '🛜 WiFi';
 							} else {
 								icon.innerHTML = 'LAN';
 							}

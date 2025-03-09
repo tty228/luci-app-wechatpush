@@ -46,7 +46,7 @@ read_config() {
 		"do_not_disturb_mode" "do_not_disturb_starttime" "do_not_disturb_endtime" "up_down_push_whitelist" "up_down_push_blacklist" "up_down_push_interface" "mac_online_list" "mac_offline_list" "cpu_threshold_duration" "cpu_notification_delay" "login_disturb" "login_notification_delay" "login_log_enable" \
 		"up_timeout" "down_timeout" "timeout_retry_count" "always_check_ip_list" "only_timeout_push" "passive_mode" "thread_num" "defaultSortColumn" "soc_code" "server_host" "server_port" \
 		"unattended_enable" "zerotier_helper" "unattended_only_on_disturb_time" "unattended_device_aliases" "network_disconnect_event" "unattended_autoreboot_mode" "autoreboot_system_uptime" "autoreboot_network_uptime" \
-		"device_info_helper" "gateway_host_url" "gateway_info_url" "gateway_logout_url" "gateway_username_id" "gateway_password_id" "gateway_username" "gateway_password" "scan_ip_range" "device_info_helper_sleeptime"
+		"device_info_helper" "gateway_host_url" "gateway_info_url" "gateway_logout_url" "gateway_username_id" "gateway_password_id" "gateway_username" "gateway_password" "miwifi_ip" "miwifi_password" "scan_ip_range" "device_info_helper_sleeptime"
 
 	(echo "$device_notification" | grep -q "online") && notification_online="true"
 	(echo "$device_notification" | grep -q "offline") && notification_offline="true"
@@ -57,6 +57,7 @@ read_config() {
 	(echo "$login_notification" | grep -q "web_login_failed") && web_login_failed="true"
 	(echo "$login_notification" | grep -q "ssh_login_failed") && ssh_login_failed="true"
 	(echo "$device_info_helper" | grep -q "gateway_info") && gateway_info_enable="true"
+	(echo "$device_info_helper" | grep -q "miwifi_info") && miwifi_info_enable="true"
 	for str_version in "wrtbwmon" "iputils-arping" "curl" "iw"; do
 		eval $(echo ${str_version:0:2}"_version")=$(opkg list-installed | grep -w ^${str_version} | awk '{print $3}') 2>/dev/null
 	done
@@ -660,8 +661,16 @@ getname() {
 	[ -f "${dir}/send_pid" ] && echo "unknown" && return
 
 	# 光猫
-	[ -f "${dir}/gateway_info" ] && tmp_name=$(cut_str "$(grep -w "${ip}" "${dir}/gateway_info" | awk '{print $2}')" "30")
-	process_and_check "$tmp_name" && return
+	[ -f "${dir}/gateway_info" ] && {
+		tmp_name=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .name' "${dir}/gateway_info") && tmp_name=$(cut_str "$tmp_name" "30")
+		process_and_check "$tmp_name" && return
+	}
+
+	# MIWiFi
+	[ -f "${dir}/miwifi_info" ] && {
+		tmp_name=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .name' "${dir}/miwifi_info") && tmp_name=$(cut_str "$tmp_name" "30")
+		process_and_check "$tmp_name" && return
+	}
 
 	# MAC 获取失败时返回 unknown，优先级不能最高，自定义备注可以被 IP 匹配
 	echo "$mac" | grep -q -w "unknown\|*" && echo "unknown" && return
@@ -1345,17 +1354,58 @@ getgateway() {
 		local loginfo=$(curl -s -L "${gateway_host_url}" -c ${dir}/cookies.txt -d "${gateway_username_id}=${gateway_username}&${gateway_password_id}=${gateway_password}") 2>/dev/null
 		[ -n "$loginfo" ] && local mytoken=$(echo $loginfo | sed 's/{/\n/g' | grep token | awk '/realRestart/{print $2}' | sed $'s/\'//g')
 		# 获取
-		[ -n "$mytoken" ] && local get_gateway=$(curl -s -b ${dir}/cookies.txt "${gateway_info_url}" -d 'token='$mytoken | jq '.[] | iterables| "\(.ip) \(.devName) \(.model)"' | sed 's/unknown//g' | sed 's/  / /g' | sed 's/ /_/g' | sed 's/_/ /' | sed 's/\"//g')
+		[ -n "$mytoken" ] && local get_gateway=$(curl -s -b ${dir}/cookies.txt "${gateway_info_url}" -d 'token='$mytoken)
 		# 重启
 		[ "$1" ] && [ "$1" == "reboot" ] && curl -s -b ${dir}/cookies.txt "${gateway_host_url}/admin/reboot" -d "token=$mytoken" >/dev/null 2>&1
 		# 注销
 		[ -n "$get_gateway" ] && [ -n "$gateway_logout_url" ] && curl -s -b ${dir}/cookies.txt "${gateway_logout_url}" -d 'token='$mytoken 2>/dev/null
 		[ -z "$get_gateway" ] && log_change "【info】获取光猫信息失败，可能当前用户未注销或设置错误"
 		# 保存信息
-		[ -n "$get_gateway" ] && echo "$get_gateway" >"${dir}/gateway_info"
-		gateway_iplist=$(echo "${get_gateway}" | awk '{print $1}')
+		echo "$get_gateway" | jq '
+			to_entries | map(select(.value | type == "object" and has("ip"))) | map({
+				ip: .value.ip,
+				name: (if .value.devName == "" then "unknown" else .value.devName end),
+				mac: "unknown",
+				type: (if .key | startswith("wifi") then "WiFi" else "LAN" end)
+			})
+		' > "${dir}/gateway_info"
+
+		gateway_iplist=$(jq -r '.[].ip' "${dir}/gateway_info")
 	else
 		unset gateway_iplist
+	fi
+}
+
+# 从小米路由器获取设备信息
+getmiwifi() {
+	[ -z "$miwifi_info_enable" ] && return
+	local last_getmiwifi_time=$(file_date "${dir}/miwifi_info")
+
+	if [ "$last_getmiwifi_time" -ge "$device_info_helper_sleeptime" ]; then
+		# 登录并获取 stok
+		local miwifi_login_url="http://${miwifi_ip}/cgi-bin/luci/api/xqsystem/login"
+		local login_response=$(curl -s -X POST "$miwifi_login_url" -d "username=admin&password=${miwifi_password}")
+		local stok=$(echo "$login_response" | jq -r '.token')
+
+		[ -z "$stok" ] && log_change "【info】登录 MIWiFi 失败，无法获取 stok" && return 1
+
+		# 获取设备列表
+		local device_list_url="http://${miwifi_ip}/cgi-bin/luci/;stok=$stok/api/misystem/devicelist"
+		local device_list_response=$(curl -s "$device_list_url")
+
+		# 保存信息
+		echo "$device_list_response" | jq '
+			.list | map({
+				ip: .ip[0].ip,
+				name: (if .name == .mac then "unknown" else .name end),
+				mac: .mac,
+				type: (if .type == 1 then "2.4G" elif .type == 2 then "5G" else "LAN" end)
+			})
+		' > "${dir}/miwifi_info"
+
+		miwifi_iplist=$(jq -r '.[].ip' "${dir}/miwifi_info")
+	else
+		unset miwifi_iplist
 	fi
 }
 
@@ -1365,6 +1415,7 @@ first() {
 	# 耗时太长，定时推送不再检查
 	local IPLIST=$(jq -r '.devices[] | select(.status == "online" or .status == "unknown") | .ip' "$devices_json" | sort -u)
 	[ ! -f "${dir}/send_pid" ] && getgateway
+	[ ! -f "${dir}/send_pid" ] && getmiwifi
 	[ ! -f "${dir}/send_pid" ] && silent_run scanlocalip
 	for ip in $IPLIST; do
 		[ -n "$passive_mode" ] && [ "$passive_mode" -eq "1" ] && break
@@ -1382,7 +1433,7 @@ first() {
 	[ -n "$IP_INFO" ] && local SUBNET=$(echo $IP_INFO | cut -d'/' -f1 | cut -d'.' -f1-3)
 	[ -n "$SUBNET" ] && local IPLIST=$(cat /proc/net/arp | grep "0x2\|0x6" | awk '{print $1}' | grep -v "^169.254." | grep -v "^$" | sort -u | grep -oE "${SUBNET}\.[0-9]{1,3}") || local IPLIST=$(cat /proc/net/arp | grep "0x2\|0x6" | awk '{print $1}' | grep -v "^169.254." | grep -v "^$" | sort -u | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
 
-	local IPLIST=$(echo -e "${IPLIST}\n${gateway_iplist}\n${always_check_ip_list}" | grep -v "^$" | sort -u)
+	local IPLIST=$(echo -e "${IPLIST}\n${gateway_iplist}\n${miwifi_iplist}\n${always_check_ip_list}" | grep -v "^$" | sort -u)
 	for ip in $IPLIST; do
 		[ -n "$passive_mode" ] && [ "$passive_mode" -eq "1" ] && break
 		# 获取一个令牌
@@ -1497,7 +1548,7 @@ down() {
 		else
 			jq --arg ip "$ip" '.devices |= map(if .ip == $ip then .status = "offline" else . end)' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
 		fi
-	# 更新主机名或 MAC
+	# 更新设备信息
 	else
 		local name=$(getname "$ip" "$mac")
 		local interface=$(getinterface "ip" "$mac")
@@ -1514,6 +1565,18 @@ down() {
 				)
 			' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
 		fi
+
+		[ -f "${dir}/miwifi_info" ] && local tmp_type=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .type' "${dir}/miwifi_info")
+		[ -f "${dir}/gateway_info" ] && [ -z "$tmp_type" ] && local tmp_type=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .type' "${dir}/gateway_info")
+		[ -n "$tmp_type" ] && jq --arg ip "$ip" --arg type "$tmp_type" '
+            .devices |= map(
+                if .ip == $ip then
+                    .type = $type
+                else
+                    .
+                end
+            )
+        ' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
 	fi
 	silent_run LockFile unlock
 }

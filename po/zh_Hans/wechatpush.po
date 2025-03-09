@@ -909,9 +909,13 @@ msgstr "获取失败："
 msgid "Assist in obtaining device information"
 msgstr "辅助获取设备列表"
 
-#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:92
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:164
 msgid "Retrieve hostname list from modem"
 msgstr "从光猫获取主机名等信息"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:165
+msgid "Retrieve hostname list from miwifi"
+msgstr "从小米路由器获取主机名等信息"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:93
 msgid "Scan local IP"
@@ -964,6 +968,14 @@ msgstr "光猫登录密码"
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:132
 msgid "Use a regular account, no need for super password"
 msgstr "使用普通账号即可，不需要超密"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:209
+msgid "MiWiFi IP Address"
+msgstr "小米路由器 IP 地址"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:209
+msgid "MiWiFi Login Password"
+msgstr "小米路由器登录密码"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:135
 msgid "IP range to be scanned"
