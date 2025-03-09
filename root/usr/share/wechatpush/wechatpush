@@ -2114,18 +2114,15 @@ login_send() {
 	>"${dir}/send_enable.lock"
 
 	[ -z "$login_ip" ] && return
-	echo "$login_ip_white_list" | grep -w -q "$login_ip" && [ -n "$login_log_enable" ] && return
+	echo "$login_ip_white_list" | grep -w -q "$login_ip" && return
 
 	[[ "$log_type" == "web"* ]] && local log_type_short="Web" || local log_type_short="SSH"
-	if [ -n "$login_disturb" ]; then
-		[ -f "$logfile" ] && login_log=$(grep -w "$login_ip" "$logfile" | grep -v "\【info\】" | tail -n 1)
-		[ -n "$login_log" ] && log_timestamp=$(date -d "$(echo "$login_log" | awk '{print $1, $2}')" +%s) || log_timestamp=0
-		if [ "$login_disturb" -eq 1 ]; then
-			log_change "【info】设备 ${login_ip} 通过 ${log_type_short} 登录了路由器 " && return
-		fi
-		if [ "$login_disturb" -eq 2 ]; then
-			[ $(($(date +%s) - log_timestamp)) -lt $login_notification_delay ] && [ -n "$login_log_enable" ] && return
-		fi
+	[ -f "$logfile" ] && login_log=$(grep -w "$login_ip" "$logfile" | grep -v "\【info\】" | tail -n 1)
+	[ -n "$login_log" ] && log_timestamp=$(date -d "$(echo "$login_log" | awk '{print $1, $2}')" +%s) || log_timestamp=0
+	if echo "$login_ip_white_list" | grep -w -q "$login_ip" || ( [ -n "$login_disturb" ] && [ "$login_disturb" -eq 1 ] ); then
+		log_change "【info】设备 ${login_ip} 通过 ${log_type_short} 登录了路由器 " && return
+	elif [ -n "$login_disturb" ] && [ "$login_disturb" -eq 2 ]; then
+		[ $(($(date +%s) - log_timestamp)) -lt $login_notification_delay ] && [ -n "$login_log_enable" ] && return
 	fi
 
 	# 查询 IP 归属地
