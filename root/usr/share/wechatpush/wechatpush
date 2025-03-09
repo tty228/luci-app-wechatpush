@@ -46,7 +46,7 @@ read_config() {
 		"do_not_disturb_mode" "do_not_disturb_starttime" "do_not_disturb_endtime" "up_down_push_whitelist" "up_down_push_blacklist" "up_down_push_interface" "mac_online_list" "mac_offline_list" "cpu_threshold_duration" "cpu_notification_delay" "login_disturb" "login_notification_delay" "login_log_enable" \
 		"up_timeout" "down_timeout" "timeout_retry_count" "always_check_ip_list" "only_timeout_push" "passive_mode" "thread_num" "defaultSortColumn" "soc_code" "server_host" "server_port" \
 		"unattended_enable" "zerotier_helper" "unattended_only_on_disturb_time" "unattended_device_aliases" "network_disconnect_event" "unattended_autoreboot_mode" "autoreboot_system_uptime" "autoreboot_network_uptime" \
-		"device_info_helper" "gateway_host_url" "gateway_info_url" "gateway_logout_url" "gateway_username_id" "gateway_password_id" "gateway_username" "gateway_password" "miwifi_ip" "miwifi_password" "op_host_ips" "scan_ip_range" "device_info_helper_sleeptime"
+		"device_info_helper" "gateway_host_url" "gateway_info_url" "gateway_logout_url" "gateway_username_id" "gateway_password_id" "gateway_username" "gateway_password" "miwifi_ip" "miwifi_password" "mikrotik_ip" "mikrotik_username" "op_host_ips" "scan_ip_range" "device_info_helper_sleeptime"
 
 	(echo "$device_notification" | grep -q "online") && notification_online="true"
 	(echo "$device_notification" | grep -q "offline") && notification_offline="true"
@@ -58,6 +58,7 @@ read_config() {
 	(echo "$login_notification" | grep -q "ssh_login_failed") && ssh_login_failed="true"
 	(echo "$device_info_helper" | grep -q "gateway_info") && gateway_info_enable="true"
 	(echo "$device_info_helper" | grep -q "miwifi_info") && miwifi_info_enable="true"
+	(echo "$device_info_helper" | grep -q "mikrotik_info") && mikrotik_info_enable="true"
 	(echo "$device_info_helper" | grep -q "openwrt_info") && openwrt_info_enable="true"
 	op_host_ips=$(echo "$op_host_ips" | sed 's/ /\n/g') 2>/dev/null
 	for str_version in "wrtbwmon" "iputils-arping" "curl" "iw"; do
@@ -662,9 +663,15 @@ getname() {
 		process_and_check "$tmp_name" && return
 	}
 
+	# MikroTik
+	[ -f "${dir}/mikrotik_info" ] && {
+		tmp_name=$(jq -r --arg mac "$mac" '.[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase)) | .name' "${dir}/mikrotik_info") && tmp_name=$(cut_str "$tmp_name" "30")
+		process_and_check "$tmp_name" && return
+	}
+
 	# openwrt
 	[ -f "${dir}/openwrt_info" ] && {
-		tmp_name=$(jq -r --arg mac "$mac" '.[] | select(.mac == $mac) | .name' "${dir}/openwrt_info") && tmp_name=$(cut_str "$tmp_name" "30")
+		tmp_name=$(jq -r --arg mac "$mac" '.[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase)) | .name' "${dir}/openwrt_info") && tmp_name=$(cut_str "$tmp_name" "30")
 		process_and_check "$tmp_name" && return
 	}
 
@@ -1506,6 +1513,67 @@ getopenwrt() {
 	fi
 }
 
+# 从 ROS 获取设备信息
+getmikrotik() {
+	[ -z "$mikrotik_info_enable" ] && return
+	local last_getmikrotik_time=$(file_date "${dir}/mikrotik_info")
+
+	if [ "$last_getmikrotik_time" -ge "$device_info_helper_sleeptime" ]; then
+		#lease_info=$(ssh ${mikrotik_username}@${mikrotik_ip} "/ip dhcp-server lease print terse where status=bound")
+		lease_info=$(ssh ${mikrotik_username}@${mikrotik_ip} "/ip dhcp-server lease print terse")
+
+		echo "$lease_info" | awk '
+			BEGIN {
+				print "["
+				first_entry = 1
+			}
+			{
+				# 初始化变量
+				address = ""
+				mac_address = ""
+				host_name = ""
+
+				# 遍历每行的键值对
+				split($0, fields, " ")
+				for (i in fields) {
+					if (fields[i] ~ /^address=/) {
+						split(fields[i], arr, "=")
+						address = arr[2]
+					}
+					if (fields[i] ~ /^mac-address=/) {
+						split(fields[i], arr, "=")
+						mac_address = arr[2]
+					}
+					if (fields[i] ~ /^host-name=/) {
+						split(fields[i], arr, "=")
+						host_name = arr[2]
+					}
+				}
+
+				# 如果提取到有效数据，则生成JSON
+				if (address != "" && mac_address != "") {
+					if (!first_entry) {
+						print ","
+					}
+					printf "  {"
+					printf "\"ip\": \"%s\", ", address
+					printf "\"mac\": \"%s\", ", mac_address
+					printf "\"name\": \"%s\"", host_name
+					printf "}"
+					first_entry = 0
+				}
+			}
+			END {
+				print "\n]"
+			}
+			' | jq > "${dir}/mikrotik_info"
+
+		mikrotik_iplist=$(jq -r '.[] | select(.ip != "unknown" and .ip != "") | .ip' "${dir}/mikrotik_info")
+	else
+		unset mikrotik_iplist
+	fi
+}
+
 # 在线设备列表
 first() {
 	# 注：此处为后台任务，无法操作父进程变量，故每个线程结束后都必须保存变量到文件
@@ -1514,6 +1582,7 @@ first() {
 	[ ! -f "${dir}/send_pid" ] && getgateway
 	[ ! -f "${dir}/send_pid" ] && getmiwifi
 	[ ! -f "${dir}/send_pid" ] && getopenwrt
+	[ ! -f "${dir}/send_pid" ] && getmikrotik
 	[ ! -f "${dir}/send_pid" ] && silent_run scanlocalip
 	for ip in $IPLIST; do
 		[ -n "$passive_mode" ] && [ "$passive_mode" -eq "1" ] && break
@@ -1531,7 +1600,7 @@ first() {
 	[ -n "$IP_INFO" ] && local SUBNET=$(echo $IP_INFO | cut -d'/' -f1 | cut -d'.' -f1-3)
 	[ -n "$SUBNET" ] && local IPLIST=$(cat /proc/net/arp | grep "0x2\|0x6" | awk '{print $1}' | grep -v "^169.254." | grep -v "^$" | sort -u | grep -oE "${SUBNET}\.[0-9]{1,3}") || local IPLIST=$(cat /proc/net/arp | grep "0x2\|0x6" | awk '{print $1}' | grep -v "^169.254." | grep -v "^$" | sort -u | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
 
-	local IPLIST=$(echo -e "${IPLIST}\n${gateway_iplist}\n${miwifi_iplist}\n${openwrt_iplist}\n${always_check_ip_list}" | grep -v "^$" | sort -u)
+	local IPLIST=$(echo -e "${IPLIST}\n${gateway_iplist}\n${miwifi_iplist}\n${openwrt_iplist}\n${mikrotik_info}\n${always_check_ip_list}" | grep -v "^$" | sort -u)
 	for ip in $IPLIST; do
 		[ -n "$passive_mode" ] && [ "$passive_mode" -eq "1" ] && break
 		# 获取一个令牌

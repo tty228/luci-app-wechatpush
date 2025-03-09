@@ -914,6 +914,10 @@ msgid "Retrieve hostname list from modem"
 msgstr "从光猫获取主机名等信息"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:165
+msgid "Retrieve hostname list from modem MikroTik Router"
+msgstr "从 ROS 路由器中获取主机名等信息"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:165
 msgid "Get wireless band information and hostname from MiWiFi"
 msgstr "从小米路由器中获取无线频段信息和主机名"
 
@@ -979,11 +983,19 @@ msgstr "小米路由器 IP 地址"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:213
 msgid "The main router address is all that is needed in the Mesh wireless network topology."
-msgstr "小米路由器 IP 地址"
+msgstr "在 Mesh 无线网络拓扑中，只需要填写主路由器地址。"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:216
 msgid "MiWiFi Login Password"
 msgstr "小米路由器登录密码"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:213
+msgid "MikroTik Routers IP Address"
+msgstr "ROS 路由器 IP 地址"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:213
+msgid "MikroTik Router Account"
+msgstr "ROS 路由器用户名"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:216
 msgid "The main router address is all that is needed in the Mesh wireless network topology."

@@ -163,6 +163,7 @@ return view.extend({
 		o = s.option(form.MultiValue, 'device_info_helper', _('Assist in obtaining device information'));
 		o.value('gateway_info', _('Retrieve hostname list from modem'));
 		o.value('miwifi_info', _('Get wireless band information and hostname from MiWiFi'));
+		o.value('mikrotik_info', _('Retrieve hostname list from modem MikroTik Router'));
 		o.value('openwrt_info', _('Get wireless band information and hostname from other OpenWrt'));
 		o.value('scan_local_ip', _('Scan local IP'));
 		o.modalonly = true;
@@ -209,13 +210,21 @@ return view.extend({
 
 		o = s.option(form.Value, "miwifi_ip", _('MiWiFi IP Address'));
 		o.rmempty = true;
-		o.default = "192.168.31.1";
 		o.description = _("The main router address is all that is needed in the Mesh wireless network topology.")
 		o.depends({ device_info_helper: "miwifi_info", '!contains': true });
 
 		o = s.option(form.Value, "miwifi_password", _('MiWiFi Login Password'))
 		o.rmempty = true
 		o.depends({ device_info_helper: "miwifi_info", '!contains': true });
+
+		o = s.option(form.Value, "mikrotik_ip", _('MikroTik Routers IP Address'));
+		o.rmempty = true;
+		o.description = _('echo -e "\\n" | ssh-keygen -t rsa -f /root/.ssh/id_rsa -N ""<br/>scp /root/.ssh/id_rsa.pub your_username@mikrotik_ip:/id_rsa.pub<br/>ssh your_username@mikrotik_ip<br/>/user ssh-keys import public-key-file=id_rsa.pub user=your_username')
+		o.depends({ device_info_helper: "mikrotik_info", '!contains': true });
+		
+		o = s.option(form.Value, "mikrotik_username", _('MikroTik Router Account'))
+		o.rmempty = true
+		o.depends({ device_info_helper: "mikrotik_info", '!contains': true });
 
 		o = s.option(form.DynamicList, "op_host_ips", _('OpenWrt IP Address'));
 		o.rmempty = true;
@@ -234,6 +243,7 @@ return view.extend({
 		o.description = _("Generally, frequent capturing is not necessary. Adjust it as needed.")
 		o.depends({ device_info_helper: "gateway_info", '!contains': true });
 		o.depends({ device_info_helper: "miwifi_info", '!contains': true });
+		o.depends({ device_info_helper: "mikrotik_info", '!contains': true });
 		o.depends({ device_info_helper: "openwrt_info", '!contains': true });
 		o.depends({ device_info_helper: "scan_local_ip", '!contains': true });
 
