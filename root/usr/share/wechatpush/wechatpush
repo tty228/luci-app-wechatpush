@@ -797,7 +797,12 @@ getping() {
 
 	local interface=$(getinterface "ip" "$mac")
 	[ "$iw_version" ] && [ "$interface" ] && wlan_online=$(iw dev ${interface} station dump 2>/dev/null | grep -i -w "$mac" | grep Station) >/dev/null 2>&1
-	[ "$wlan_online" ] && return 0
+	[ "$wlan_online" ] && {
+		jq --arg ip "$ip" --arg parent "Local" \
+			'.devices |= map(if .ip == $ip and (.parent | . != $parent) then .parent = $parent else . end)' \
+			"$devices_json" > "$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
+		return 0
+	}
 
 	interface=$(cat /proc/net/arp | grep -w "$ip" | awk '{print $6}' | grep -v "^$" | sort -u | head -n1)
 	for i in $(seq 1 "$retry_count"); do
@@ -1373,13 +1378,16 @@ getgateway() {
 		# 注销
 		[ -n "$get_gateway" ] && [ -n "$gateway_logout_url" ] && curl -s -b ${dir}/cookies.txt "${gateway_logout_url}" -d 'token='$mytoken 2>/dev/null
 		[ -z "$get_gateway" ] && log_change "【info】获取光猫信息失败，可能当前用户未注销或设置错误"
+
+		local gateway_host_ip=$(echo "$gateway_host_url" | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
 		# 保存信息
 		echo "$get_gateway" | jq '
 			to_entries | map(select(.value | type == "object" and has("ip"))) | map({
 				ip: .value.ip,
 				name: (if .value.devName == "" then "unknown" else .value.devName end),
 				mac: "unknown",
-				type: (if .key | startswith("wifi") then "WiFi" else "LAN" end)
+				type: (if .key | startswith("wifi") then "WiFi" else "LAN" end),
+				parent: (if .key | startswith("wifi") then $gateway_host_ip else "" end)
 			})
 		' > "${dir}/gateway_info"
 
@@ -1405,6 +1413,7 @@ getmiwifi() {
 		# 获取设备列表
 		local device_list_url="http://${miwifi_ip}/cgi-bin/luci/;stok=$stok/api/misystem/devicelist"
 		local device_list_response=$(curl -s "$device_list_url")
+		#local parent=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip) | .mac' "$devices_json")
 
 		# 保存信息
 		echo "$device_list_response" | jq '
@@ -1412,6 +1421,7 @@ getmiwifi() {
 				ip: .ip[0].ip,
 				name: (if .name == .mac then "unknown" else .name end),
 				mac: .mac,
+				parent: .parent,
 				type: (if .type == 1 then "2.4G" elif .type == 2 then "5G" else "LAN" end)
 			})
 		' > "${dir}/miwifi_info"
@@ -1469,8 +1479,9 @@ getopenwrt() {
 							--arg ip "$ip" \
 							--arg name "$name" \
 							--arg mac "$mac" \
+							--arg parent "$op_host_ip" \
 							--arg type "$band" \
-							'{ip: $ip, name: $name, mac: $mac, type: $type}')
+							'{ip: $ip, name: $name, mac: $mac, parent: $parent, type: $type}')
 						
 						# 将生成的 JSON 设备信息添加到数组中
 						json_array+=("$json_device")
@@ -1645,13 +1656,27 @@ down() {
 			' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
 		fi
 
-		[ -f "${dir}/miwifi_info" ] && local tmp_type=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .type' "${dir}/miwifi_info")
-		[ -f "${dir}/openwrt_info" ] && local tmp_type=$(jq -r --arg mac "$mac" '.[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase)) | .type' "${dir}/openwrt_info")
-		[ -f "${dir}/gateway_info" ] && [ -z "$tmp_type" ] && local tmp_type=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .type' "${dir}/gateway_info")
-		[ -n "$tmp_type" ] && jq --arg ip "$ip" --arg type "$tmp_type" '
+		# 从 miwifi_info 中读取 type 和 parent
+		[ -f "${dir}/miwifi_info" ] && {
+			local tmp_type=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .type' "${dir}/miwifi_info")
+			local tmp_parent=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .parent' "${dir}/miwifi_info")
+		}
+
+		[ -f "${dir}/openwrt_info" ] && [ -z "$tmp_type" ] && {
+			local tmp_type=$(jq -r --arg mac "$mac" '.[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase)) | .type' "${dir}/openwrt_info")
+			local tmp_parent=$(jq -r --arg mac "$mac" '.[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase)) | .parent' "${dir}/openwrt_info")
+		}
+
+		[ -f "${dir}/gateway_info" ] && [ -z "$tmp_type" ] && {
+			local tmp_type=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .type' "${dir}/gateway_info")
+			local tmp_parent=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .parent' "${dir}/gateway_info")
+		}
+
+		[ -n "$tmp_type" ] && jq --arg ip "$ip" --arg type "$tmp_type" --arg parent "$tmp_parent" '
 			.devices |= map(
 				if .ip == $ip then
-					.type = $type
+					.type = $type |
+					.parent = $parent
 				else
 					.
 				end

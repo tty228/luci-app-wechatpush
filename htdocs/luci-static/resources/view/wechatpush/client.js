@@ -67,8 +67,8 @@ return view.extend({
 		}
 		var devices = data.devices.filter(device => device.status === 'online' || device.status === 'unknown');
 		var totalDevices = devices.length;
-		var headers = [_('Hostname'), _('IPv4 address'), _('MAC address'), _('Interfaces'), _('Online time'), _('Details')];
-		var columns = ['name', 'ip', 'mac', 'interface', 'uptime', 'usage'];
+		var headers = [_('Hostname'), _('IPv4 address'), _('MAC address'), _('Interfaces'), _('Connection Point'), _('Online time'), _('Details')];
+		var columns = ['name', 'ip', 'mac', 'interface', 'parent', 'uptime', 'usage'];
 		var visibleColumns = [];
 		var hasData = false;
 
@@ -93,7 +93,7 @@ return view.extend({
 			var hasColumnData = false;
 
 			for (var j = 0; j < devices.length; j++) {
-				if (devices[j][column] !== '') {
+				if (devices[j][column] !== undefined && devices[j][column] !== '') {
 					hasColumnData = true;
 					hasData = true;
 					break;
@@ -161,7 +161,6 @@ return view.extend({
 				border-color: transparent transparent #666 transparent; /* 向下箭头颜色 */
 			}
 
-
 			.device-table tbody tr:nth-child(even) {
 				background-color: rgba(0, 0, 0, 0.05); /* 偶数行背景色，透明 */
 			}
@@ -185,26 +184,26 @@ return view.extend({
 			}
 
 			@media (max-width: 767px) {
-			.device-table {
-				width: 100%; /* 表格宽度占满父容器 */
-				overflow: hidden; /* 内容溢出隐藏 */
-			}
+				.device-table {
+					width: 100%; /* 表格宽度占满父容器 */
+					overflow: hidden; /* 内容溢出隐藏 */
+				}
 				.device-table th,
-			.device-table td {
-				padding: 3px; /* 单元格内边距 */
-				text-align: center; /* 文本居中 */
-				border: 0.35px solid #ddd; /* 边框样式 */
-			}
-			.device-table td:first-child {
-								max-width: 80px;
-							}
-			.device-table td:nth-of-type(5) { /* 控制第五列（Online time）的样式 */
+				.device-table td {
+					padding: 3px; /* 单元格内边距 */
+					text-align: center; /* 文本居中 */
+					border: 0.35px solid #ddd; /* 边框样式 */
+				}
+				.device-table td:first-child {
+					max-width: 80px;
+				}
+				.device-table td:nth-of-type(5) { /* 控制第五列（Online time）的样式 */
 					font-size: 14px; /* 调整字体大小 */
 				}
-			.device-table td:first-child {
-				text-align: left; /* 第一列文本左对齐 */
-				padding-left: 2px; /* 第一列左侧内边距 */
-			}
+				.device-table td:first-child {
+					text-align: left; /* 第一列文本左对齐 */
+					padding-left: 2px; /* 第一列左侧内边距 */
+				}
 				.device-table th:nth-of-type(4),
 				.device-table td:nth-of-type(4) {
 					display: none; /* 在小屏幕下隐藏第四列 */
@@ -265,6 +264,22 @@ return view.extend({
 								icon.innerHTML = 'LAN';
 							}
 							cell.appendChild(icon);
+						} else if (columns[i] === 'parent') {
+							if (device['parent']) {
+								var parentDevice = devices.find(d => {
+									// 统一转换为大写比较
+									var deviceMac = (d.mac || '').toUpperCase();
+									var parentMac = (device['parent'] || '').toUpperCase();
+									return deviceMac === parentMac || d.ip === device['parent'];
+								});
+								if (parentDevice) {
+									cell.textContent = parentDevice.name || parentDevice.ip;
+								} else {
+									cell.textContent = device['parent'];
+								}
+							} else {
+								cell.textContent = '';
+							}
 						} else {
 							cell.textContent = device[columns[i]];
 						}
@@ -311,7 +326,6 @@ return view.extend({
 				}
 			}
 		}
-
 
 		function compareDevices(a, b, column, direction) {
 			var value1 = getValueForSorting(a, column);

@@ -1069,7 +1069,11 @@ msgstr "单位为小时"
 msgid "Network uptime greater than"
 msgstr "网络在线时间大于"
 
-#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/client.js:14
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/client.js:70
+msgid "Connection Point"
+msgstr "连接点"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/client.js:70
 msgid "Online time"
 msgstr "在线时间"
 
