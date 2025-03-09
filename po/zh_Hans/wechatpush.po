@@ -914,10 +914,14 @@ msgid "Retrieve hostname list from modem"
 msgstr "从光猫获取主机名等信息"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:165
-msgid "Retrieve hostname list from miwifi"
-msgstr "从小米路由器获取主机名等信息"
+msgid "Get wireless band information and hostname from MiWiFi"
+msgstr "从小米路由器中获取无线频段信息和主机名"
 
-#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:93
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:166
+msgid "Get wireless band information and hostname from other OpenWrt"
+msgstr "从其他 OpenWrt 中获取无线频段信息和主机名"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:167
 msgid "Scan local IP"
 msgstr "扫描局域网 IP"
 
@@ -973,9 +977,17 @@ msgstr "使用普通账号即可，不需要超密"
 msgid "MiWiFi IP Address"
 msgstr "小米路由器 IP 地址"
 
-#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:209
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:213
+msgid "The main router address is all that is needed in the Mesh wireless network topology."
+msgstr "小米路由器 IP 地址"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:216
 msgid "MiWiFi Login Password"
 msgstr "小米路由器登录密码"
+
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:216
+msgid "The main router address is all that is needed in the Mesh wireless network topology."
+msgstr "Mesh 无线网络拓扑中，只需要填写主路由地址"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/advanced.js:135
 msgid "IP range to be scanned"

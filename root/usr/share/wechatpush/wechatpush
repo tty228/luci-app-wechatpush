@@ -46,7 +46,7 @@ read_config() {
 		"do_not_disturb_mode" "do_not_disturb_starttime" "do_not_disturb_endtime" "up_down_push_whitelist" "up_down_push_blacklist" "up_down_push_interface" "mac_online_list" "mac_offline_list" "cpu_threshold_duration" "cpu_notification_delay" "login_disturb" "login_notification_delay" "login_log_enable" \
 		"up_timeout" "down_timeout" "timeout_retry_count" "always_check_ip_list" "only_timeout_push" "passive_mode" "thread_num" "defaultSortColumn" "soc_code" "server_host" "server_port" \
 		"unattended_enable" "zerotier_helper" "unattended_only_on_disturb_time" "unattended_device_aliases" "network_disconnect_event" "unattended_autoreboot_mode" "autoreboot_system_uptime" "autoreboot_network_uptime" \
-		"device_info_helper" "gateway_host_url" "gateway_info_url" "gateway_logout_url" "gateway_username_id" "gateway_password_id" "gateway_username" "gateway_password" "miwifi_ip" "miwifi_password" "scan_ip_range" "device_info_helper_sleeptime"
+		"device_info_helper" "gateway_host_url" "gateway_info_url" "gateway_logout_url" "gateway_username_id" "gateway_password_id" "gateway_username" "gateway_password" "miwifi_ip" "miwifi_password" "op_host_ips" "scan_ip_range" "device_info_helper_sleeptime"
 
 	(echo "$device_notification" | grep -q "online") && notification_online="true"
 	(echo "$device_notification" | grep -q "offline") && notification_offline="true"
@@ -58,6 +58,8 @@ read_config() {
 	(echo "$login_notification" | grep -q "ssh_login_failed") && ssh_login_failed="true"
 	(echo "$device_info_helper" | grep -q "gateway_info") && gateway_info_enable="true"
 	(echo "$device_info_helper" | grep -q "miwifi_info") && miwifi_info_enable="true"
+	(echo "$device_info_helper" | grep -q "openwrt_info") && openwrt_info_enable="true"
+	op_host_ips=$(echo "$op_host_ips" | sed 's/ /\n/g') 2>/dev/null
 	for str_version in "wrtbwmon" "iputils-arping" "curl" "iw"; do
 		eval $(echo ${str_version:0:2}"_version")=$(opkg list-installed | grep -w ^${str_version} | awk '{print $3}') 2>/dev/null
 	done
@@ -657,6 +659,12 @@ getname() {
 	# MIWiFi
 	[ -f "${dir}/miwifi_info" ] && {
 		tmp_name=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .name' "${dir}/miwifi_info") && tmp_name=$(cut_str "$tmp_name" "30")
+		process_and_check "$tmp_name" && return
+	}
+
+	# openwrt
+	[ -f "${dir}/openwrt_info" ] && {
+		tmp_name=$(jq -r --arg mac "$mac" '.[] | select(.mac == $mac) | .name' "${dir}/openwrt_info") && tmp_name=$(cut_str "$tmp_name" "30")
 		process_and_check "$tmp_name" && return
 	}
 
@@ -1375,7 +1383,7 @@ getgateway() {
 			})
 		' > "${dir}/gateway_info"
 
-		gateway_iplist=$(jq -r '.[].ip' "${dir}/gateway_info")
+		gateway_iplist=$(jq -r '.[] | select(.ip != "unknown" and .ip != "") | .ip' "${dir}/gateway_info")
 	else
 		unset gateway_iplist
 	fi
@@ -1408,9 +1416,74 @@ getmiwifi() {
 			})
 		' > "${dir}/miwifi_info"
 
-		miwifi_iplist=$(jq -r '.[].ip' "${dir}/miwifi_info")
+		miwifi_iplist=$(jq -r '.[] | select(.ip != "unknown" and .ip != "") | .ip' "${dir}/miwifi_info")
 	else
 		unset miwifi_iplist
+	fi
+}
+
+# 从 openwrt 获取设备信息
+getopenwrt() {
+	[ -z "$openwrt_info_enable" ] && return
+	local last_openwrt_time=$(file_date "${dir}/openwrt_info")
+	if [ "$last_openwrt_time" -ge "$device_info_helper_sleeptime" ]; then
+		for op_host_ip in "$op_host_ips"; do
+			local wlan_interfaces=$(ssh -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip 'iw dev 2>/dev/null | grep Interface | awk '\''{print $2}'\''')
+			local leases_info=$(ssh -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "cat /tmp/dhcp.leases 2>/dev/null")
+			local arp_info=$(ssh -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "cat /proc/net/arp | grep '0x[26]' | grep -v '^169.254.' | grep -v '^$' | sort -u 2>/dev/null")
+
+			# 初始化一个空数组（bash 数组）
+			local json_array=()
+
+			# 遍历每个接口
+			for iface in $wlan_interfaces; do
+				# 获取接口信息
+				local info=$(ssh -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "iw dev $iface info 2>/dev/null")
+
+				# 获取频道和频段
+				local channel=$(echo "$info" | grep channel | awk '{print $2}')
+				local band="unknown"
+				if [[ -n "$channel" && "$channel" -ge 1 && "$channel" -le 14 ]]; then
+					band="2.4G"
+				elif [[ -n "$channel" && "$channel" -ge 36 ]]; then
+					band="5G"
+				fi
+
+				# 获取连接的设备列表
+				local devices=$(ssh -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "iw dev $iface station dump 2>/dev/null")
+
+				# 逐行输出设备信息
+				while read -r line; do
+					if [[ "$line" =~ "Station" ]]; then
+						# 提取设备的MAC地址
+						local mac=$(echo "$line" | awk '{print $2}')
+
+						# 查找设备名称
+						local ip=$(echo "$arp_info" | awk -v mac="$mac" '$4 == mac {print $1; exit}')
+						local name=$(echo "$leases_info" | awk -v mac="$mac" '$2 == mac {print $4; exit}')
+						[ -z "$ip" ] && ip="unknown"
+						[ -z "$name" ] && name="unknown"
+
+						# 生成JSON格式的设备信息，并将其添加到数组中
+						local json_device=$(jq -n \
+							--arg ip "$ip" \
+							--arg name "$name" \
+							--arg mac "$mac" \
+							--arg type "$band" \
+							'{ip: $ip, name: $name, mac: $mac, type: $type}')
+						
+						# 将生成的 JSON 设备信息添加到数组中
+						json_array+=("$json_device")
+					fi
+				done <<< "$devices"
+			done
+		done
+		# 使用 jq 输出最终的 JSON 数组
+		echo "${json_array[@]}" | jq -s . > ${dir}/openwrt_info
+
+		openwrt_iplist=$(jq -r '.[] | select(.ip != "unknown" and .ip != "") | .ip' "${dir}/openwrt_info")
+	else
+		unset openwrt_iplist
 	fi
 }
 
@@ -1421,6 +1494,7 @@ first() {
 	local IPLIST=$(jq -r '.devices[] | select(.status == "online" or .status == "unknown") | .ip' "$devices_json" | sort -u)
 	[ ! -f "${dir}/send_pid" ] && getgateway
 	[ ! -f "${dir}/send_pid" ] && getmiwifi
+	[ ! -f "${dir}/send_pid" ] && getopenwrt
 	[ ! -f "${dir}/send_pid" ] && silent_run scanlocalip
 	for ip in $IPLIST; do
 		[ -n "$passive_mode" ] && [ "$passive_mode" -eq "1" ] && break
@@ -1438,7 +1512,7 @@ first() {
 	[ -n "$IP_INFO" ] && local SUBNET=$(echo $IP_INFO | cut -d'/' -f1 | cut -d'.' -f1-3)
 	[ -n "$SUBNET" ] && local IPLIST=$(cat /proc/net/arp | grep "0x2\|0x6" | awk '{print $1}' | grep -v "^169.254." | grep -v "^$" | sort -u | grep -oE "${SUBNET}\.[0-9]{1,3}") || local IPLIST=$(cat /proc/net/arp | grep "0x2\|0x6" | awk '{print $1}' | grep -v "^169.254." | grep -v "^$" | sort -u | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
 
-	local IPLIST=$(echo -e "${IPLIST}\n${gateway_iplist}\n${miwifi_iplist}\n${always_check_ip_list}" | grep -v "^$" | sort -u)
+	local IPLIST=$(echo -e "${IPLIST}\n${gateway_iplist}\n${miwifi_iplist}\n${openwrt_iplist}\n${always_check_ip_list}" | grep -v "^$" | sort -u)
 	for ip in $IPLIST; do
 		[ -n "$passive_mode" ] && [ "$passive_mode" -eq "1" ] && break
 		# 获取一个令牌
@@ -1572,6 +1646,7 @@ down() {
 		fi
 
 		[ -f "${dir}/miwifi_info" ] && local tmp_type=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .type' "${dir}/miwifi_info")
+		[ -f "${dir}/openwrt_info" ] && local tmp_type=$(jq -r --arg mac "$mac" '.[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase)) | .type' "${dir}/openwrt_info")
 		[ -f "${dir}/gateway_info" ] && [ -z "$tmp_type" ] && local tmp_type=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .type' "${dir}/gateway_info")
 		[ -n "$tmp_type" ] && jq --arg ip "$ip" --arg type "$tmp_type" '
 			.devices |= map(
