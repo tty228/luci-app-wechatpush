@@ -1618,7 +1618,7 @@ current_device() {
 		local mac=$(getmac "$ip")
 		local total=$(usage get "$mac")
 		local name=$(getname "$ip" "$mac")
-		local name=$(cut_str "$name" "15")
+		local name=$(cut_str "$name" "20")
 		local time_up=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip) | .uptime' "$devices_json")
 		local time_online=$(time_for_humans $(($(date +%s) - time_up)))
 		# 如果字符长度小于 max_length，用 str_space 补齐
@@ -1636,8 +1636,8 @@ current_device() {
 			total="${total}${str_tab}"
 		fi
 
-		if [ "${#time_online}" -lt "12" ]; then
-			local n=$((12 - ${#time_online}))
+		if [ "${#time_online}" -lt "15" ]; then
+			local n=$((15 - ${#time_online}))
 			time_online="${time_online}$(printf "%${n}s" "" | sed "s/ /${str_space}/g")"
 		fi
 		time_online="${time_online}${str_tab}"
