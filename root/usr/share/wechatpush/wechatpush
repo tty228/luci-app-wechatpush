@@ -798,9 +798,11 @@ getping() {
 	local interface=$(getinterface "ip" "$mac")
 	[ "$iw_version" ] && [ "$interface" ] && wlan_online=$(iw dev ${interface} station dump 2>/dev/null | grep -i -w "$mac" | grep Station) >/dev/null 2>&1
 	[ "$wlan_online" ] && {
+		silent_run LockFile lock
 		jq --arg ip "$ip" --arg parent "Local" \
 			'.devices |= map(if .ip == $ip and (.parent | . != $parent) then .parent = $parent else . end)' \
 			"$devices_json" > "$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
+		silent_run LockFile unlock
 		return 0
 	}
 
@@ -1480,9 +1482,15 @@ getopenwrt() {
 							--arg name "$name" \
 							--arg mac "$mac" \
 							--arg parent "$op_host_ip" \
-							--arg type "$band" \
-							'{ip: $ip, name: $name, mac: $mac, parent: $parent, type: $type}')
-						
+							--arg type "$band" '
+							{
+								ip: $ip,
+								name: $name,
+								mac: $mac,
+								parent: $parent,
+								type: $type
+							}')
+
 						# 将生成的 JSON 设备信息添加到数组中
 						json_array+=("$json_device")
 					fi
