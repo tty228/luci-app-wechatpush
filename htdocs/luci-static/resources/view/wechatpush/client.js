@@ -92,16 +92,32 @@ return view.extend({
 			var column = columns[i];
 			var hasColumnData = false;
 
-			for (var j = 0; j < devices.length; j++) {
-				if (devices[j][column] !== undefined && devices[j][column] !== '') {
-					hasColumnData = true;
-					hasData = true;
-					break;
+			// 特殊处理 parent 列
+			if (column === 'parent') {
+				var hasNonLocalParent = false;
+				for (var j = 0; j < devices.length; j++) {
+					var parentValue = devices[j][column];
+					if (parentValue && parentValue !== "Local") {
+						hasNonLocalParent = true;
+						break;
+					}
 				}
-			}
-
-			if (hasColumnData) {
-				visibleColumns.push(i);
+				// 如果存在非 "Local" 的 parent 值，则显示该列
+				if (hasNonLocalParent) {
+					visibleColumns.push(i);
+				}
+			} else {
+				// 其他列的正常逻辑
+				for (var j = 0; j < devices.length; j++) {
+					if (devices[j][column] !== undefined && devices[j][column] !== '') {
+						hasColumnData = true;
+						hasData = true;
+						break;
+					}
+				}
+				if (hasColumnData) {
+					visibleColumns.push(i);
+				}
 			}
 		}
 
