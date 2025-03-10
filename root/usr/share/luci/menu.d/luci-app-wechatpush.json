@@ -3,7 +3,8 @@
 		"title": "WeChat push",
 		"order": 30,
 		"action": {
-			"type": "firstchild"
+			"type": "view",
+			"path": "wechatpush/status"
 		},
 		"depends": {
 			"acl": [ "luci-app-wechatpush" ],
