@@ -355,6 +355,7 @@ return view.extend({
 			return 0;
 		}
 
+		// 排序
 		function getValueForSorting(device, column) {
 			var value = device[column];
 			if (column === 'uptime') {
@@ -362,6 +363,32 @@ return view.extend({
 				return parseInt(device['uptime']);
 			} else if (column === 'ip') {
 				return ipToNumber(value);
+			} else if (column === 'interface') {
+				if (device['interface'] === '2.4G') {
+					return '2.4G';
+				} else if (device['interface'] === '5G') {
+					return '5G';
+				} else if (device['interface'] === 'WiFi') {
+					return 'WiFi';
+				} else {
+					return 'LAN';
+				}
+			} else if (column === 'parent') {
+				// 使用 parent 列的实际显示值进行排序
+				if (device['parent']) {
+					var parentDevice = devices.find(d => {
+						var deviceMac = (d.mac || '').toUpperCase();
+						var parentMac = (device['parent'] || '').toUpperCase();
+						return deviceMac === parentMac || d.ip === device['parent'];
+					});
+					if (parentDevice) {
+						return parentDevice.name || parentDevice.ip;
+					} else {
+						return device['parent'];
+					}
+				} else {
+					return '';
+				}
 			}
 			return value;
 		}
