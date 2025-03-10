@@ -378,6 +378,7 @@ process_and_check() {
 	[ -z "$1" ] && return 1
 	local value=$(echo "$1" | tr -d '\n\r' | awk '$1=$1' | sed 's/_/ /g' | grep -v "^$" | sort -u | head -n1)
 	[ "$value" == "unknown" ] && value=""
+	[ -n "$value" ] && [ -n "$2" ] && echo $(cut_str "$value" "$2") && return 0
 	[ -n "$value" ] && echo "$value" && return 0
 	return 1
 }
@@ -640,50 +641,51 @@ getname() {
 	local mac="$2"
 	local tmp_name
 	local oui_name
+	local name_width="20"
 	[ -z "$ip" ] && return 1
 	[ -z "$mac" ] && return 1
 
 	# 自定义备注
 	tmp_name=$(cat "$device_aliases_path" 2>/dev/null | grep -i -Ew "^${ip}|^${mac}" | awk '{for(i=2; i<=NF; i++) printf $i " "; print ""}')
-	process_and_check "$tmp_name" && return
+	process_and_check "$tmp_name" "$name_width" && return
 
 	# 光猫
 	[ -f "${dir}/gateway_info" ] && {
-		tmp_name=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .name' "${dir}/gateway_info") && tmp_name=$(cut_str "$tmp_name" "30")
-		process_and_check "$tmp_name" && return
-	}
-
-	# MIWiFi
-	[ -f "${dir}/miwifi_info" ] && {
-		tmp_name=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .name' "${dir}/miwifi_info") && tmp_name=$(cut_str "$tmp_name" "30")
-		process_and_check "$tmp_name" && return
+		tmp_name=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .name' "${dir}/gateway_info")
+		process_and_check "$tmp_name" "$name_width" && return
 	}
 
 	# MikroTik
 	[ -f "${dir}/mikrotik_info" ] && {
-		tmp_name=$(jq -r --arg mac "$mac" '.[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase)) | .name' "${dir}/mikrotik_info") && tmp_name=$(cut_str "$tmp_name" "30")
-		process_and_check "$tmp_name" && return
+		tmp_name=$(jq -r --arg mac "$mac" '.[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase)) | .name' "${dir}/mikrotik_info")
+		process_and_check "$tmp_name" "$name_width" && return
+	}
+
+	# MIWiFi
+	[ -f "${dir}/miwifi_info" ] && {
+		tmp_name=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .name' "${dir}/miwifi_info")
+		process_and_check "$tmp_name" "$name_width" && return
 	}
 
 	# openwrt
 	[ -f "${dir}/openwrt_info" ] && {
-		tmp_name=$(jq -r --arg mac "$mac" '.[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase)) | .name' "${dir}/openwrt_info") && tmp_name=$(cut_str "$tmp_name" "30")
-		process_and_check "$tmp_name" && return
+		tmp_name=$(jq -r --arg mac "$mac" '.[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase)) | .name' "${dir}/openwrt_info")
+		process_and_check "$tmp_name" "$name_width" && return
 	}
 
 	# 已保存的主机名
 	tmp_name=$(jq -r --arg ip "$ip" --arg mac "$mac" '.devices[] | select(.ip == $ip and .mac == $mac) | .name' "$devices_json")
 	[ -n "$oui_name" ] && [ -n "$tmp_name" ] && [ "$oui_name" == "$tmp_name" ] && tmp_name=""
-	process_and_check "$tmp_name" && return
+	process_and_check "$tmp_name" "$name_width" && return
 
 	# 静态地址备注名
 	local dhcp_config=$(uci show dhcp | grep -i -w "${ip}\|${mac}" | sed -n 's/\(dhcp\..*\)\..*/\1/p')
 	[ -n "$dhcp_config" ] && tmp_name=$(uci get ${dhcp_config}.name)
-	process_and_check "$tmp_name" && return
+	process_and_check "$tmp_name" "$name_width" && return
 
 	# DHCP
 	[ -f "/tmp/dhcp.leases" ] && tmp_name=$(grep -w "${ip}" /tmp/dhcp.leases | awk '{print $4}')
-	process_and_check "$tmp_name" && return
+	process_and_check "$tmp_name" "$name_width" && return
 
 	# 定时推送时不查询
 	[ -f "${dir}/send_pid" ] && echo "unknown" && return
@@ -697,13 +699,13 @@ getname() {
 	local uptime=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "online") | .uptime' "$devices_json")
 	if [ -n "$uptime" ] && time_up=$(expr $(date +%s) - $uptime) && [ "$time_up" -lt 600 ]; then
 		tmp_name=$(nmblookup_timeout "${ip}" "name" "5" 2>/dev/null)
-		process_and_check "$tmp_name" && return
+		process_and_check "$tmp_name" "$name_width" && return
 
 		# MAC 设备信息数据库
 		[ -f "$oui_base" ] && oui_name=$(grep -i "$(echo "$mac" | cut -c 1,2,4,5,7,8)" "$oui_base" | sed -nr 's#^.*16)..(.*)#\1#gp')
 		[ -n "$oui_data" ] && [ "$oui_data" -eq "4" ] && oui_name=$(curl -sS "https://standards-oui.ieee.org/oui/oui.txt" | grep -i "$(echo "$mac" | cut -c 1,2,4,5,7,8)" | sed -nr 's#^.*16)..(.*)#\1#gp')
 		tmp_name="$oui_name"
-		process_and_check "$tmp_name" && return
+		process_and_check "$tmp_name" "$name_width" && return
 	fi
 
 	echo "unknown"
