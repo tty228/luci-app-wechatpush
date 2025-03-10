@@ -403,24 +403,24 @@ time_for_humans() {
 	[ -z "$1" ] && return
 
 	if [ "$1" -lt 60 ]; then
-		echo "${1} 秒"
+		echo "${1}秒"
 	elif [ "$1" -lt 3600 ]; then
 		local usetime_min=$(expr $1 / 60)
 		local usetime_sec=$(expr $usetime_min \* 60)
 		local usetime_sec=$(expr $1 - $usetime_sec)
-		echo "${usetime_min} 分 ${usetime_sec} 秒"
+		echo "${usetime_min}分${usetime_sec}秒"
 	elif [ "$1" -lt 86400 ]; then
 		local usetime_hour=$(expr $1 / 3600)
 		local usetime_min=$(expr $usetime_hour \* 3600)
 		local usetime_min=$(expr $1 - $usetime_min)
 		local usetime_min=$(expr $usetime_min / 60)
-		echo "${usetime_hour} 小时 ${usetime_min} 分"
+		echo "${usetime_hour}小时${usetime_min}分"
 	else
 		local usetime_day=$(expr $1 / 86400)
 		local usetime_hour=$(expr $usetime_day \* 86400)
 		local usetime_hour=$(expr $1 - $usetime_hour)
 		local usetime_hour=$(expr $usetime_hour / 3600)
-		echo "${usetime_day} 天 ${usetime_hour} 小时"
+		echo "${usetime_day}天${usetime_hour}小时"
 	fi
 }
 
@@ -431,16 +431,15 @@ length_str() {
 	local str="$1"
 	local length=0
 
-	# 遍历字符串的每个字符
-	for ((i = 0; i < ${#str}; i++)); do
-		local char="${str:$i:1}"
-		# 判断是否为中文字符
-		if [[ "$char" =~ [\u4e00-\u9FA5] ]]; then
-			length=$((length + 2))  # 中文字符占 2 个宽度
-		else
-			length=$((length + 1))  # 其他字符占 1 个宽度
-		fi
-	done
+	while IFS= read -r -n1 char; do
+		local char_width
+		char_width=$(printf "%s" "$char" | awk '{
+			if (match($0, /[一-龥]/)) print 2;
+			else print 1;
+		}')
+
+		length=$((length + char_width))
+	done <<< "$str"
 
 	echo "$length"
 }
@@ -458,23 +457,20 @@ cut_str() {
 	# 遍历字符串的每个字符
 	for ((i = 0; i < ${#str}; i++)); do
 		local char="${str:$i:1}"
-		# 判断是否为中文字符
-		if [[ "$char" =~ [\u4e00-\u9FA5] ]]; then
-			current_width=$((current_width + 2))  # 中文字符占 2 个宽度
-		else
-			current_width=$((current_width + 1))  # 其他字符占 1 个宽度
-		fi
+		local char_width=$(length_str "$char")
 
-		# 如果当前宽度超过最大宽度，则停止
-		if [ "$current_width" -gt "$max_width" ]; then
+		# 如果当前宽度加上当前字符的宽度超过最大宽度，则停止
+		if [ $((current_width + char_width)) -gt "$max_width" ]; then
 			break
 		fi
 
 		result="${result}${char}"
+		current_width=$((current_width + char_width))
 	done
 
 	# 如果裁剪了字符串，则添加 ".."
-	if [ "$current_width" -gt "$max_width" ]; then
+	if [ "$current_width" -lt $(length_str "$str") ]; then
+		result=$(echo "$result" | sed 's/ *$//')
 		result="${result}.."
 	fi
 
@@ -1767,61 +1763,107 @@ down() {
 current_device() {
 	(echo "$lite_enable" | grep -q "content") || (echo "$lite_enable" | grep -q "device") && return
 	local logrow=$(jq '.devices | map(select(.status == "online")) | length' "$devices_json")
-	[ $logrow -eq "0" ] && return
+	local has_usage=0
+	[ -f "${dir}/usage.db" ] && has_usage=1
+	
+	[ "$logrow" -eq "0" ] && {
+		local explain="${send_content}${str_splitline}${str_title_start} 当前无在线设备${str_title_end}"
+		content="${content}${explain}${header}"
+		return
+	}
 
-	[ -f "${dir}/usage.db" ] && local ip_total_db="总计流量${str_space}${str_tab}${str_space}${str_space}${str_space}"
 	local explain="${str_splitline}${str_title_start} 现有在线设备 ${logrow} 台，具体如下${str_title_end}"
-	[ $logrow -eq "0" ] && local explain="${send_content}${str_splitline}${str_title_start} 当前无在线设备${str_title_end}"
 
+	local IPLIST
 	if [ -z "$defaultSortColumn" ] || [ "$defaultSortColumn" = "ip" ]; then
 		# 按 IP 排序
-		local IPLIST=$(jq -r '.devices[] | select(.status == "online") | .ip' "$devices_json" | sort -uV)
+		IPLIST=$(jq -r '.devices[] | select(.status == "online") | .ip' "$devices_json" | sort -uV)
 	else
 		# 按在线时间（短到长）
-		local IPLIST=$(jq -r '.devices | sort_by(-(.uptime | tonumber)) | .[] | select(.status == "online") | .ip' "$devices_json")
+		IPLIST=$(jq -r '.devices | sort_by(-(.uptime | tonumber)) | .[] | select(.status == "online") | .ip' "$devices_json")
 	fi
 
-	local longest_ip=$(echo "$IPLIST" | awk '{ print length, $0 }' | sort -nr | head -n 1 | cut -d " " -f2-)
-	#local max_length=$(("${#longest_ip}" + 1))  # +1
-	local max_length="${#longest_ip}"
-
-	local n=$(( (max_length - 7) / ${#str_space} ))
-	local str_spaces=$(printf "%${n}s" "" | sed "s/ /${str_space}/g")
-	local result="IP 地址${str_tab}${str_spaces}"
-	local header="${str_linefeed}${str_space}${result}${ip_total_db}${str_space}${str_tab}${str_space}${str_space}在线时间${str_space}${str_tab}${str_space}${str_space}${str_space}${str_space}客户端名"
-	content="${content}${explain}${header}"
+	# 定义数组，预处理
+	declare -a ips totals time_onlines names
+	local idx=0
 
 	for ip in $IPLIST; do
-		local mac=$(getmac "$ip")
-		local total=$(usage get "$mac")
-		local name=$(getname "$ip" "$mac")
-		local name=$(cut_str "$name" "20")
-		local time_up=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip) | .uptime' "$devices_json")
-		local time_online=$(time_for_humans $(($(date +%s) - time_up)))
-		# 如果字符长度小于 max_length，用 str_space 补齐
-		if [ "${#ip}" -lt "$max_length" ]; then
-			local n=$((max_length - ${#ip}))
-			ip="${ip}$(printf "%${n}s" "" | sed "s/ /${str_space}/g")"
+		local mac total name time_up time_online
+		mac=$(getmac "$ip")
+		if [ "$has_usage" -eq 1 ]; then
+			total=$(usage get "$mac")
+		else
+			total=""
 		fi
-		ip="${ip}${str_tab}${str_space}"
+		name=$(getname "$ip" "$mac")
+		name=$(cut_str "$name" "12")
+		time_up=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip) | .uptime' "$devices_json")
+		time_online=$(time_for_humans "$(( $(date +%s) - time_up ))")
 
-		if [ -n "$total" ]; then
-			if [ "${#total}" -lt "12" ]; then
-				local n=$((12 - ${#total}))
-				total="${total}$(printf "%${n}s" "" | sed "s/ /${str_space}/g")"
-			fi
-			total="${total}${str_tab}"
-		fi
-
-		if [ "${#time_online}" -lt "15" ]; then
-			local n=$((15 - ${#time_online}))
-			time_online="${time_online}$(printf "%${n}s" "" | sed "s/ /${str_space}/g")"
-		fi
-		time_online="${time_online}${str_tab}"
-
-		content="${content}${str_linefeed}${str_space}"
-		content="${content}${ip}${total}${time_online}${name}"
+		ips[idx]="$ip"
+		totals[idx]="$total"
+		time_onlines[idx]="$time_online"
+		names[idx]="$name"
+		idx=$((idx + 1))
 	done
+
+	# 计算每列的最大宽度
+	local ip_max=0 total_max=0 time_online_max=0
+	for i in "${!ips[@]}"; do
+		local len_ip len_total len_time_online
+		len_ip=$(length_str "${ips[i]}")
+		[ "$len_ip" -gt "$ip_max" ] && ip_max=$len_ip
+
+		if [ "$has_usage" -eq 1 ]; then
+			len_total=$(length_str "${totals[i]}")
+			[ "$len_total" -gt "$total_max" ] && total_max=$len_total
+		fi
+
+		len_time_online=$(length_str "${time_onlines[i]}")
+		[ "$len_time_online" -gt "$time_online_max" ] && time_online_max=$len_time_online
+	done
+
+	# 每列宽度 = 最大宽度 + 2*${str_space}
+	ip_max=$((ip_max + 2))
+	if [ "$has_usage" -eq 1 ]; then
+		total_max=$((total_max + 2))
+	fi
+	time_online_max=$((time_online_max + 2))
+
+	# 如果字符长度小于最大宽度，用 str_space 填充
+	pad_field() {
+		local field="$1"
+		local target_width=$2
+		local current_width=$(length_str "$field")
+		local pad_count=$(( target_width - current_width ))
+		local pad=$(printf "%${pad_count}s" "" | sed "s/ /${str_space}/g")
+		printf "%s%s" "$field" "$pad"
+	}
+
+	# 表头
+	local header="${str_linefeed}${str_space}"
+	header+=$(pad_field "IP 地址" "$ip_max")"${str_space}"
+	if [ "$has_usage" -eq 1 ]; then
+		header+=$(pad_field "总计流量" "$total_max")
+	fi
+	header+=$(pad_field "在线时间" "$time_online_max")
+	header+="客户端名"
+
+	content="${content}${explain}${header}"
+
+	# 内容
+	for i in "${!ips[@]}"; do
+		local line="${str_linefeed}${str_space}"
+		line+=$(pad_field "${ips[i]}" "$ip_max")
+		if [ "$has_usage" -eq 1 ]; then
+			line+=$(pad_field "${totals[i]}" "$total_max")
+		fi
+		line+=$(pad_field "${time_onlines[i]}" "$time_online_max")
+		line+="${names[i]}"
+
+		content="${content}${line}"
+	done
+
 	[ -f "${dir}/send_pid" ] && echo "$content" >"$output_dir/current_device" && unset content
 }
 
