@@ -28,7 +28,8 @@ return view.extend({
 	},
 
 	fetchDevices: function () {
-		return fs.read('/tmp/wechatpush/devices.json').then(function (content) {
+		var devices_path = '/tmp/wechatpush/devices.json';
+		return fs.read(devices_path).then(function (content) {
 			try {
 				var data = JSON.parse(content);
 				var wlanMap = {};
