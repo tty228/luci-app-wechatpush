@@ -1763,7 +1763,10 @@ down() {
 
 # 当前设备列表
 current_device() {
-	(echo "$lite_enable" | grep -q "content") || (echo "$lite_enable" | grep -q "device") && return
+	# 定时推送中已有设备列表选项，不应被精简模式设置项控制
+	[ ! -f "${dir}/send_pid" ] && {
+		(echo "$lite_enable" | grep -q "content") || (echo "$lite_enable" | grep -q "device") && return
+	}
 	local logrow=$(jq '.devices | map(select(.status == "online")) | length' "$devices_json")
 	local has_usage=0
 	[ -f "${dir}/usage.db" ] && has_usage=1
@@ -2229,8 +2232,8 @@ send() {
 
 	[ -z "$1" ] && cpuload=$(getcpu)
 	[ -z "$1" ] && service_status=$(ubus call service list '{"name": "wechatpush"}' | grep -o '"running": true')
-	# 只有当主程序没有运行，且定时任务中选择了推送设备列表，免打扰选项中也没屏蔽设备列表时，才进行在线设备扫描
-	[ -z "$1" ] && [ -z "$service_status" ] && echo "$send_notification" | grep -q "client_list" && echo "$lite_enable" | grep -v -q "device" && first &
+	# 只有当主程序没有运行，且定时任务中选择了推送设备列表，才进行在线设备扫描
+	[ -z "$1" ] && [ -z "$service_status" ] && echo "$send_notification" | grep -q "client_list" && first &
 	if [ -z "$1" ] && (echo "$send_notification" | grep -q "router_status"); then
 		cat /proc/loadavg | awk '{print $1" "$2" "$3}' >"$output_dir/systemload" &
 		free -m | sed -n '2p' | awk '{printf "%.2f%%\n",($3/$2)*100}' >"$output_dir/ramload" &
@@ -2386,7 +2389,7 @@ login_send() {
 	disturb_RETVAL=$?
 	[ -z "$login_title" ] && return
 	[ -n "$device_name" ] && login_title="【$device_name】$login_title"
-	(echo "$lite_enable" | grep -q "login_content") && login_content="$login_title"
+	(echo "$lite_enable" | grep -q "content") && login_content="$login_title"
 	[ "$disturb_RETVAL" -eq 0 ] && [ -n "$login_title" ] && diy_send "${login_title}" "${login_content}" "${jsonpath}" >/dev/null 2>&1
 }
 
