@@ -1265,7 +1265,7 @@ get_disk() {
 				local disk_name=$(cut_str "$disk_name" "20")
 				local disk_name="${disk_name}_$(eval ${tmp_command} lsblk -o NAME,SIZE | awk "/^${tmp_name}/ {print \$NF}")"
 			}
-			printf "${str_linefeed}${str_title_start} 硬盘名称：${disk_name}${disk_type}${str_title_end}${str_linefeed}${str_tab}硬盘休眠中" >>"$output_dir/get_disk"
+			echo -n "${str_linefeed}${str_title_start} 硬盘名称：${disk_name}${disk_type}${str_title_end}${str_linefeed}${str_tab}硬盘休眠中" >>"$output_dir/get_disk"
 		elif [ -f "${file_path}" ]; then
 			# 硬盘名称
 			local disk_name=$(jq -r .model_name ${file_path})
@@ -1276,13 +1276,13 @@ get_disk() {
 				[ -z "$disk_size" ] && disk_size=$(eval ${tmp_command} df -h 2>/dev/null | awk -v tmp_disk_name="${tmp_name}" '$1 ~ "^/dev/"tmp_disk_name && !disk_found {print $2; disk_found=1}')
 				local disk_name="${disk_name}_${disk_size}"
 			}
-			printf "${str_linefeed}${str_title_start} 硬盘名称：${disk_name}${disk_type}${str_title_end}" >>"$output_dir/get_disk"
+			echo -n "${str_linefeed}${str_title_start} 硬盘名称：${disk_name}${disk_type}${str_title_end}" >>"$output_dir/get_disk"
 			# 硬盘温度
 			local disk_temp=$(jq -r .temperature.current ${file_path})
-			[[ -n $disk_temp && $disk_temp != null && $disk_temp != 0 ]] && printf "${str_linefeed}${str_tab}硬盘温度：${disk_temp}℃" >>"$output_dir/get_disk"
+			[[ -n $disk_temp && $disk_temp != null && $disk_temp != 0 ]] && echo -n "${str_linefeed}${str_tab}硬盘温度：${disk_temp}℃" >>"$output_dir/get_disk"
 			# 通电时间
 			local disk_time=$(jq -r .power_on_time.hours ${file_path})
-			[[ -n $disk_time && $disk_time != null ]] && printf "${str_linefeed}${str_tab}通电时间：${disk_time}h" >>"$output_dir/get_disk"
+			[[ -n $disk_time && $disk_time != null ]] && echo -n "${str_linefeed}${str_tab}通电时间：${disk_time}h" >>"$output_dir/get_disk"
 			# 空间使用
 			local disk_use=$(eval ${tmp_command} lsblk -no NAME,FSUSE% "/dev/${tmp_name}" 2>/dev/null | awk '$2 != "" { gsub(/^[^a-zA-Z0-9]+/, "", $1); printf "%s: %s\n", $1, $2 }')
 			[ -z "$disk_use" ] && disk_use=$(eval ${tmp_command} df -h 2>/dev/null | awk -v part_name="${tmp_name}" '$1 ~ "^/dev/"part_name && NF > 1 {sub("/dev/", "", $1); if (!seen[$1]) { printf "%s: %s  ", $1, $5; seen[$1] = 1; }} END {print ""}')
@@ -1301,13 +1301,13 @@ get_disk() {
 			[[ -n $disk_health && $disk_health != null ]] && echo -e -n "${str_linefeed}${str_tab}寿命使用：${disk_health}%" >>"$output_dir/get_disk"
 			# 错误日志
 			local disk_log_err=$(jq -r .ata_smart_error_log.summary.count ${file_path})
-			[[ -n $disk_log_err && $disk_log_err != null && $disk_log_err != 0 ]] && local disk_err="true" && printf "${str_linefeed}${str_tab}错误日志：${disk_log_err}" >>"$output_dir/get_disk"
+			[[ -n $disk_log_err && $disk_log_err != null && $disk_log_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab}错误日志：${disk_log_err}" >>"$output_dir/get_disk"
 			# 自检错误
 			local disk_test_err=$(jq -r .ata_smart_self_test_log.standard.error_count_total ${file_path})
-			[[ -n $disk_test_err && $disk_test_err != null && $disk_test_err != 0 ]] && local disk_err="true" && printf "${str_linefeed}${str_tab}自检错误：${disk_test_err}" >>"$output_dir/get_disk"
+			[[ -n $disk_test_err && $disk_test_err != null && $disk_test_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab}自检错误：${disk_test_err}" >>"$output_dir/get_disk"
 			# 0E 错误
 			local disk_0e_err=$(jq -r .nvme_smart_health_information_log.media_errors ${file_path})
-			[[ -n $disk_0e_err && $disk_0e_err != null && $disk_0e_err != 0 ]] && local disk_err="true" && printf "${str_linefeed}${str_tab}0E 错误：${disk_0e_err}" >>"$output_dir/get_disk"
+			[[ -n $disk_0e_err && $disk_0e_err != null && $disk_0e_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab}0E 错误：${disk_0e_err}" >>"$output_dir/get_disk"
 			# 整体健康
 			local smart_status=$(jq -r .smart_status.passed ${file_path})
 			[[ -n $smart_status && $smart_status != null && $smart_status != "true" ]] && {
@@ -1843,7 +1843,7 @@ current_device() {
 	}
 
 	# 表头
-	local header="${str_linefeed}${str_space}"
+	local header="${str_linefeed}${str_tab}"
 	header+=$(pad_field "IP 地址" "$ip_max")"${str_space}"
 	if [ "$has_usage" -eq 1 ]; then
 		header+=$(pad_field "总计流量" "$total_max")
@@ -1855,7 +1855,7 @@ current_device() {
 
 	# 内容
 	for i in "${!ips[@]}"; do
-		local line="${str_linefeed}${str_space}"
+		local line="${str_linefeed}${str_tab}"
 		line+=$(pad_field "${ips[i]}" "$ip_max")
 		if [ "$has_usage" -eq 1 ]; then
 			line+=$(pad_field "${totals[i]}" "$total_max")
