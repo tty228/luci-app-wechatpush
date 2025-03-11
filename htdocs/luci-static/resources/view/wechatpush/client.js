@@ -11,7 +11,7 @@ return view.extend({
 		// 清除 localStorage 中的排序设置
 		localStorage.removeItem('sortColumn');
 		localStorage.removeItem('sortDirection');
-		uci.load('wechatpush')
+		uci.load('wechatpush');
 		return this.fetchAndRenderDevices().then(function () {
 			self.setupAutoRefresh();
 		});
@@ -31,26 +31,23 @@ return view.extend({
 		return fs.read('/tmp/wechatpush/devices.json').then(function (content) {
 			try {
 				var data = JSON.parse(content);
+				var wlanMap = {};
+
+				// 如果存在无线接口信息，解析为频段
+				if (data.wlan && Array.isArray(data.wlan)) {
+					data.wlan.forEach(function (wlan) {
+						wlanMap[wlan.interface] = wlan.band;
+					});
+				}
+				
 				// 解析设备的接口信息
 				data.devices.forEach(function (device) {
-					// 检查 type 字段
-					if (device.type === "5G") {
-						device.interface = "5G";
-					} else if (device.type === "2.4G") {
-						device.interface = "2.4G";
-					} else if (device.type === "WiFi") {
-						device.interface = "WiFi";
-					} else if (data.wlan && Array.isArray(data.wlan)) {
-						// 查找设备的接口信息
-						var deviceInterfaces = data.wlan.filter(function (wlan) {
-							return wlan.interface === device.interface;
-						});
-						// 将接口信息替换为频段
-						if (deviceInterfaces.length > 0) {
-							device.interface = deviceInterfaces.map(function (wlan) {
-								return wlan.band; // 替换为 2.4G 或 5G
-							}).join(', '); // 将数组转换为字符串
-						}
+					if (device.type) {
+						device.interface = device.type;
+					} else if (wlanMap[device.interface]) {
+						device.interface = wlanMap[device.interface];
+					} else {
+						device.interface = "LAN";
 					}
 				});
 				return { devices: data.devices };
@@ -213,16 +210,24 @@ return view.extend({
 				.device-table td:first-child {
 					max-width: 80px;
 				}
-				.device-table td:nth-of-type(5) { /* 控制第五列（Online time）的样式 */
-					font-size: 14px; /* 调整字体大小 */
-				}
 				.device-table td:first-child {
 					text-align: left; /* 第一列文本左对齐 */
 					padding-left: 2px; /* 第一列左侧内边距 */
+					overflow: hidden; /* 隐藏溢出内容 */
+					text-overflow: ellipsis; /* 显示省略号 */
 				}
-				.device-table th:nth-of-type(4),
-				.device-table td:nth-of-type(4) {
-					display: none; /* 在小屏幕下隐藏第四列 */
+				/* 隐藏特定列 */
+				.device-table th[data-column="parent"],
+				.device-table td[data-column="parent"] {
+					display: none;
+				}
+				/* 隐藏接口列的文本部分 */
+				.device-table td[data-column="interface"] span:not(.iface-icon) {
+					display: none;
+				}
+				/* 调整图标样式 */
+				.device-table td[data-column="interface"] .iface-icon {
+					margin-right: 0; /* 去掉图标右侧的间距 */
 				}
 			}
 		`;
@@ -260,6 +265,7 @@ return view.extend({
 				for (var i = 0; i < columns.length; i++) {
 					if (visibleColumns.includes(i)) {
 						var cell = document.createElement('td');
+						cell.dataset.column = columns[i];
 						if (columns[i] === 'uptime') {
 							cell.textContent = calculateUptime(device['uptime'], window.innerWidth <= 767);
 						} else if (columns[i] === 'ip' && device['http_access']) {
@@ -270,16 +276,20 @@ return view.extend({
 							cell.appendChild(link);
 						} else if (columns[i] === 'interface') {
 							var icon = document.createElement('span');
+							icon.classList.add('iface-icon');
 							if (device['interface'] === '2.4G') {
-								icon.innerHTML = '📶 2.4G';
+								icon.innerHTML = '📶';
 							} else if (device['interface'] === '5G') {
-								icon.innerHTML = '🛜 5G';
+								icon.innerHTML = '🛜';
 							} else if (device['interface'] === 'WiFi') {
-								icon.innerHTML = '🛜 WiFi';
-							} else {
-								icon.innerHTML = 'LAN';
+								icon.innerHTML = '🛜';
 							}
+
+							var text = document.createElement('span');
+							text.textContent = device['interface'];
+
 							cell.appendChild(icon);
+							cell.appendChild(text);
 						} else if (columns[i] === 'parent') {
 							if (device['parent']) {
 								var parentDevice = devices.find(d => {
