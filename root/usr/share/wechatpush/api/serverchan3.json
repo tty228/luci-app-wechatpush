@@ -7,7 +7,7 @@
   "content_type": "Content-Type: application/json",
   "str_title_start": "##### ",
   "str_title_end": "",
-  "str_linefeed": "\\n",
+  "str_linefeed": "  \\n",
   "str_splitline": "\\n----\\n",
   "str_space": " ",
   "str_tab": "    ",
