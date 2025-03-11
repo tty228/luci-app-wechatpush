@@ -1013,7 +1013,7 @@ ip_changes() {
 	local last_IPv6=$(jq -r '.address[0].IPv6 // empty' "$devices_json")
 	silent_run LockFile lock
 
-	if [ -z "$last_IPv4" ] && [ -z "$last_IPv6" ]; then
+	if [ -z "$last_IPv4" ] && [ -z "$last_IPv6" ] && [[ -n "$IPv4" || -n "$IPv6" ]]; then
 		log_change "${disturb_text}路由器已经重启!"
 		title="路由器重新启动"
 		content="${content}${str_splitline}${str_title_start} 路由器重新启动${str_title_end}"
