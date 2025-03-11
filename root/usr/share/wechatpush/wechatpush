@@ -429,51 +429,59 @@ time_for_humans() {
 length_str() {
 	[ -z "$1" ] && return
 
-	local str="$1"
-	local length=0
+	local result
+	# 调试模式不要输出信息
+	{
+		local str="$1"
+		local length=0
 
-	while IFS= read -r -n1 char; do
-		local char_width
-		char_width=$(printf "%s" "$char" | awk '{
-			if (match($0, /[一-龥]/)) print 2;
-			else print 1;
-		}')
+		while IFS= read -r -n1 char; do
+			local char_width
+			char_width=$(printf "%s" "$char" | awk '{
+				if (match($0, /[一-龥]/)) print 2;
+				else print 1;
+			}')
 
-		length=$((length + char_width))
-	done <<< "$str"
+			length=$((length + char_width))
+		done <<< "$str"
 
-	echo "$length"
+		result="$length"
+	} > /dev/null 2>&1
+
+	echo "$result"
 }
 
 # 字符串显示宽度处理
 cut_str() {
 	[ -z "$1" ] && return
-	[ -z "$2" ] && return
+		[ -z "$2" ] && return
+	local result
+	# 调试模式不要输出信息
+	{
+		local str="$1"
+		local max_width="$2"
+		local current_width=0
 
-	local str="$1"
-	local max_width="$2"
-	local result=""
-	local current_width=0
+		# 遍历字符串的每个字符
+		for ((i = 0; i < ${#str}; i++)); do
+			local char="${str:$i:1}"
+			local char_width=$(length_str "$char")
 
-	# 遍历字符串的每个字符
-	for ((i = 0; i < ${#str}; i++)); do
-		local char="${str:$i:1}"
-		local char_width=$(length_str "$char")
+			# 如果当前宽度加上当前字符的宽度超过最大宽度，则停止
+			if [ $((current_width + char_width)) -gt "$max_width" ]; then
+				break
+			fi
 
-		# 如果当前宽度加上当前字符的宽度超过最大宽度，则停止
-		if [ $((current_width + char_width)) -gt "$max_width" ]; then
-			break
+			result="${result}${char}"
+			current_width=$((current_width + char_width))
+		done
+
+		# 如果裁剪了字符串，则添加 ".."
+		if [ "$current_width" -lt $(length_str "$str") ]; then
+			result=$(echo "$result" | sed 's/ *$//')
+			result="${result}.."
 		fi
-
-		result="${result}${char}"
-		current_width=$((current_width + char_width))
-	done
-
-	# 如果裁剪了字符串，则添加 ".."
-	if [ "$current_width" -lt $(length_str "$str") ]; then
-		result=$(echo "$result" | sed 's/ *$//')
-		result="${result}.."
-	fi
+	} > /dev/null 2>&1
 
 	echo "$result"
 }
