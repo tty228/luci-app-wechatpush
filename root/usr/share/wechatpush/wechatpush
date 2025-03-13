@@ -861,7 +861,7 @@ soc_temp() {
 		"
 	}
 
-	[ -n "$server_host" ] && local ssh_command="ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -i /root/.ssh/id_rsa root@${server_host} -p ${server_port}"
+	[ -n "$server_host" ] && local ssh_command="ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o StrictHostKeyChecking=yes -o BatchMode=yes -i /root/.ssh/id_rsa root@${server_host} -p ${server_port}"
 	local temperature=$(getsensors "$ssh_command" 2>/dev/null)
 	# 通用（只能取最高温度，不一定是 CPU，特殊设备自行修改）
 	# 将 grep °C 改为温度所在行的特别字符串，如 grep Core 0 等，就可以指定设备了
@@ -1209,7 +1209,7 @@ get_disk() {
 
 	# 查询远程硬盘名
 	if [ -n "$server_host" ]; then
-		local ssh_command="ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -i /root/.ssh/id_rsa root@${server_host} -p ${server_port}"
+		local ssh_command="ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o StrictHostKeyChecking=yes -o BatchMode=yes -i /root/.ssh/id_rsa root@${server_host} -p ${server_port}"
 		local remote_disk_names=$($ssh_command "$(declare -f get_disk_names); get_disk_names" | tr -d '\r')
 		local remote_disk_names=($remote_disk_names)
 		local remote_disk_tags=($(for _ in "${remote_disk_names[@]}"; do echo "remote"; done))
@@ -1454,9 +1454,9 @@ getopenwrt() {
 	local last_openwrt_time=$(file_date "${dir}/openwrt_info")
 	if [ "$last_openwrt_time" -ge "$device_info_helper_sleeptime" ]; then
 		for op_host_ip in "$op_host_ips"; do
-			local wlan_interfaces=$(ssh -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip 'iw dev 2>/dev/null | grep Interface | awk '\''{print $2}'\''')
-			local leases_info=$(ssh -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "cat /tmp/dhcp.leases 2>/dev/null")
-			local arp_info=$(ssh -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "cat /proc/net/arp | grep '0x[26]' | grep -v '^169.254.' | grep -v '^$' | sort -u 2>/dev/null")
+			local wlan_interfaces=$(ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip 'iw dev 2>/dev/null | grep Interface | awk '\''{print $2}'\''')
+			local leases_info=$(ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "cat /tmp/dhcp.leases 2>/dev/null")
+			local arp_info=$(ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "cat /proc/net/arp | grep '0x[26]' | grep -v '^169.254.' | grep -v '^$' | sort -u 2>/dev/null")
 
 			# 初始化一个空数组（bash 数组）
 			local json_array=()
@@ -1464,7 +1464,7 @@ getopenwrt() {
 			# 遍历每个接口
 			for iface in $wlan_interfaces; do
 				# 获取接口信息
-				local info=$(ssh -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "iw dev $iface info 2>/dev/null")
+				local info=$(ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "iw dev $iface info 2>/dev/null")
 
 				# 获取频道和频段
 				local channel=$(echo "$info" | grep channel | awk '{print $2}')
@@ -1476,7 +1476,7 @@ getopenwrt() {
 				fi
 
 				# 获取连接的设备列表
-				local devices=$(ssh -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "iw dev $iface station dump 2>/dev/null")
+				local devices=$(ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "iw dev $iface station dump 2>/dev/null")
 
 				# 逐行输出设备信息
 				while read -r line; do
@@ -1526,7 +1526,7 @@ getmikrotik() {
 	local last_getmikrotik_time=$(file_date "${dir}/mikrotik_info")
 
 	if [ "$last_getmikrotik_time" -ge "$device_info_helper_sleeptime" ]; then
-		lease_info=$(ssh ${mikrotik_username}@${mikrotik_ip} "/ip dhcp-server lease print terse where status=bound")
+		lease_info=$(ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 ${mikrotik_username}@${mikrotik_ip} "/ip dhcp-server lease print terse where status=bound")
 		#lease_info=$(ssh ${mikrotik_username}@${mikrotik_ip} "/ip dhcp-server lease print terse")
 
 		echo "$lease_info" | awk '
