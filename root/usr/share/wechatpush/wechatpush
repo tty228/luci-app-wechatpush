@@ -1525,8 +1525,8 @@ getmikrotik() {
 	local last_getmikrotik_time=$(file_date "${dir}/mikrotik_info")
 
 	if [ "$last_getmikrotik_time" -ge "$device_info_helper_sleeptime" ]; then
-		#lease_info=$(ssh ${mikrotik_username}@${mikrotik_ip} "/ip dhcp-server lease print terse where status=bound")
-		lease_info=$(ssh ${mikrotik_username}@${mikrotik_ip} "/ip dhcp-server lease print terse")
+		lease_info=$(ssh ${mikrotik_username}@${mikrotik_ip} "/ip dhcp-server lease print terse where status=bound")
+		#lease_info=$(ssh ${mikrotik_username}@${mikrotik_ip} "/ip dhcp-server lease print terse")
 
 		echo "$lease_info" | awk '
 			BEGIN {
