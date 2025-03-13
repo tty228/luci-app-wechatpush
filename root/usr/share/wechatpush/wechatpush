@@ -1287,10 +1287,10 @@ get_disk() {
 			echo -n "${str_linefeed}${str_title_start} 硬盘名称：${disk_name}${disk_type}${str_title_end}" >>"$output_dir/get_disk"
 			# 硬盘温度
 			local disk_temp=$(jq -r .temperature.current ${file_path})
-			[[ -n $disk_temp && $disk_temp != null && $disk_temp != 0 ]] && echo -n "${str_linefeed}${str_tab}硬盘温度：${disk_temp}℃" >>"$output_dir/get_disk"
+			[[ -n $disk_temp && $disk_temp != null && $disk_temp != 0 ]] && echo -n "${str_linefeed}${str_tab} - 硬盘温度：${disk_temp}℃" >>"$output_dir/get_disk"
 			# 通电时间
 			local disk_time=$(jq -r .power_on_time.hours ${file_path})
-			[[ -n $disk_time && $disk_time != null ]] && echo -n "${str_linefeed}${str_tab}通电时间：${disk_time}h" >>"$output_dir/get_disk"
+			[[ -n $disk_time && $disk_time != null ]] && echo -n "${str_linefeed}${str_tab} - 通电时间：${disk_time}h" >>"$output_dir/get_disk"
 			# 空间使用
 			local disk_use=$(eval ${tmp_command} lsblk -no NAME,FSUSE% "/dev/${tmp_name}" 2>/dev/null | awk '$2 != "" { gsub(/^[^a-zA-Z0-9]+/, "", $1); printf "%s: %s\n", $1, $2 }')
 			[ -z "$disk_use" ] && disk_use=$(eval ${tmp_command} df -h 2>/dev/null | awk -v part_name="${tmp_name}" '$1 ~ "^/dev/"part_name && NF > 1 {sub("/dev/", "", $1); if (!seen[$1]) { printf "%s: %s  ", $1, $5; seen[$1] = 1; }} END {print ""}')
@@ -1303,26 +1303,27 @@ get_disk() {
 			# 如果获取到了多个分区，屏蔽使用空间为 0% 的分区
 			[ -n "$disk_use" ] && [ $(echo "$disk_use" | wc -l) -ne "1" ] && disk_use=$(echo "$disk_use" | grep -v -w "0%")
 			[ -n "$disk_use" ] && disk_use=$(echo "$disk_use" | sed ':a;N;$!ba;s/\n/'"${str_linefeed}${str_tab}${str_space}${str_tab}${str_space}${str_space}"'/g')
-			[ -n "$disk_use" ] && [ -n "${disk_use// /}" ] && echo -e -n "${str_linefeed}${str_tab}空间使用：${disk_use}" >>"$output_dir/get_disk"
+			[ -n "$disk_use" ] && [ -n "${disk_use// /}" ] && echo -e -n "${str_linefeed}${str_tab} - 空间使用：${disk_use}" >>"$output_dir/get_disk"
 			# 寿命使用
 			local disk_health=$(jq -r .nvme_smart_health_information_log.percentage_used ${file_path})
-			[[ -n $disk_health && $disk_health != null ]] && echo -e -n "${str_linefeed}${str_tab}寿命使用：${disk_health}%" >>"$output_dir/get_disk"
+			[[ -n $disk_health && $disk_health != null ]] && echo -e -n "${str_linefeed}${str_tab} - 寿命使用：${disk_health}%" >>"$output_dir/get_disk"
 			# 错误日志
 			local disk_log_err=$(jq -r .ata_smart_error_log.summary.count ${file_path})
-			[[ -n $disk_log_err && $disk_log_err != null && $disk_log_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab}错误日志：${disk_log_err}" >>"$output_dir/get_disk"
+			[[ -n $disk_log_err && $disk_log_err != null && $disk_log_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab} - 错误日志：${disk_log_err}" >>"$output_dir/get_disk"
 			# 自检错误
 			local disk_test_err=$(jq -r .ata_smart_self_test_log.standard.error_count_total ${file_path})
-			[[ -n $disk_test_err && $disk_test_err != null && $disk_test_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab}自检错误：${disk_test_err}" >>"$output_dir/get_disk"
+			[[ -n $disk_test_err && $disk_test_err != null && $disk_test_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab} - 自检错误：${disk_test_err}" >>"$output_dir/get_disk"
 			# 0E 错误
 			local disk_0e_err=$(jq -r .nvme_smart_health_information_log.media_errors ${file_path})
-			[[ -n $disk_0e_err && $disk_0e_err != null && $disk_0e_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab}0E 错误：${disk_0e_err}" >>"$output_dir/get_disk"
+			[[ -n $disk_0e_err && $disk_0e_err != null && $disk_0e_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab} - 0E 错误：${disk_0e_err}" >>"$output_dir/get_disk"
 			# 整体健康
 			local smart_status=$(jq -r .smart_status.passed ${file_path})
 			[[ -n $smart_status && $smart_status != null && $smart_status != "true" ]] && {
-				echo -e -n "${str_linefeed}${str_tab}${str_title_start}硬盘整体健康评估不通过！！！${str_title_end}" >>"$output_dir/get_disk"
+				echo -e -n "${str_linefeed}${str_tab}${str_title_start} - 硬盘健康评估不通过！！！${str_title_end}" >>"$output_dir/get_disk"
 				local disk_err="true"
 			}
-			[ -n "$disk_err" ] && echo -e -n "${str_linefeed}${str_tab}${str_title_start}硬盘存在错误，请及时备份数据！！！${str_title_end}" >>"$output_dir/get_disk"
+			[ -n "$disk_err" ] && echo -e -n "${str_linefeed}${str_tab}${str_title_start} - 硬盘状态欠佳，请及时备份数据！！！${str_title_end}" >>"$output_dir/get_disk"
+			[ -n "$disk_err" ] && log_change "【！！！】硬盘 ${disk_name} 状态欠佳，请及时备份数据！！！" && >"${dir}/disk_err"
 		fi
 	done
 	unset i
@@ -2275,16 +2276,16 @@ send() {
 	if [ -z "$1" ] && [ -n "$systeminfo_enable" ]; then
 		[[ $Qwai -eq 200 || $Qwai -eq 301 || $Qwai -eq 302 ]] && Qwai_status="已连通！" || Qwai_status="已断开！"
 		send_content="${send_content}${str_splitline}${str_title_start} 系统运行状态${str_title_end}"
-		send_content="${send_content}${str_linefeed}${str_tab}平均负载：${systemload}"
-		send_content="${send_content}${str_linefeed}${str_tab}CPU占用：${cpuload}"
-		send_content="${send_content}${str_linefeed}${str_tab}内存占用：${ramload}"
-		send_content="${send_content}${str_linefeed}${str_tab}全球互联：${Qwai_status}"
-		send_content="${send_content}${str_linefeed}${str_tab}${systemstatustime}"
+		send_content="${send_content}${str_linefeed}${str_tab} - 平均负载：${systemload}"
+		send_content="${send_content}${str_linefeed}${str_tab} - CPU占用：${cpuload}"
+		send_content="${send_content}${str_linefeed}${str_tab} - 内存占用：${ramload}"
+		send_content="${send_content}${str_linefeed}${str_tab} - 全球互联：${Qwai_status}"
+		send_content="${send_content}${str_linefeed}${str_tab} - ${systemstatustime}"
 	fi
 
 	if [ -z "$1" ] && (echo "$send_notification" | grep -q "router_temp"); then
-		[ -n "$cputemp" ] && send_content="${send_content}${str_splitline}${str_title_start} 设备温度${str_title_end}${str_linefeed}${str_tab}CPU：${cputemp}℃"
-		[ -z "$cputemp" ] && send_content="${send_content}${str_splitline}${str_title_start} 设备温度${str_title_end}${str_linefeed}${str_tab}无法获取设备温度"
+		[ -n "$cputemp" ] && send_content="${send_content}${str_splitline}${str_title_start} 设备温度${str_title_end}${str_linefeed}${str_tab} - CPU：${cputemp}℃"
+		[ -z "$cputemp" ] && send_content="${send_content}${str_splitline}${str_title_start} 设备温度${str_title_end}${str_linefeed}${str_tab} - 无法获取设备温度"
 	fi
 
 	#if [ -z "$1" ] && ( echo "$send_notification"|grep -q "disk_info" ); then
@@ -2295,27 +2296,27 @@ send() {
 	if [ -z "$1" ] && [ -n "$waninfo_enable" ]; then
 		send_content="${send_content}${str_splitline}${str_title_start} WAN 口信息${str_title_end}"
 		if [ "$send_wanIP" == "$send_hostIP" ]; then
-			send_content="${send_content}${str_linefeed}${str_tab}IPv4: ${send_wanIP}"
+			send_content="${send_content}${str_linefeed}${str_tab} - IPv4: ${send_wanIP}"
 		elif [ "$get_ipv4_mode" -eq "1" ]; then
-			send_content="${send_content}${str_linefeed}${str_tab}接口 IPv4: ${send_wanIP}"
-			[ -n "$send_hostIP" ] && send_content="${send_content}${str_linefeed}${str_tab}外网 IPv4: ${send_hostIP}"
+			send_content="${send_content}${str_linefeed}${str_tab} - 接口 IPv4: ${send_wanIP}"
+			[ -n "$send_hostIP" ] && send_content="${send_content}${str_linefeed}${str_tab} - 外网 IPv4: ${send_hostIP}"
 		elif [ "$get_ipv4_mode" -eq "2" ]; then
-			[ -n "$send_wanIP" ] && send_content="${send_content}${str_linefeed}${str_tab}接口 IPv4: ${send_wanIP}"
-			send_content="${send_content}${str_linefeed}${str_tab}外网 IPv4: ${send_hostIP}"
+			[ -n "$send_wanIP" ] && send_content="${send_content}${str_linefeed}${str_tab} - 接口 IPv4: ${send_wanIP}"
+			send_content="${send_content}${str_linefeed}${str_tab} - 外网 IPv4: ${send_hostIP}"
 		fi
 		if [ -n "$ipv6_enable" ]; then
 			if [ "$send_wanIPv6" == "$send_hostIPv6" ]; then
-				send_content="${send_content}${str_linefeed}${str_tab}IPv6: ${send_wanIPv6}"
+				send_content="${send_content}${str_linefeed}${str_tab} - IPv6: ${send_wanIPv6}"
 			elif [ "$get_ipv6_mode" -eq "1" ]; then
-				send_content="${send_content}${str_linefeed}${str_tab}接口 IPv6: ${send_wanIPv6}"
-				[ -n "$send_hostIPv6" ] && send_content="${send_content}${str_linefeed}${str_tab}外网 IPv6: ${send_hostIPv6}"
+				send_content="${send_content}${str_linefeed}${str_tab} - 接口 IPv6: ${send_wanIPv6}"
+				[ -n "$send_hostIPv6" ] && send_content="${send_content}${str_linefeed}${str_tab} - 外网 IPv6: ${send_hostIPv6}"
 			elif [ "$get_ipv6_mode" -eq "2" ]; then
-				[ -n "$send_wanIPv6" ] && send_content="${send_content}${str_linefeed}${str_tab}接口 IPv6: ${send_wanIPv6}"
-				send_content="${send_content}${str_linefeed}${str_tab}外网 IPv6: ${send_hostIPv6}"
+				[ -n "$send_wanIPv6" ] && send_content="${send_content}${str_linefeed}${str_tab} - 接口 IPv6: ${send_wanIPv6}"
+				send_content="${send_content}${str_linefeed}${str_tab} - 外网 IPv6: ${send_hostIPv6}"
 			fi
 		fi
 		interfaceuptime=$(getinterfaceuptime)
-		[ -n "$interfaceuptime" ] && wanstatustime=$(printf "在线时间：%d天%d时%d分%d秒" $((interfaceuptime / 86400)) $(((interfaceuptime % 86400) / 3600)) $(((interfaceuptime % 3600) / 60)) $((interfaceuptime % 60)))
+		[ -n "$interfaceuptime" ] && wanstatustime=$(printf " - 在线时间：%d天%d时%d分%d秒" $((interfaceuptime / 86400)) $(((interfaceuptime % 86400) / 3600)) $(((interfaceuptime % 3600) / 60)) $((interfaceuptime % 60)))
 		send_content="${send_content}${str_linefeed}${str_tab}${wanstatustime}"
 	fi
 
@@ -2324,6 +2325,7 @@ send() {
 		send_content="${send_content}${current_device}"
 	fi
 
+	[ -f "${dir}/disk_err" ] && send_title="硬盘状态欠佳，请及时处理！" && rm -f ${dir}/disk_err >/dev/null 2>&1
 	[ -n "$device_name" ] && send_title="【$device_name】${send_title}"
 	[ -z "$send_content" ] && send_content="${str_splitline}${str_title_start} 我遇到了一个难题${str_title_end}${str_linefeed}${str_tab}定时发送选项错误，你没有选择需要发送的项目，该怎么办呢${str_splitline}"
 	diy_send "${send_title}" "${send_content}" "${jsonpath}" "$1" >/dev/null 2>&1
