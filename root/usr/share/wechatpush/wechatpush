@@ -1474,13 +1474,12 @@ getopenwrt() {
 	[ -z "$openwrt_info_enable" ] && return
 	local last_openwrt_time=$(file_date "${dir}/openwrt_info")
 	if [ "$last_openwrt_time" -ge "$device_info_helper_sleeptime" ]; then
-		for op_host_ip in "$op_host_ips"; do
+		# 初始化一个空数组（bash 数组）
+		local json_array=()
+		for op_host_ip in $op_host_ips; do
 			local wlan_interfaces=$(run_with_tag ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip 'iw dev 2>/dev/null | grep Interface | awk '\''{print $2}'\''')
 			local leases_info=$(run_with_tag ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "cat /tmp/dhcp.leases 2>/dev/null")
 			local arp_info=$(run_with_tag ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "cat /proc/net/arp | grep '0x[26]' | grep -v '^169.254.' | grep -v '^$' | sort -u 2>/dev/null")
-
-			# 初始化一个空数组（bash 数组）
-			local json_array=()
 
 			# 遍历每个接口
 			for iface in $wlan_interfaces; do
@@ -1507,6 +1506,7 @@ getopenwrt() {
 
 						# 查找设备名称
 						local ip=$(echo "$arp_info" | awk -v mac="$mac" '$4 == mac {print $1; exit}')
+						[ -z "$ip" ] && local ip=$(jq -r --arg mac "$mac" '.devices[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase)) | .ip' "$devices_json")
 						local name=$(echo "$leases_info" | awk -v mac="$mac" '$2 == mac {print $4; exit}')
 						[ -z "$ip" ] && ip="unknown"
 						[ -z "$name" ] && name="unknown"
@@ -1533,9 +1533,11 @@ getopenwrt() {
 			done
 		done
 		# 使用 jq 输出最终的 JSON 数组
-		echo "${json_array[@]}" | jq -s . > ${dir}/openwrt_info
+		echo "${json_array[@]}" | jq -s . > "${dir}/openwrt_info"
 
 		openwrt_iplist=$(jq -r '.[] | select(.ip != "unknown" and .ip != "") | .ip' "${dir}/openwrt_info")
+		local openwrt_arp_iplist=$(echo "$arp_info" | awk '{print $1}')
+		openwrt_iplist=$(echo -e "${openwrt_iplist}\n${openwrt_arp_iplist}")
 	else
 		unset openwrt_iplist
 	fi
