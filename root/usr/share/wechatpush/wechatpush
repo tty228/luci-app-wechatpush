@@ -615,7 +615,7 @@ getinterface() {
 	[ "$mac" == "unknown" ] && return
 
 	# 从已保存的地址中获取接口
-	interface=$(jq -r --arg ip "$ip" --arg mac "$mac" '.devices[] | select(.ip == $ip and .mac == $mac) | .interface' "$devices_json")
+	interface=$(jq -r --arg ip "$ip" --arg mac "$mac" '.devices[] | select(.ip == $ip and (.mac | ascii_downcase) == ($mac | ascii_downcase)) | .interface' "$devices_json")
 	process_and_check "$interface" && return
 
 	# 如果定义了 WLAN 接口列表，则查询每个接口
@@ -640,7 +640,7 @@ getmac() {
 	# 已保存的 MAC
 	mac=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip) | .mac' "$devices_json")
 	# 某些路由器中继模式，会导致 MAC 重复，如果是重复值，尝试重新获取
-	local mac_count=$(jq -r --arg mac "$mac" '.devices[] | select(.mac == $mac) | .mac' "$devices_json" | wc -l)
+	local mac_count=$(jq -r --arg mac "$mac" '.devices[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase)) | .mac' "$devices_json" | wc -l)
 	[ "$mac_count" -eq 1 ] && process_and_check "$mac" && return
 
 	# DHCP
@@ -702,7 +702,7 @@ getname() {
 	}
 
 	# 已保存的主机名
-	tmp_name=$(jq -r --arg ip "$ip" --arg mac "$mac" '.devices[] | select(.ip == $ip and .mac == $mac) | .name' "$devices_json")
+	tmp_name=$(jq -r --arg ip "$ip" --arg mac "$mac" '.devices[] | select(.ip == $ip and (.mac | ascii_downcase) == ($mac | ascii_downcase)) | .name' "$devices_json")
 	[ -n "$oui_name" ] && [ -n "$tmp_name" ] && [ "$oui_name" == "$tmp_name" ] && tmp_name=""
 	process_and_check "$tmp_name" "$name_width" && return
 
@@ -977,9 +977,9 @@ blackwhitelist() {
 
 	for check_mac in $mark_mac_list; do
 		# 设备在线时免打扰
-		[ -n "$mac_online_list" ] && jq -e --arg mac "$check_mac" '.devices[] | select(.mac == $mac and .status == "online") | .mac' "$devices_json" >/dev/null && return 1
+		[ -n "$mac_online_list" ] && jq -e --arg mac "$check_mac" '.devices[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase) and .status == "online") | .mac' "$devices_json" >/dev/null && return 1
 		# 设备离线时免打扰
-		[ -n "$mac_offline_list" ] && jq -e --arg mac "$check_mac" '.devices[] | select(.mac == $mac and .status == "offline") | .mac' "$devices_json" >/dev/null && return 1
+		[ -n "$mac_offline_list" ] && jq -e --arg mac "$check_mac" '.devices[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase) and .status == "offline") | .mac' "$devices_json" >/dev/null && return 1
 	done
 
 	unset check_mac
@@ -993,7 +993,7 @@ geterrdevicealiases() {
 	[ "$logrow" -eq 0 ] && return
 
 	for mac in $unattended_device_aliases; do
-		[ -n "$mac" ] && local unattended_mac=$(jq -r --arg mac "$mac" '.devices[] | select(.mac == $mac and .status == "online") | .mac' "$devices_json") && break
+		[ -n "$mac" ] && local unattended_mac=$(jq -r --arg mac "$mac" '.devices[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase) and .status == "online") | .mac' "$devices_json") && break
 	done
 
 	# 进入免打扰时间已经超过一小时
@@ -1663,7 +1663,7 @@ up() {
 		#jq -e --arg ip "$ip" 'any(.devices[]; .ip == $ip and (.http_access | length == 0)) or (.devices | map(select(.ip == $ip)) | length == 0)' "$devices_json" >/dev/null && local http_access=$(check_http_access "$ip")
 
 		# 如果是待二次离线检测 unknown 设备，json 文件中依然有信息，修改在线状态为 online
-		if [ "$mac" != "unknown" ] && jq -e --arg ip "$ip" --arg mac "$mac" '.devices[] | select(.ip == $ip and .mac == $mac) | .mac' "$devices_json" >/dev/null; then
+		if [ "$mac" != "unknown" ] && jq -e --arg ip "$ip" --arg mac "$mac" '.devices[] | select(.ip == $ip and (.mac | ascii_downcase) == ($mac | ascii_downcase)) | .mac' "$devices_json" >/dev/null; then
 			jq --arg ip "$ip" --arg mac "$mac" '.devices |= map(if .ip == $ip then .mac = $mac | .status = "online" else . end)' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
 		# up
 		else
@@ -1749,7 +1749,7 @@ down() {
 		local name=$(getname "$ip" "$mac")
 		local interface=$(getinterface "ip" "$mac")
 
-		if ! jq -e --arg ip "$ip" --arg mac "$mac" --arg name "$name" --arg interface "$interface" '.devices[] | select(.ip == $ip and .mac == $mac and .name == $name and .interface == $interface) | .ip' "$devices_json" >/dev/null; then
+		if ! jq -e --arg ip "$ip" --arg mac "$mac" --arg name "$name" --arg interface "$interface" '.devices[] | select(.ip == $ip and (.mac | ascii_downcase) == ($mac | ascii_downcase) and .name == $name and .interface == $interface) | .ip' "$devices_json" >/dev/null; then
 			jq --arg ip "$ip" --arg new_mac "$mac" --arg new_name "$name" --arg new_interface "$interface" '
 				.devices |= map(
 					if .ip == $ip then 
@@ -1947,10 +1947,10 @@ get_client_usage() {
 
 			[ -z "$get_client_usage_bytes" ] && get_client_usage_bytes="0"
 			if [ "$(($(usage get ${mac} bytes) - $get_client_usage_bytes))" -ge "$client_usage_max" ]; then
-				local ip=$(jq -r --arg mac "$mac" '.devices[] | select(.mac == $mac and .status == "online") | .ip' "$devices_json")
+				local ip=$(jq -r --arg mac "$mac" '.devices[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase) and .status == "online") | .ip' "$devices_json")
 				local ip_name=$(getname ${ip} ${mac})
 				local tmp_usage=$(bytes_for_humans $(expr $(usage get ${mac} bytes) - ${get_client_usage_bytes}))
-				local time_up=$(jq -r --arg mac "$mac" '.devices[] | select(.mac == $mac and .status == "online") | .uptime' "$devices_json")
+				local time_up=$(jq -r --arg mac "$mac" '.devices[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase) and .status == "online") | .uptime' "$devices_json")
 				local ip_total=$(usage get $mac) && [ -n "$ip_total" ] && local ip_total="${str_linefeed}${str_tab}总计流量： ${str_space}${str_space}${str_space}${str_space}${ip_total}"
 				local time1=$(date +%s)
 				local time1=$(time_for_humans $(expr ${time1} - ${time_up}))
