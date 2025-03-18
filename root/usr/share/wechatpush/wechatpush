@@ -1480,6 +1480,7 @@ getopenwrt() {
 			local wlan_interfaces=$(run_with_tag ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip 'iw dev 2>/dev/null | grep Interface | awk '\''{print $2}'\''')
 			local leases_info=$(run_with_tag ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "cat /tmp/dhcp.leases 2>/dev/null")
 			local arp_info=$(run_with_tag ssh -o ConnectTimeout=10 -o ServerAliveInterval=5 -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "cat /proc/net/arp | grep '0x[26]' | grep -v '^169.254.' | grep -v '^$' | sort -u 2>/dev/null")
+			local openwrt_arp_iplist+="$(echo "$arp_info" | awk '{print $1}')"$'\n'
 
 			# 遍历每个接口
 			for iface in $wlan_interfaces; do
@@ -1534,10 +1535,8 @@ getopenwrt() {
 		done
 		# 使用 jq 输出最终的 JSON 数组
 		echo "${json_array[@]}" | jq -s . > "${dir}/openwrt_info"
-
 		openwrt_iplist=$(jq -r '.[] | select(.ip != "unknown" and .ip != "") | .ip' "${dir}/openwrt_info")
-		local openwrt_arp_iplist=$(echo "$arp_info" | awk '{print $1}')
-		openwrt_iplist=$(echo -e "${openwrt_iplist}\n${openwrt_arp_iplist}")
+		openwrt_iplist+=$'\n'"$openwrt_arp_iplist"
 	else
 		unset openwrt_iplist
 	fi
@@ -1629,7 +1628,12 @@ first() {
 	[ -n "$IP_INFO" ] && local SUBNET=$(echo $IP_INFO | cut -d'/' -f1 | cut -d'.' -f1-3)
 	[ -n "$SUBNET" ] && local IPLIST=$(cat /proc/net/arp | grep "0x2\|0x6" | awk '{print $1}' | grep -v "^169.254." | grep -v "^$" | sort -u | grep -oE "${SUBNET}\.[0-9]{1,3}") || local IPLIST=$(cat /proc/net/arp | grep "0x2\|0x6" | awk '{print $1}' | grep -v "^169.254." | grep -v "^$" | sort -u | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
 
-	local IPLIST=$(echo -e "${IPLIST}\n${gateway_iplist}\n${miwifi_iplist}\n${openwrt_iplist}\n${mikrotik_info}\n${always_check_ip_list}" | grep -v "^$" | sort -u)
+	local IPLIST+=$'\n'"$gateway_iplist"
+	local IPLIST+=$'\n'"$miwifi_iplist"
+	local IPLIST+=$'\n'"$openwrt_iplist"
+	local IPLIST+=$'\n'"$mikrotik_info"
+	local IPLIST+=$'\n'"$always_check_ip_list"
+	local IPLIST=$(echo "$IPLIST" | grep -v "^$" | sort -u)
 	for ip in $IPLIST; do
 		[ -n "$passive_mode" ] && [ "$passive_mode" -eq "1" ] && break
 		# 获取一个令牌
@@ -1762,15 +1766,15 @@ down() {
 			' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
 		fi
 
-		# 从 miwifi_info 中读取 type 和 parent
-		[ -f "${dir}/miwifi_info" ] && {
-			local tmp_type=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .type' "${dir}/miwifi_info")
-			local tmp_parent=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .parent' "${dir}/miwifi_info")
-		}
-
-		[ -f "${dir}/openwrt_info" ] && [ -z "$tmp_type" ] && {
+		# 读取 type 和 parent
+		[ -f "${dir}/openwrt_info" ] && {
 			local tmp_type=$(jq -r --arg mac "$mac" '.[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase)) | .type' "${dir}/openwrt_info")
 			local tmp_parent=$(jq -r --arg mac "$mac" '.[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase)) | .parent' "${dir}/openwrt_info")
+		}
+
+		[ -f "${dir}/miwifi_info" ] && [ -z "$tmp_type" ] && {
+			local tmp_type=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .type' "${dir}/miwifi_info")
+			local tmp_parent=$(jq -r --arg ip "$ip" '.[] | select(.ip == $ip) | .parent' "${dir}/miwifi_info")
 		}
 
 		[ -f "${dir}/gateway_info" ] && [ -z "$tmp_type" ] && {
