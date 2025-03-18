@@ -16,36 +16,36 @@ file_date() {
 
 # 下载
 download_file() {
-    url=$1
-    output_file=$2
-    retries=2
-    retval=1
+	url=$1
+	output_file=$2
+	retries=2
+	retval=1
 
-    # 尝试使用 curl 下载
-    i=0
-    while [ $i -lt $retries ]; do
-        curl -fsSL --connect-timeout 15 --max-time 30 -o "${output_file}" "${url}" >/dev/null 2>&1
-        retval=$?
-        if [ $retval -eq 0 ]; then
-            return 0
-        fi
-        i=$((i + 1))
-        sleep 1  # 等待1秒后重试
-    done
+	# 尝试使用 curl 下载
+	i=0
+	while [ $i -lt $retries ]; do
+		curl -fsSL --connect-timeout 15 --max-time 30 -o "${output_file}" "${url}" >/dev/null 2>&1
+		retval=$?
+		if [ $retval -eq 0 ]; then
+			return 0
+		fi
+		i=$((i + 1))
+		sleep 1  # 等待1秒后重试
+	done
 
-    # 如果 curl 失败，尝试使用 wget 下载
-    i=0
-    while [ $i -lt $retries ]; do
-        wget --no-check-certificate -T 15 -O "${output_file}" "${url}" >/dev/null 2>&1
-        retval=$?
-        if [ $retval -eq 0 ]; then
-            return 0
-        fi
-        i=$((i + 1))
-        sleep 1  # 等待1秒后重试
-    done
+	# 如果 curl 失败，尝试使用 wget 下载
+	i=0
+	while [ $i -lt $retries ]; do
+		wget --no-check-certificate -T 15 -O "${output_file}" "${url}" >/dev/null 2>&1
+		retval=$?
+		if [ $retval -eq 0 ]; then
+			return 0
+		fi
+		i=$((i + 1))
+		sleep 1  # 等待1秒后重试
+	done
 
-    return $retval
+	return $retval
 }
 
 # 更新 MAC 信息文件
@@ -73,4 +73,9 @@ elif [ "$1" == "down_oui" ]; then
 	# 更新 MAC 信息列表
 	[ $(file_date "$oui_base") -lt 604800 ] && echo "$(date "+%Y-%m-%d %H:%M:%S") 【info】MAC 信息文件无需更新" >>"${logfile}" && exit 2
 	down_oui >/dev/null 2>&1 &
+elif [ "$1" == "child" ]; then
+	shift
+	command_name=$1
+	shift
+	"$command_name" "$@"
 fi

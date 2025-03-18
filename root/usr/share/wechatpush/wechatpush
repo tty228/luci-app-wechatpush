@@ -533,7 +533,7 @@ LockFile() {
 
 # 检测退出信号
 cleanup() {
-	local pids=$(ps | grep "{wechatpush}_${MAIN_PID}" | grep -v grep | awk '{print $1}')
+	local pids=$(ps | grep -E "\{wechatpush\}_${MAIN_PID}|\{wechatpush-call\}" | grep -v grep | awk '{print $1}')
 	[ -n "$pids" ] && echo "$pids" | xargs kill 2>/dev/null
 	LockFile unlock
 	$EXIT_FLAG && exit 0
@@ -543,9 +543,17 @@ cleanup() {
 run_with_tag() {
 	[ -z "$1" ] && return
 	local command_name=$1  # 第一个参数是命令名称
-	shift  # 移除第一个参数，剩下的参数传递给命令
-	bash -c 'exec -a "$0" "$@"' "${PROCESS_TAG} ${command_name}" "$command_name" "$@"
+	shift # 移除第一个参数，剩下的参数传递给命令
+	local command_path=$(readlink -f "$(which "$command_name")") # 检查命令路径
+	
+	# 如果是 BusyBox 的 applet，调用 wechatpush-call
+	if [[ "$command_path" == *"busybox"* ]]; then
+		/usr/libexec/wechatpush-call child "$command_name" "$@"
+	else
+		bash -c 'exec -a "$0" "$@"' "${PROCESS_TAG} ${command_name}" "$command_name" "$@"
+	fi
 }
+
 
 # 清理临时文件
 deltemp() {
@@ -834,8 +842,8 @@ getping() {
 	interface=$(cat /proc/net/arp | grep -w "$ip" | awk '{print $6}' | grep -v "^$" | sort -u | head -n1)
 	for i in $(seq 1 "$retry_count"); do
 		# arping 应使用 br-lan 等接口，有 WiFi 的设备接口为 wlan*，重新获取
-		[ -n "$interface" ] && ip_ms=$(arping -I ${interface} -c 20 -f -w "$timeout" "$ip" 2>/dev/null)
-		(! echo "$ip_ms" | grep -q "ms") && ip_ms=$(ping -c 5 -w "$timeout" "$ip" 2>/dev/null | grep -v '100% packet loss')
+		[ -n "$interface" ] && ip_ms=$(run_with_tag arping -I ${interface} -c 20 -f -w "$timeout" "$ip" 2>/dev/null)
+		(! echo "$ip_ms" | grep -q "ms") && ip_ms=$(run_with_tag ping -c 5 -w "$timeout" "$ip" 2>/dev/null | grep -v '100% packet loss')
 		(! echo "$ip_ms" | grep -q "ms") && sleep 1
 	done
 	unset i

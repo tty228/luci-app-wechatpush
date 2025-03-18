@@ -28,7 +28,7 @@ stop_service() {
             kill $child_pid
         done
     }
-    local pids=$(ps | grep "{wechatpush}" | grep -v grep | awk '{print $1}')
+    local pids=$(ps | grep "wechatpush" | grep -v grep | grep -v $$ | awk '{print $1}')
 	[ -n "$pids" ] && echo "$pids" | xargs kill 2>/dev/null
     echo "Terminating wechatpush process..."
 }
