@@ -842,9 +842,17 @@ getping() {
 	interface=$(cat /proc/net/arp | grep -w "$ip" | awk '{print $6}' | grep -v "^$" | sort -u | head -n1)
 	for i in $(seq 1 "$retry_count"); do
 		# arping 应使用 br-lan 等接口，有 WiFi 的设备接口为 wlan*，重新获取
-		[ -n "$interface" ] && ip_ms=$(run_with_tag arping -I ${interface} -c 20 -f -w "$timeout" "$ip" 2>/dev/null)
-		(! echo "$ip_ms" | grep -q "ms") && ip_ms=$(run_with_tag ping -c 5 -w "$timeout" "$ip" 2>/dev/null | grep -v '100% packet loss')
-		(! echo "$ip_ms" | grep -q "ms") && sleep 1
+		[ -n "$interface" ] && local arp_entry_count=$(cat /proc/net/arp | grep '0x[26]' | grep -i -w "$mac" | wc -l 2>/dev/null)
+		
+		# 避免无效的 arp 条目
+		if [ -n "$arp_entry_count" ] && [ "$arp_entry_count" -le 1 ]; then
+			ip_ms=$(run_with_tag arping -I "$interface" -c 20 -f -w "$timeout" "$ip" 2>/dev/null)
+			(! echo "$ip_ms" | grep -q "ms") && ip_ms=$(run_with_tag ping -c 5 -w "$timeout" "$ip" 2>/dev/null | grep -v '100% packet loss')
+		else
+			ip_ms=$(run_with_tag ping -c 5 -w "$timeout" "$ip" 2>/dev/null | grep -v '100% packet loss')
+			(! echo "$ip_ms" | grep -q "ms") && ip neigh del "$ip" dev "$interface" 2>/dev/null # 清理无效条目
+		fi
+		(! echo "$ip_ms" | grep -q "ms") && sleep 1 || break
 	done
 	unset i
 	echo "$ip_ms" | grep -q "ms"
