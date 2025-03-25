@@ -678,7 +678,7 @@ return view.extend({
 
 		o = s.taboption('disturb', form.Value, 'cpu_threshold_duration', _('When CPU temperature or load exceeds the threshold continuously for (s) seconds.'));
 		o.rmempty = false;
-		o.placeholder = '300';
+		o.default = '300';
 		o.datatype = 'and(uinteger)';
 		o.description = _('If set to 0, it\'s a single check without considering duration.');
 		o.depends({ cpu_notification: "temp", '!contains': true });
@@ -686,7 +686,7 @@ return view.extend({
 
 		o = s.taboption('disturb', form.Value, 'cpu_notification_delay', _('CPU alarm quiet time (seconds)'));
 		o.rmempty = false;
-		o.placeholder = '3600';
+		o.default = '3600';
 		o.datatype = 'and(uinteger)';
 		o.description = _('No repeat notifications within the set time after the initial push notification.');
 		o.depends({ cpu_notification: "temp", '!contains': true });
