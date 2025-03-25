@@ -83,6 +83,7 @@ read_config() {
 	mark_mac_list=$(echo "$mark_mac_list" | sed 's/ /\n/g' | sed 's/-/ /') 2>/dev/null
 	ipv4_urllist=$(cat /usr/share/wechatpush/api/ipv4.list) 2>/dev/null
 	ipv6_urllist=$(cat /usr/share/wechatpush/api/ipv6.list) 2>/dev/null
+	lang=$(uci -q get luci.main.lang || echo "zh-cn") 2>/dev/null
 	[ -z "$get_ipv4_mode" ] && get_ipv4_mode=0
 	[ -z "$get_ipv6_mode" ] && get_ipv6_mode=0
 	[ -z "$sleeptime" ] && sleeptime="60"
@@ -486,6 +487,18 @@ cut_str() {
 	} > /dev/null 2>&1
 
 	echo "$result"
+}
+
+# 翻译
+translate() {
+    # 处理单引号
+    local safe_input=$(echo "$1" | sed "s/'/\\\\'/g")
+    
+    # 调用Lua翻译
+    lua -e '
+    require "luci.i18n".setlanguage("'"$lang"'")
+    print(require "luci.i18n".translate("'"$safe_input"'"))
+    '
 }
 
 # 随机数
