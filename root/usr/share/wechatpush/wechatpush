@@ -491,14 +491,14 @@ cut_str() {
 
 # 翻译
 translate() {
-    # 处理单引号
-    local safe_input=$(echo "$1" | sed "s/'/\\\\'/g")
-    
-    # 调用Lua翻译
-    lua -e '
-    require "luci.i18n".setlanguage("'"$lang"'")
-    print(require "luci.i18n".translate("'"$safe_input"'"))
-    '
+    # 处理特殊字符
+    local lua_script=$(cat <<LUA
+    require "luci.i18n".setlanguage("$lang")
+    print(require "luci.i18n".translate([==[$1]==]))
+LUA
+    )
+
+    lua -e "$lua_script"
 }
 
 # 随机数
