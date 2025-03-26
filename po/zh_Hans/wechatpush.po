@@ -1106,3 +1106,357 @@ msgstr "清除日志"
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/log.js:124
 msgid "Refresh every 5 seconds."
 msgstr "每 5 秒刷新"
+
+msgid "Create scheduled task"
+msgstr "创建定时任务"
+
+msgid "Router status:"
+msgstr "路由状态："
+
+msgid "Send test:"
+msgstr "发送测试："
+
+msgid "Content 1"
+msgstr "内容1"
+
+msgid "Content 2"
+msgstr "内容2"
+
+msgid "Device 1"
+msgstr "设备1"
+
+msgid "Device 2"
+msgstr "设备2"
+
+msgid "Device 3"
+msgstr "设备3"
+
+msgid "Device 4"
+msgstr "设备4"
+
+msgid "Do not disturb time, exit scheduled push"
+msgstr "免打扰时间，退出定时推送"
+
+msgid "Connected!"
+msgstr "已连通！"
+
+msgid "Disconnected!"
+msgstr "已断开！"
+
+msgid "System running status"
+msgstr "系统运行状态"
+
+msgid "Average load:"
+msgstr "平均负载："
+
+msgid "CPU usage:"
+msgstr "CPU占用："
+
+msgid "Memory usage:"
+msgstr "内存占用："
+
+msgid "Global connection:"
+msgstr "全球互联："
+
+msgid "Device temperature"
+msgstr "设备温度"
+
+msgid "CPU:"
+msgstr "CPU："
+
+msgid "Unable to get device temperature"
+msgstr "无法获取设备温度"
+
+msgid "WAN Port Information"
+msgstr "WAN 口信息"
+
+msgid "Interface IPv4:"
+msgstr "接口 IPv4:"
+
+msgid "Public IPv4:"
+msgstr "公网 IPv4:"
+
+msgid "Interface IPv6:"
+msgstr "接口 IPv6:"
+
+msgid "Public IPv6:"
+msgstr "公网 IPv6:"
+
+msgid "Uptime: %dd%dh%dm%ds"
+msgstr "在线: %d天%d时%d分%d秒"
+
+msgid "I encountered a problem"
+msgstr "我遇到了一个难题"
+
+msgid "Scheduled send option error, you didn't select any items to send, what should I do?"
+msgstr "定时发送选项错误，你没有选择需要发送的项目，该怎么办呢"
+
+msgid "Scheduled push failed, please check network or settings"
+msgstr "定时推送失败，请检查网络或设置信息"
+
+msgid "Scheduled push task completed"
+msgstr "定时推送任务完成"
+
+msgid "Device %s logged into router via %s"
+msgstr "设备 %s 通过 %s 登录了路由器"
+
+msgid "/ (Homepage login)"
+msgstr "/ (首页登录)"
+
+msgid "%s frequent %s login attempts"
+msgstr "%s 频繁尝试 %s 登录"
+
+msgid "Block Information"
+msgstr "封禁信息"
+
+msgid "Device %s (%s) frequently attempted %s %s login"
+msgstr "设备 %s (%s) 频繁尝试 %s %s 登录"
+
+msgid "%s logged into router via %s"
+msgstr "%s 通过 %s 登录了路由器"
+
+msgid "Login Information"
+msgstr "登录信息"
+
+msgid "Device %s (%s) logged into router via %s %s"
+msgstr "设备 %s (%s) 通过 %s %s 登录了路由器"
+
+msgid "Time:"
+msgstr "时间："
+
+msgid "Device IP:"
+msgstr "设备 IP："
+
+msgid "Login Method:"
+msgstr "登录方式："
+
+msgid "Total Traffic:"
+msgstr "总计流量："
+
+msgid "%s disconnected"
+msgstr "%s 断开连接"
+
+msgid "Device Disconnected"
+msgstr "设备断开连接"
+
+msgid "Device Status Changed"
+msgstr "设备状态变化"
+
+msgid "Client Name:"
+msgstr "客户端名："
+
+msgid "Client IP:"
+msgstr "客户端IP："
+
+msgid "Client MAC:"
+msgstr "客户端MAC："
+
+msgid "Uptime:"
+msgstr "在线时间："
+
+msgid "Device %s %s disconnected"
+msgstr "设备 %s %s 断开连接"
+
+msgid "JSON format error, not a standard JSON file, please check %s for unescaped special characters or syntax errors"
+msgstr "JSON 文件格式错误，这不是一个标准的 JSON 文件，请检查 %s 文件是否有特殊符号未转义或语法错误"
+
+msgid "type:{ } field format error after variable substitution, please check for unescaped special characters or syntax errors in type:{ } field"
+msgstr "type:{ } 字段转义变量后格式错误，请检查 type:{ } 字段内是否有特殊符号未转义或语法错误"
+
+msgid "Network or URL error, push failed, curl returned %s, please check the following debug information"
+msgstr "网络错误或 URL 错误，推送失败，curl 返回值为 %s，请参考如下调试信息进行排查"
+
+msgid "Push test enabled, current curl return value is %s"
+msgstr "推送测试已开启，当前 curl 返回值为 %s"
+
+msgid "Format error after variable substitution, please check %s for unescaped special characters or syntax errors"
+msgstr "转义变量后格式错误，请检查 %s 字段内是否有特殊符号未转义或语法错误"
+
+msgid "JSON file saved to: %s"
+msgstr "JSON 文件已保存至：%s"
+
+msgid "Push content preview saved to: %s"
+msgstr "推送内容预览文件保存至：%s"
+
+msgid "If no message received, please check %s or use the following command to test manually"
+msgstr "如果收不到信息，请检查 %s 文件，或使用下列命令手动测试返回值"
+
+msgid "Total Traffic:"
+msgstr "总计流量："
+
+msgid "%s abnormal traffic"
+msgstr "%s 流量异常"
+
+msgid "Device abnormal traffic"
+msgstr "设备流量异常"
+
+msgid "Device status changed"
+msgstr "设备状态变化"
+
+msgid "Traffic in 1 minute:"
+msgstr "一分钟内流量："
+
+msgid "Whitelist add failed, IP format error"
+msgstr "白名单添加失败，IP 格式错误"
+
+msgid "Currently no online devices"
+msgstr "当前无在线设备"
+
+msgid "Currently %s online devices, details below"
+msgstr "现有在线设备 %s 台，具体如下"
+
+msgid "IP Address"
+msgstr "IP 地址"
+
+msgid "Uptime"
+msgstr "在线时间"
+
+msgid "%s connected to your router"
+msgstr "%s 连接了你的路由器"
+
+msgid "New device connected"
+msgstr "新设备连接"
+
+msgid "Device status changed"
+msgstr "设备状态变化"
+
+msgid "Network Interface:"
+msgstr "网络接口："
+
+msgid "New device %s %s connected"
+msgstr "新设备 %s %s 连接了"
+
+msgid "Login to MIWiFi failed, unable to get stok"
+msgstr "登录 MIWiFi 失败，无法获取 stok"
+
+msgid "Failed to get modem information, maybe current user not logged out or wrong settings"
+msgstr "获取光猫信息失败，可能当前用户未注销或设置错误"
+
+msgid "Disk Name:"
+msgstr "硬盘名称："
+
+msgid "Disk in standby"
+msgstr "硬盘休眠中"
+
+msgid "Disk Temp:"
+msgstr "硬盘温度："
+
+msgid "Power On:"
+msgstr "通电时间："
+
+msgid "Disk Usage:"
+msgstr "空间使用："
+
+msgid "Health Used:"
+msgstr "寿命使用："
+
+msgid "Error Logs:"
+msgstr "错误日志："
+
+msgid "Self-Test Errors:"
+msgstr "自检错误："
+
+msgid "0E Errors:"
+msgstr "0E 错误："
+
+msgid "Disk health assessment FAILED!!!"
+msgstr "硬盘整体健康评估不通过！！！"
+
+msgid "Disk has errors, please backup data immediately!!!"
+msgstr "硬盘存在错误，请及时备份数据！！！"
+
+msgid "CPU temperature too high: %s"
+msgstr "CPU 温度过高: %s"
+
+msgid "Device Alert!"
+msgstr "设备报警！"
+
+msgid "CPU Temperature Too High!"
+msgstr "CPU 温度过高！"
+
+msgid "CPU Temperature Alert"
+msgstr "CPU 温度过高"
+
+msgid "CPU temperature has exceeded threshold for %s"
+msgstr "CPU 温度已连续 %s 超过预设"
+
+msgid "No further alerts for %s"
+msgstr "接下来 %s 不再提示"
+
+msgid "Current temperature: %s℃"
+msgstr "当前温度：%s℃"
+
+msgid "CPU load too high: %s"
+msgstr "CPU 负载过高: %s"
+
+msgid "CPU Load Too High!"
+msgstr "CPU 负载过高！"
+
+msgid "CPU Load Alert"
+msgstr "CPU 负载过高"
+
+msgid "CPU load has exceeded threshold for %s"
+msgstr "CPU 负载已连续 %s 超过预设"
+
+msgid "Current load: %s"
+msgstr "当前负载：%s"
+
+msgid "Top 3 CPU Processes"
+msgstr "当前 CPU 占用前三的进程"
+
+msgid "Top 3 CPU processes: %s"
+msgstr "CPU 占用前三: %s"
+
+msgid "Network connection restored"
+msgstr "网络恢复正常"
+
+msgid "Network connection failed! Stopping detection!"
+msgstr "当前网络不通！停止检测！"
+
+msgid "Attempting router reboot (attempt %s/3)"
+msgstr "正在尝试重启路由，当前第 %s 次"
+
+msgid "Attempting network restart (attempt %s/3)"
+msgstr "正在尝试重启网络，当前第 %s 次"
+
+msgid "Failed after 2 router reboots, please fix manually"
+msgstr "已经重启路由2次，修复失败，请主人自行修复哦"
+
+msgid "Failed after 2 network restarts, please fix manually"
+msgstr "已经重启网络2次，修复失败，请主人自行修复哦"
+
+msgid "Network Interface"
+msgstr "网络接口"
+
+msgid "Location:"
+msgstr "地址："
+
+msgid "Interface:"
+msgstr "接口："
+
+msgid "Router has rebooted!"
+msgstr "路由器已经重启！"
+
+msgid "Router Rebooted"
+msgstr "路由器重新启动"
+
+msgid "Current IP: %s from: %s"
+msgstr "当前 IP：%s 来自：%s"
+
+msgid "IP Address Changed"
+msgstr "IP地址变化"
+
+msgid "Current IP:"
+msgstr "当前 IP："
+
+msgid "Current IPv6: %s from: %s"
+msgstr "当前 IPv6：%s 来自：%s"
+
+msgid "IPv6 Address Changed"
+msgstr "IPv6地址变化"
+
+msgid "Current IPv6:"
+msgstr "当前 IPv6："
+
+msgid "It's late at night, time to rest"
+msgstr "夜深了，该休息了"

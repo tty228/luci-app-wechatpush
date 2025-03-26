@@ -130,8 +130,8 @@ init() {
 	local interfacelist=$(getinterfacelist) && [ -z "$interfacelist" ] && log_change "【！！！】存在多个接口或配置错误，可能无法获取接口在线时间等信息，请确认插件是否正常运行"
 	[ -n "$notification_temp" ] && [ -n "$temperature_threshold" ] && local cpu_temp=$(soc_temp) || local cpu_temp="null"
 	[ -z "$cpu_temp" ] && log_change "【！！！】无法读取设备温度，请检查命令"
-	[ -n "$notification_load" ] && [ -n "$cpu_load_threshold" ] && local cpu_fuzai=$(cat /proc/loadavg | awk '{print $1}') 2>/dev/null || local cpu_fuzai="null"
-	[ -z "$cpu_fuzai" ] && log_change "【！！！】无法读取设备负载，请检查命令"
+	[ -n "$notification_load" ] && [ -n "$cpu_load_threshold" ] && local cpu_load=$(cat /proc/loadavg | awk '{print $1}') 2>/dev/null || local cpu_load="null"
+	[ -z "$cpu_load" ] && log_change "【！！！】无法读取设备负载，请检查命令"
 
 	# 检查 JSON 文件格式是否有效
 	if ! jq empty "$devices_json" >/dev/null 2>&1 || ! jq -e 'has("address") and has("devices") and has("disks")' "$devices_json" >/dev/null 2>&1; then
@@ -324,7 +324,7 @@ main() {
 		[ ! -f "${dir}/send_enable.lock" ] && unattended
 
 		# CPU 检测
-		[ ! -f "${dir}/send_enable.lock" ] && cpu_load
+		[ ! -f "${dir}/send_enable.lock" ] && check_cpu_load
 
 		# 硬盘检测
 		#[ ! -f "${dir}/send_enable.lock" ] && get_disk
@@ -491,14 +491,14 @@ cut_str() {
 
 # 翻译
 translate() {
-    # 处理特殊字符
-    local lua_script=$(cat <<LUA
-    require "luci.i18n".setlanguage("$lang")
-    print(require "luci.i18n".translate([==[$1]==]))
+	# 处理特殊字符
+	local lua_script=$(cat <<LUA
+	require "luci.i18n".setlanguage("$lang")
+	print(require "luci.i18n".translate([==[$1]==]))
 LUA
-    )
+	)
 
-    lua -e "$lua_script"
+	lua -e "$lua_script"
 }
 
 # 随机数
@@ -775,8 +775,8 @@ get_ip_attribution() {
 	local ip_attribution_url
 	while IFS= read -r ip_attribution_url; do
 		local login_ip_attribution=$(eval curl --connect-timeout 2 -m 2 -k -s "$ip_attribution_url" 2>/dev/null)
-		#logfile=logfile="${dir}/wechatpush.log" # 此处保留排查时使用
-		#[ -z "$login_ip_attribution" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` 【info】归属地获取超时，当前使用的 API 为 $ip_attribution_url" >> ${logfile}
+		#logfile=logfile="${dir}/wechatpush.log" # 此处保留排查时使用，增加日志调试等级后再加入
+		#[ -z "$login_ip_attribution" ] && echo "`date "+%Y-%m-%d %H:%M:%S"` [DEBUG] 归属地获取超时，当前使用的 API 为 $ip_attribution_url" >> ${logfile}
 		[ -n "$login_ip_attribution" ] && echo "$login_ip_attribution" && break
 	done <<<"$sorted_attribution_urls"
 }
@@ -963,7 +963,7 @@ disturb() {
 		return 0
 	# 免打扰
 	else
-		[ -z "$sheep_starttime" ] && log_change "【免打扰】夜深了，该休息了" && sheep_starttime=$(date +%s)
+		[ -z "$sheep_starttime" ] && log_change "[DND] $(translate "It's late at night, time to rest")" && sheep_starttime=$(date +%s)
 		# 挂起
 		if [ "$do_not_disturb_mode" -eq "1" ]; then
 			while [ $(date +%H) -lt "$do_not_disturb_endtime" ]; do
@@ -972,7 +972,7 @@ disturb() {
 			done
 		# 静默
 		elif [ "$do_not_disturb_mode" -eq "2" ]; then
-			disturb_text="【免打扰】"
+			disturb_text="[DND] "
 			return 1
 		fi
 	fi
@@ -1039,8 +1039,8 @@ geterrdevicealiases() {
 #
 # 检测 ip 状况
 ip_changes() {
-	local IPv4_URL="网络接口"
-	local IPv6_URL="网络接口"
+	local IPv4_URL="$(translate "Network Interface")"
+	local IPv6_URL="$(translate "Network Interface")"
 	[ "$get_ipv4_mode" -eq "1" ] && getip wanipv4 >"$output_dir/IPv4" &
 	[ "$get_ipv6_mode" -eq "1" ] && getip wanipv6 >"$output_dir/IPv6" &
 	[ "$get_ipv4_mode" -eq "2" ] && local IPv4=$(getip hostipv4) && local IPv4_URL=$(echo ${IPv4} | jq -r '.URL') && local IPv4=$(echo ${IPv4} | jq -r '.IP')
@@ -1048,31 +1048,46 @@ ip_changes() {
 	wait_and_cat
 
 	if [ "$1" ] && [ "$1" == "getip" ]; then
-		echo "IPv4：$IPv4<br/>地址：$(get_ip_attribution $IPv4)<br/>接口：$IPv4_URL<br/>IPv6：$IPv6<br/>地址：$(get_ip_attribution $IPv6)<br/>接口：$IPv6_URL"
+		echo "IPv4: ${IPv4}<br />\
+		$(translate 'Location:') $(get_ip_attribution ${IPv4})<br />\
+		$(translate 'Interface:') ${IPv4_URL}<br />\
+		IPv6: ${IPv6}<br />\
+		$(translate 'Location:') $(get_ip_attribution ${IPv6})<br />\
+		$(translate 'Interface:') ${IPv6_URL}"
 		return
 	fi
+	
 	local last_IPv4=$(jq -r '.address[0].IPv4 // empty' "$devices_json")
 	local last_IPv6=$(jq -r '.address[0].IPv6 // empty' "$devices_json")
 	silent_run LockFile lock
 
 	if [ -z "$last_IPv4" ] && [ -z "$last_IPv6" ] && [[ -n "$IPv4" || -n "$IPv6" ]]; then
-		log_change "${disturb_text}路由器已经重启!"
-		title="路由器重新启动"
-		content="${content}${str_splitline}${str_title_start} 路由器重新启动${str_title_end}"
+		log_change "${disturb_text}$(translate "Router has rebooted!")"
+		title="$(translate "Router Rebooted")"
+		content="${content}\
+		${str_splitline}\
+		${str_title_start}$(translate "Router Rebooted")${str_title_end}"
 	fi
+	
 	if [ "$get_ipv4_mode" -ne "0" ] && [ -n "$IPv4" ] && [ "$IPv4" != "$last_IPv4" ]; then
-		log_change "${disturb_text}当前 IP：${IPv4} from：${IPv4_URL}"
-		[ -z "$title" ] && title="IP 地址变化"
-		[ -z "$content" ] && content="${content}${str_splitline}${str_title_start} IP 地址变化${str_title_end}"
-		content="${content}${str_linefeed}${str_tab}当前 IP：  ${IPv4}"
+		log_change "${disturb_text}$(translate "Current IP: ${IPv4} from: ${IPv4_URL}")"
+		[ -z "$title" ] && title="$(translate "IP Address Changed")"
+		[ -z "$content" ] && content="${content}\
+		${str_splitline}\
+		${str_title_start}$(translate "IP Address Changed")${str_title_end}"
+		content="${content}\
+		${str_linefeed}${str_tab}$(translate "Current IP:")  ${IPv4}"
 		jq --arg IPv4 "$IPv4" '.address[0].IPv4 = $IPv4' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
-
 	fi
+	
 	if [ "$get_ipv6_mode" -ne "0" ] && [ -n "$IPv6" ] && [ "$IPv6" != "$last_IPv6" ]; then
-		log_change "${disturb_text}当前 IPv6：${IPv6} from：${IPv6_URL}"
-		[ -z "$title" ] && title="IPv6 地址变化"
-		[ -z "$content" ] && content="${content}${str_splitline}${str_title_start} IPv6 地址变化${str_title_end}"
-		content="${content}${str_linefeed}${str_tab}当前 IPv6：${IPv6}"
+		log_change "${disturb_text}$(translate "Current IPv6: ${IPv6} from: ${IPv6_URL}")"
+		[ -z "$title" ] && title="$(translate "IPv6 Address Changed")"
+		[ -z "$content" ] && content="${content}\
+		${str_splitline}\
+		${str_title_start}$(translate "IPv6 Address Changed")${str_title_end}"
+		content="${content}\
+		${str_linefeed}${str_tab}$(translate "Current IPv6:") ${IPv6}"
 		jq --arg IPv6 "$IPv6" '.address[0].IPv6 = $IPv6' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
 	fi
 
@@ -1104,10 +1119,10 @@ check_connect() {
 	local network_state="unknown"
 	while true; do
 		if is_online; then
-			[ "$network_state" == "down" ] && log_change "【网络状态】网络恢复正常.."
+			[ "$network_state" == "down" ] && log_change "[INFO] $(translate "Network connection restored")"
 			break
 		else
-			[ "$network_state" == "unknown" ] && log_change "【！！！】当前网络不通！停止检测！ "
+			[ "$network_state" == "unknown" ] && log_change "[ERROR] $(translate "Network connection failed! Stopping detection!")"
 			local network_state="down"
 			# 无人值守、待弃用或改进
 			[ -z "$network_unattended_time" ] && network_unattended_time=$(date +%s)
@@ -1121,15 +1136,15 @@ check_connect() {
 					if [ "$network_disconnect_event" -eq "1" ]; then
 						if [ "$retry_count" -lt "3" ]; then
 							echo "$retry_count" >/usr/share/wechatpush/autoreboot_count
-							log_change "【！！！】正在尝试重启路由，当前第 $retry_count 次 "
+							log_change "[WARN] $(translate "Attempting router reboot (attempt ${retry_count}/3)")"
 							cat ${logfile} >/usr/share/wechatpush/errlog
 							getgateway "reboot"
 							sleep 2 && reboot && exit
 						fi
-						[ "$retry_count" -eq "3" ] && log_change "【！！！】已经重启路由2次，修复失败，请主人自行修复哦"
+						[ "$retry_count" -eq "3" ] && log_change "[ERROR] $(translate "Failed after 2 router reboots, please fix manually")"
 					elif [ "$network_disconnect_event" -eq "2" ]; then
-						[ "$retry_count" -lt "3" ] && log_change "【！！！！】正在尝试重启网络，当前第 $retry_count 次 " && network_restart
-						[ "$retry_count" -eq "3" ] && log_change "【！！！】已经重启网络2次，修复失败，请主人自行修复哦 "
+						[ "$retry_count" -lt "3" ] && log_change "[WARN] $(translate "Attempting network restart (attempt ${retry_count}/3)")"
+						[ "$retry_count" -eq "3" ] && log_change "[ERROR] $(translate "Failed after 2 network restarts, please fix manually")"
 					fi
 				fi
 			elif [ -f /usr/share/wechatpush/autoreboot_count ]; then
@@ -1146,33 +1161,35 @@ check_connect() {
 # 运行状态相关
 #
 # 检测 cpu 状态
-cpu_load() {
+check_cpu_load() {
 	[ -z "$cpu_notification_duration" ] && cpu_notification_duration=$(time_for_humans $cpu_notification_delay)
 	if [ -n "$notification_temp" ] && [ -n "$temperature_threshold" ]; then
 		[ -z "$temp_last_overload_time" ] && temp_last_overload_time=$(date +%s)
 		local cpu_temp=$(soc_temp)
 
 		if [ -n "$cpu_temp" ] && awk -v t="$cpu_temp" -v th="$temperature_threshold" 'BEGIN { exit !(t > th) }'; then
-			log_change "【！！警报！！】 CPU 温度过高: ${cpu_temp}"
+			log_change "[ALERT] $(translate "CPU temperature too high: ${cpu_temp}")"
 
 			# 检查是否达到持续时间阈值
 			if [ "$cpu_threshold_duration" -eq 0 ] || [ "$(($(date +%s) - $temp_last_overload_time))" -ge "$cpu_threshold_duration" ]; then
 				# 检查是否达到推送间隔阈值
 				if [ -z "$temperaturecd_time" ] || [ "$(($(date +%s) - $temperaturecd_time))" -ge "$cpu_notification_delay" ]; then
-					if [ -n "$title" ] && (echo "$title" | grep -q "过高"); then
-						title="设备报警！"
+					if [ -n "$title" ] && (echo "$title" | grep -q "$(translate "too high")"); then
+						title="$(translate "Device Alert!")"
 					else
-						title="CPU 温度过高！"
+						title="$(translate "CPU Temperature Too High!")"
 					fi
 
 					temperaturecd_time=$(date +%s) # 记录本次推送的时间戳
-					log_change "${disturb_text} CPU 温度过高: ${cpu_temp}"
+					log_change "${disturb_text}$(translate "CPU temperature too high: ${cpu_temp}")"
 
 					local cpu_overload_duration=$(time_for_humans $(($(date +%s) - $temp_last_overload_time)))
-					local cpu_overload_info="${str_splitline}${str_title_start} CPU 温度过高${str_title_end}"
-					cpu_overload_info="${cpu_overload_info}${str_linefeed}${str_tab}CPU 温度已连续 ${cpu_overload_duration} 超过预设"
-					cpu_overload_info="${cpu_overload_info}${str_linefeed}${str_tab}接下来 ${cpu_notification_duration} 不再提示"
-					cpu_overload_info="${cpu_overload_info}${str_linefeed}${str_tab}当前温度：${cpu_temp}℃"
+					local cpu_overload_info="\
+					${str_splitline}\
+					${str_title_start}$(translate "CPU Temperature Alert")${str_title_end}\
+					${str_linefeed}${str_tab}$(translate "CPU temperature has exceeded threshold for ${cpu_overload_duration}")\
+					${str_linefeed}${str_tab}$(translate "No further alerts for ${cpu_notification_duration}")\
+					${str_linefeed}${str_tab}$(translate "Current temperature: ${cpu_temp}℃")"
 					content="${content}${cpu_overload_info}"
 				fi
 			fi
@@ -1184,30 +1201,32 @@ cpu_load() {
 
 	if [ -n "$notification_load" ] && [ -n "$cpu_load_threshold" ]; then
 		[ -z "$cpu_last_overload_time" ] && cpu_last_overload_time=$(date +%s)
-		local cpu_fuzai=$(cat /proc/loadavg | awk '{print $1}') 2>/dev/null
+		local cpu_load=$(cat /proc/loadavg | awk '{print $1}') 2>/dev/null
 
-		if [ -n "$cpu_fuzai" ] && awk -v t="$cpu_fuzai" -v th="$cpu_load_threshold" 'BEGIN { exit !(t > th) }'; then
-			log_change "【！！警报！！】 CPU 负载过高: ${cpu_fuzai}"
+		if [ -n "$cpu_load" ] && awk -v t="$cpu_load" -v th="$cpu_load_threshold" 'BEGIN { exit !(t > th) }'; then
+			log_change "[ALERT] $(translate "CPU load too high: ${cpu_load}")"
 			cputop log
 
 			# 检查是否达到持续时间阈值
 			if [ "$cpu_threshold_duration" -eq 0 ] || [ "$(($(date +%s) - $cpu_last_overload_time))" -ge "$cpu_threshold_duration" ]; then
 				# 检查是否达到推送间隔阈值
 				if [ -z "$cpucd_time" ] || [ "$(($(date +%s) - $cpucd_time))" -ge "$cpu_notification_delay" ]; then
-					if [ -n "$title" ] && (echo "$title" | grep -q "过高"); then
-						title="设备报警！"
+					if [ -n "$title" ] && (echo "$title" | grep -q "$(translate "too high")"); then
+						title="$(translate "Device Alert!")"
 					else
-						title="CPU 负载过高！"
+						title="$(translate "CPU Load Too High!")"
 					fi
 
 					cpucd_time=$(date +%s) # 记录本次推送的时间戳
-					log_change "${disturb_text} CPU 负载过高: ${cpu_fuzai}"
+					log_change "${disturb_text}$(translate "CPU load too high: ${cpu_load}")"
 
 					local cpu_load_duration=$(time_for_humans $(($(date +%s) - $cpu_last_overload_time)))
-					local cpu_load_info="${str_splitline}${str_title_start} CPU 负载过高${str_title_end}"
-					cpu_load_info="${cpu_load_info}${str_linefeed}${str_tab}CPU 负载已连续 ${cpu_load_duration} 超过预设"
-					cpu_load_info="${cpu_load_info}${str_linefeed}${str_tab}接下来 ${cpu_notification_duration} 不再提示"
-					cpu_load_info="${cpu_load_info}${str_linefeed}${str_tab}当前负载：${cpu_fuzai}"
+					local cpu_load_info="\
+					${str_splitline}\
+					${str_title_start}$(translate "CPU Load Alert")${str_title_end}\
+					${str_linefeed}${str_tab}$(translate "CPU load has exceeded threshold for ${cpu_load_duration}")\
+					${str_linefeed}${str_tab}$(translate "No further alerts for ${cpu_notification_duration}")\
+					${str_linefeed}${str_tab}$(translate "Current load: ${cpu_load}")"
 					content="${content}${cpu_load_info}"
 
 					cputop
@@ -1222,17 +1241,20 @@ cpu_load() {
 
 # CPU 占用前三
 cputop() {
-	[ -z "$1" ] && content="${content}${str_splitline}${str_title_start} 当前 CPU 占用前三的进程${str_title_end}"
+	[ -z "$1" ] && content="${content}\
+	${str_splitline}\
+	${str_title_start}$(translate "Top 3 CPU Processes")${str_title_end}"
 	local gettop=$(top -bn 1 | grep -v "top -bn 1" | head -n 7)
 	for i in $(seq 5 7); do
 		local top_name=$(echo "${gettop}" | awk 'NR=='${i} | awk '{print ($8 ~ /\/bin\/sh|\/bin\/bash/) ? $9 : $8}')
 		local top_load=$(echo "${gettop}" | awk 'NR=='${i} | awk '{print $7}')
 		local temp_top="${top_name} ${top_load}"
 		[ -n "$1" ] && local logtop="$logtop  $temp_top"
-		[ -z "$1" ] && content="${content}${str_linefeed}${str_tab}${temp_top}"
+		[ -z "$1" ] && content="${content}\
+		${str_linefeed}${str_tab}${temp_top}"
 	done
 	unset i
-	[ -n "$1" ] && log_change "【！！警报！！】 CPU 占用前三: ${logtop}"
+	[ -n "$1" ] && log_change "[ALERT] $(translate "Top 3 CPU processes: ${logtop}")"
 }
 
 # 检测硬盘状态
@@ -1315,7 +1337,7 @@ get_disk() {
 				local disk_name=$(cut_str "$disk_name" "20")
 				local disk_name="${disk_name}_$(run_with_tag ${tmp_command} lsblk -o NAME,SIZE | awk "/^${tmp_name}/ {print \$NF}")"
 			}
-			echo -n "${str_linefeed}${str_title_start} 硬盘名称：${disk_name}${disk_type}${str_title_end}${str_linefeed}${str_tab}硬盘休眠中" >>"$output_dir/get_disk"
+			echo -n "${str_linefeed}${str_title_start}$(translate "Disk Name:") ${disk_name}${disk_type}${str_title_end}${str_linefeed}${str_tab}$(translate "Disk in standby")" >>"$output_dir/get_disk"
 		elif [ -f "${file_path}" ]; then
 			# 硬盘名称
 			local disk_name=$(jq -r .model_name ${file_path})
@@ -1326,13 +1348,16 @@ get_disk() {
 				[ -z "$disk_size" ] && disk_size=$(run_with_tag ${tmp_command} df -h 2>/dev/null | awk -v tmp_disk_name="${tmp_name}" '$1 ~ "^/dev/"tmp_disk_name && !disk_found {print $2; disk_found=1}')
 				local disk_name="${disk_name}_${disk_size}"
 			}
-			echo -n "${str_linefeed}${str_title_start} 硬盘名称：${disk_name}${disk_type}${str_title_end}" >>"$output_dir/get_disk"
+			echo -n "${str_linefeed}${str_title_start}$(translate "Disk Name:") ${disk_name}${disk_type}${str_title_end}" >>"$output_dir/get_disk"
+			
 			# 硬盘温度
 			local disk_temp=$(jq -r .temperature.current ${file_path})
-			[[ -n $disk_temp && $disk_temp != null && $disk_temp != 0 ]] && echo -n "${str_linefeed}${str_tab}硬盘温度：${disk_temp}℃" >>"$output_dir/get_disk"
+			[[ -n $disk_temp && $disk_temp != null && $disk_temp != 0 ]] && echo -n "${str_linefeed}${str_tab}$(translate "Disk Temp:") ${disk_temp}℃" >>"$output_dir/get_disk"
+			
 			# 通电时间
 			local disk_time=$(jq -r .power_on_time.hours ${file_path})
-			[[ -n $disk_time && $disk_time != null ]] && echo -n "${str_linefeed}${str_tab}通电时间：${disk_time}h" >>"$output_dir/get_disk"
+			[[ -n $disk_time && $disk_time != null ]] && echo -n "${str_linefeed}${str_tab}$(translate "Power On:") ${disk_time}h" >>"$output_dir/get_disk"
+			
 			# 空间使用
 			local disk_use=$(run_with_tag ${tmp_command} lsblk -no NAME,FSUSE% "/dev/${tmp_name}" 2>/dev/null | awk '$2 != "" { gsub(/^[^a-zA-Z0-9]+/, "", $1); printf "%s: %s\n", $1, $2 }')
 			[ -z "$disk_use" ] && disk_use=$(run_with_tag ${tmp_command} df -h 2>/dev/null | awk -v part_name="${tmp_name}" '$1 ~ "^/dev/"part_name && NF > 1 {sub("/dev/", "", $1); if (!seen[$1]) { printf "%s: %s  ", $1, $5; seen[$1] = 1; }} END {print ""}')
@@ -1342,29 +1367,33 @@ get_disk() {
 				[ -n "$fstab_config" ] && local mount_point=$(uci get ${fstab_config}.target 2>/dev/null)
 				[ -n "$mount_point" ] && local disk_use=$(df -h 2>/dev/null | awk -v mount="$mount_point" '$NF == mount {sub("^/dev/", "", $1); printf "%s: %s\n", $1, $5}')
 			}
-			# 如果获取到了多个分区，屏蔽使用空间为 0% 的分区
 			[ -n "$disk_use" ] && [ $(echo "$disk_use" | wc -l) -ne "1" ] && disk_use=$(echo "$disk_use" | grep -v -w "0%")
 			[ -n "$disk_use" ] && disk_use=$(echo "$disk_use" | sed ':a;N;$!ba;s/\n/'"${str_linefeed}${str_tab}${str_space}${str_tab}${str_space}${str_space}"'/g')
-			[ -n "$disk_use" ] && [ -n "${disk_use// /}" ] && echo -e -n "${str_linefeed}${str_tab}空间使用：${disk_use}" >>"$output_dir/get_disk"
+			[ -n "$disk_use" ] && [ -n "${disk_use// /}" ] && echo -e -n "${str_linefeed}${str_tab}$(translate "Disk Usage:") ${disk_use}" >>"$output_dir/get_disk"
+			
 			# 寿命使用
 			local disk_health=$(jq -r .nvme_smart_health_information_log.percentage_used ${file_path})
-			[[ -n $disk_health && $disk_health != null ]] && echo -e -n "${str_linefeed}${str_tab}寿命使用：${disk_health}%" >>"$output_dir/get_disk"
+			[[ -n $disk_health && $disk_health != null ]] && echo -e -n "${str_linefeed}${str_tab}$(translate "Health Used:") ${disk_health}%" >>"$output_dir/get_disk"
+			
 			# 错误日志
 			local disk_log_err=$(jq -r .ata_smart_error_log.summary.count ${file_path})
-			[[ -n $disk_log_err && $disk_log_err != null && $disk_log_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab}错误日志：${disk_log_err}" >>"$output_dir/get_disk"
+			[[ -n $disk_log_err && $disk_log_err != null && $disk_log_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab}$(translate "Error Logs:") ${disk_log_err}" >>"$output_dir/get_disk"
+			
 			# 自检错误
 			local disk_test_err=$(jq -r .ata_smart_self_test_log.standard.error_count_total ${file_path})
-			[[ -n $disk_test_err && $disk_test_err != null && $disk_test_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab}自检错误：${disk_test_err}" >>"$output_dir/get_disk"
+			[[ -n $disk_test_err && $disk_test_err != null && $disk_test_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab}$(translate "Self-Test Errors:") ${disk_test_err}" >>"$output_dir/get_disk"
+			
 			# 0E 错误
 			local disk_0e_err=$(jq -r .nvme_smart_health_information_log.media_errors ${file_path})
-			[[ -n $disk_0e_err && $disk_0e_err != null && $disk_0e_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab}0E 错误：${disk_0e_err}" >>"$output_dir/get_disk"
+			[[ -n $disk_0e_err && $disk_0e_err != null && $disk_0e_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab}$(translate "0E Errors:") ${disk_0e_err}" >>"$output_dir/get_disk"
+			
 			# 整体健康
 			local smart_status=$(jq -r .smart_status.passed ${file_path})
 			[[ -n $smart_status && $smart_status != null && $smart_status != "true" ]] && {
-				echo -e -n "${str_linefeed}${str_tab}${str_title_start}硬盘整体健康评估不通过！！！${str_title_end}" >>"$output_dir/get_disk"
+				echo -e -n "${str_linefeed}${str_tab}${str_title_start}$(translate "Disk health assessment FAILED!!!")${str_title_end}" >>"$output_dir/get_disk"
 				local disk_err="true"
 			}
-			[ -n "$disk_err" ] && echo -e -n "${str_linefeed}${str_tab}${str_title_start}硬盘存在错误，请及时备份数据！！！${str_title_end}" >>"$output_dir/get_disk"
+			[ -n "$disk_err" ] && echo -e -n "${str_linefeed}${str_tab}${str_title_start}$(translate "Disk has errors, please backup data immediately!!!")${str_title_end}" >>"$output_dir/get_disk"
 		fi
 	done
 	unset i
@@ -1434,7 +1463,7 @@ getgateway() {
 		[ "$1" ] && [ "$1" == "reboot" ] && run_with_tag curl -s -b ${dir}/cookies.txt "${gateway_host_url}/admin/reboot" -d "token=$mytoken" >/dev/null 2>&1
 		# 注销
 		[ -n "$get_gateway" ] && [ -n "$gateway_logout_url" ] && run_with_tag curl -s -b ${dir}/cookies.txt "${gateway_logout_url}" -d 'token='$mytoken 2>/dev/null
-		[ -z "$get_gateway" ] && log_change "【info】获取光猫信息失败，可能当前用户未注销或设置错误"
+		[ -z "$get_gateway" ] && log_change "[WARN] $(translate "Failed to get modem information, maybe current user not logged out or wrong settings")"
 
 		local gateway_host_ip=$(echo "$gateway_host_url" | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}')
 		# 保存信息
@@ -1465,7 +1494,7 @@ getmiwifi() {
 		local login_response=$(run_with_tag curl -s -X POST "$miwifi_login_url" -d "username=admin&password=${miwifi_password}")
 		local stok=$(echo "$login_response" | jq -r '.token')
 
-		[ -z "$stok" ] && log_change "【info】登录 MIWiFi 失败，无法获取 stok" && return 1
+		[ -z "$stok" ] && log_change "[WARN] $(translate "Login to MIWiFi failed, unable to get stok")" && return 1
 
 		# 获取设备列表
 		local device_list_url="http://${miwifi_ip}/cgi-bin/luci/;stok=$stok/api/misystem/devicelist"
@@ -1720,23 +1749,24 @@ up() {
 			[ -f "${dir}/content" ] && local content=$(cat "${dir}/content")
 
 			if [ -z "$title" ]; then
-				local title="${name} 连接了你的路由器"
-				local content_title="${str_title_start} 新设备连接${str_title_end}"
-			elif echo "$title" | grep -q "连接了你的路由器"; then
+				local title="$(translate "${name} connected to your router")"
+				local content_title="${str_title_start}$(translate "New device connected")${str_title_end}"
+			elif echo "$title" | grep -q "$(translate "connected to your router")"; then
 				local title="${name} ${title}"
 			else
-				local title="设备状态变化"
-				local content_title="${str_title_start} 新设备连接${str_title_end}"
+				local title="$(translate "Device status changed")"
+				local content_title="${str_title_start}$(translate "New device connected")${str_title_end}"
 			fi
 
-			local content_name="${str_linefeed}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${name}"
-			local content_ip="${str_linefeed}${str_tab}客户端IP：${str_space}${str_space}${str_space}${str_space}${ip}"
-			local content_mac="${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${mac}"
-			local content_interface="${str_linefeed}${str_tab}网络接口：${str_space}${str_space}${str_space}${str_space}${str_space}${interface}"
+			content="\
+			${str_splitline}\
+			${content_title}\
+			${str_linefeed}${str_tab}$(translate "Client Name:")${str_space}${str_space}${str_space}${str_space}${str_space}${name}\
+			${str_linefeed}${str_tab}$(translate "Client IP:")${str_space}${str_space}${str_space}${str_space}${ip}\
+			${str_linefeed}${str_tab}$(translate "Client MAC:")${str_space}${str_space}${str_space}${str_space}${mac}\
+			${str_linefeed}${str_tab}$(translate "Network Interface:")${str_space}${str_space}${str_space}${str_space}${str_space}${interface}"
 
-			content="${str_splitline}${content_title}${content_name}${content_ip}${content_mac}${content_interface}"
-
-			log_change "${disturb_text}新设备 ${name} ${ip} 连接了"
+			log_change "${disturb_text}$(translate "New device ${name} ${ip} connected")"
 
 			[ -n "$title" ] && echo "$title" >"${dir}/title"
 			[ -n "$content" ] && echo -n "$content" >>"${dir}/content"
@@ -1827,7 +1857,9 @@ current_device() {
 	[ -f "${dir}/usage.db" ] && has_usage=1
 	
 	[ "$logrow" -eq "0" ] && {
-		local explain="${send_content}${str_splitline}${str_title_start} 当前无在线设备${str_title_end}"
+		local explain="${send_content}\
+		${str_splitline}\
+		${str_title_start}$(translate "Currently no online devices")${str_title_end}"
 		content="${content}${explain}${header}"
 		return
 	}
@@ -1901,13 +1933,16 @@ current_device() {
 	}
 
 	# 表头
+	local explain="${str_splitline}\
+	${str_title_start}$(translate "Currently ${logrow} online devices, details below")${str_title_end}"
+
 	local header="${str_linefeed}${str_tab}"
-	header+=$(pad_field "IP 地址" "$ip_max")"${str_space}"
+	header+=$(pad_field "$(translate "IP Address")" "$ip_max")"${str_space}"
 	if [ "$has_usage" -eq 1 ]; then
-		header+=$(pad_field "总计流量" "$total_max")
+		header+=$(pad_field "$(translate "Total Traffic")" "$total_max")
 	fi
-	header+=$(pad_field "在线时间" "$time_online_max")
-	header+="客户端名"
+	header+=$(pad_field "$(translate "Uptime")" "$time_online_max")
+	header+=$(translate "Client Name")
 
 	content="${content}${explain}${header}"
 
@@ -1975,26 +2010,28 @@ get_client_usage() {
 				local ip_name=$(getname ${ip} ${mac})
 				local tmp_usage=$(bytes_for_humans $(expr $(usage get ${mac} bytes) - ${get_client_usage_bytes}))
 				local time_up=$(jq -r --arg mac "$mac" '.devices[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase) and .status == "online") | .uptime' "$devices_json")
-				local ip_total=$(usage get $mac) && [ -n "$ip_total" ] && local ip_total="${str_linefeed}${str_tab}总计流量： ${str_space}${str_space}${str_space}${str_space}${ip_total}"
+				local ip_total=$(usage get $mac) && [ -n "$ip_total" ] && local ip_total="${str_linefeed}${str_tab}$(translate "Total Traffic:") ${str_space}${str_space}${str_space}${str_space}${ip_total}"
 				local time1=$(date +%s)
 				local time1=$(time_for_humans $(expr ${time1} - ${time_up}))
+				
 				if [ -z "$title" ]; then
-					title="${ip_name} 流量异常"
-					local content_title="${str_splitline}${str_title_start} 设备流量异常${str_title_end}"
-				elif echo "$title" | grep -q "流量异常"; then
+					title="$(translate "${ip_name} abnormal traffic")"
+					local content_title="${str_splitline}${str_title_start}$(translate "Device abnormal traffic")${str_title_end}"
+				elif echo "$title" | grep -q "$(translate "abnormal traffic")"; then
 					title="${ip_name} ${title}"
 				else
-					title="设备状态变化"
-					local content_title="${str_splitline}${str_title_start} 设备流量异常${str_title_end}"
+					title="$(translate "Device status changed")"
+					local content_title="${str_splitline}${str_title_start}$(translate "Device abnormal traffic")${str_title_end}"
 				fi
 
-				local content_name="${str_linefeed}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${ip_name}"
-				local content_ip="${str_linefeed}${str_tab}客户端IP：${str_space}${str_space}${str_space}${str_space}${ip}"
-				local content_mac="${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}"
-				local content_usage="${str_linefeed}${str_tab}一分钟内流量：${str_space}${str_space}${str_space}${tmp_usage}"
-				local content_time="${str_linefeed}${str_tab}在线时间：${str_space}${str_space}${str_space}${str_space}${time1}"
-
-				content="${content}${content_title}${content_name}${content_ip}${content_mac}${content_usage}${content_time}"
+				content="\
+				${content}\
+				${content_title}\
+				${str_linefeed}${str_tab}$(translate "Client Name:")${str_space}${str_space}${str_space}${str_space}${str_space}${ip_name}\
+				${str_linefeed}${str_tab}$(translate "Client IP:")${str_space}${str_space}${str_space}${str_space}${ip}\
+				${str_linefeed}${str_tab}$(translate "Client MAC:")${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}\
+				${str_linefeed}${str_tab}$(translate "Traffic in 1 minute:")${str_space}${str_space}${str_space}${tmp_usage}\
+				${str_linefeed}${str_tab}$(translate "Uptime:")${str_space}${str_space}${str_space}${str_space}${time1}"
 			fi
 		done
 		cat ${dir}/client_usage_aliases >${dir}/old_client_usage_aliases
@@ -2014,7 +2051,7 @@ add_ip_white() {
 	unset ipset_name
 	(echo "$1" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$') && local ipset_name="wechatpush_whitelist"
 	(echo "$1" | grep -Eq '^([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}$') && local ipset_name="wechatpush_whitelistv6"
-	[ -z "$ipset_name" ] && log_change "【！！！】白名单添加失败，IP 格式错误" && return
+	[ -z "$ipset_name" ] && log_change "[ERROR] $(translate "Whitelist add failed, IP format error")" && return
 
 	[ -n "$nftables_version" ] && {
 		nft delete element inet fw4 $ipset_name { $1 } >/dev/null 2>&1
@@ -2278,22 +2315,30 @@ process_login() {
 send() {
 	pid=$$
 	echo "$pid" >"${dir}/send_pid"
-	log_change "【定时数据】创建定时任务"
+	log_change "[INFO] $(translate "Create scheduled task")"
 	>"${dir}/send_enable.lock"
 	disturb
 	disturb_RETVAL=$?
-	[ "$disturb_RETVAL" -ne "0" ] && log_change "${disturb_text}免打扰时间，退出定时推送" && return
+	[ "$disturb_RETVAL" -ne "0" ] && log_change "${disturb_text}$(translate "Do not disturb time, exit scheduled push")" && return
 	get_config "send_title" "send_notification"
 
-	[ -z "$1" ] && cpuload=$(getcpu)
+	[ -z "$1" ] && cpu_load=$(getcpu)
 	[ -z "$1" ] && service_status=$(ubus call service list '{"name": "wechatpush"}' | grep -o '"running": true')
 	# 只有当主程序没有运行，且定时任务中选择了推送设备列表，才进行在线设备扫描
 	[ -z "$1" ] && [ -z "$service_status" ] && echo "$send_notification" | grep -q "client_list" && first &
 	if [ -z "$1" ] && (echo "$send_notification" | grep -q "router_status"); then
 		cat /proc/loadavg | awk '{print $1" "$2" "$3}' >"$output_dir/systemload" &
-		free -m | sed -n '2p' | awk '{printf "%.2f%%\n",($3/$2)*100}' >"$output_dir/ramload" &
+		free -m | sed -n '2p' | awk '{printf "%.2f%%\n",($3/$2)*100}' >"$output_dir/mem_usage" &
 		curl -o /dev/null --connect-timeout 5 -s -w %{http_code} www.google.com >"$output_dir/Qwai" &
-		cat /proc/uptime | awk -F. '{run_days=$1 / 86400;run_hour=($1 % 86400)/3600;run_minute=($1 % 3600)/60;run_second=$1 % 60;printf("运行时间：%d天%d时%d分%d秒",run_days,run_hour,run_minute,run_second)}' >"$output_dir/systemstatustime" &
+		uptime_format=$(translate "Uptime: %dd%dh%dm%ds")
+		cat /proc/uptime | awk -F. -v fmt="$uptime_format" '{
+			run_days=$1 / 86400
+			run_hour=($1 % 86400)/3600
+			run_minute=($1 % 3600)/60
+			run_second=$1 % 60
+			printf(fmt"\n", run_days, run_hour, run_minute, run_second)
+		}' > "$output_dir/systemstatustime" &
+		[ -n "$interfaceuptime" ] && wanstatustime=$(printf "$(translate "Uptime: %dd%dh%dm%ds")" $((interfaceuptime / 86400)) $(((interfaceuptime % 86400) / 3600)) $(((interfaceuptime % 3600) / 60)) $((interfaceuptime % 60)))
 		systeminfo_enable="1"
 	fi
 	[ -z "$1" ] && (echo "$send_notification" | grep -q "router_temp") && soc_temp >"$output_dir/cputemp" &
@@ -2313,25 +2358,57 @@ send() {
 	#[ -z "$1" ] && ( echo "$send_notification"|grep -q "disk_info" ) && get_disk &
 	[ -z "$1" ] && get_disk &
 
-	[ -z "$1" ] && send_title="路由状态："
-	[ -n "$1" ] && send_title="发送测试：" && send_content="${str_splitline}${str_title_start}内容1${str_title_end}${str_linefeed}${str_tab}设备1${str_linefeed}${str_tab}设备2${str_splitline}${str_title_start}内容2${str_title_end}${str_linefeed}${str_tab}设备3${str_linefeed}${str_tab}设备4"
+	[ -z "$1" ] && send_title="$(translate "Router status:")"
+	[ -n "$1" ] && send_title="$(translate "Send test:")" && send_content="\
+	${str_splitline}\
+	${str_title_start}$(translate "Content 1")${str_title_end}\
+	${str_linefeed}\
+	${str_tab}$(translate "Device 1")\
+	${str_linefeed}\
+	${str_tab}$(translate "Device 2")\
+	${str_splitline}\
+	${str_title_start}$(translate "Content 2")${str_title_end}\
+	${str_linefeed}\
+	${str_tab}$(translate "Device 3")\
+	${str_linefeed}\
+	${str_tab}$(translate "Device 4")"
 
 	wait_and_cat
 	[ -z "$1" ] && (echo "$send_notification" | grep -q "client_list") && current_device & # 设备列表需等待 first & 完成
 
+	[ "$disturb_RETVAL" -ne "0" ] && log_change "${disturb_text}$(translate "Do not disturb time, exit scheduled push")" && return
 	if [ -z "$1" ] && [ -n "$systeminfo_enable" ]; then
-		[[ $Qwai -eq 200 || $Qwai -eq 301 || $Qwai -eq 302 ]] && Qwai_status="已连通！" || Qwai_status="已断开！"
-		send_content="${send_content}${str_splitline}${str_title_start} 系统运行状态${str_title_end}"
-		send_content="${send_content}${str_linefeed}${str_tab}平均负载：${systemload}"
-		send_content="${send_content}${str_linefeed}${str_tab}CPU占用：${cpuload}"
-		send_content="${send_content}${str_linefeed}${str_tab}内存占用：${ramload}"
-		send_content="${send_content}${str_linefeed}${str_tab}全球互联：${Qwai_status}"
-		send_content="${send_content}${str_linefeed}${str_tab}${systemstatustime}"
+		[[ $Qwai -eq 200 || $Qwai -eq 301 || $Qwai -eq 302 ]] && Qwai_status="$(translate "Connected!")" || Qwai_status="$(translate "Disconnected!")"
+		send_content="${send_content}\
+		${str_splitline}\
+		${str_title_start}$(translate "System running status")${str_title_end}\
+		${str_linefeed}\
+		${str_tab}$(translate "Average load:") ${systemload}\
+		${str_linefeed}\
+		${str_tab}$(translate "CPU usage:") ${cpu_load}\
+		${str_linefeed}\
+		${str_tab}$(translate "Memory usage:") ${mem_usage}"
+		if [[ "$lang" == "zh-cn" ]]; then
+			send_content="${send_content}\
+			${str_linefeed}\
+			${str_tab}$(translate "Global connection:")${Qwai_status}"
+		fi
+		send_content="${send_content}\
+		${str_linefeed}\
+		${str_tab}${systemstatustime}"
 	fi
 
 	if [ -z "$1" ] && (echo "$send_notification" | grep -q "router_temp"); then
-		[ -n "$cputemp" ] && send_content="${send_content}${str_splitline}${str_title_start} 设备温度${str_title_end}${str_linefeed}${str_tab}CPU：${cputemp}℃"
-		[ -z "$cputemp" ] && send_content="${send_content}${str_splitline}${str_title_start} 设备温度${str_title_end}${str_linefeed}${str_tab}无法获取设备温度"
+		[ -n "$cputemp" ] && send_content="${send_content}\
+		${str_splitline}\
+		${str_title_start}$(translate "Device temperature")${str_title_end}\
+		${str_linefeed}\
+		${str_tab}$(translate "CPU:") ${cputemp}℃"
+		[ -z "$cputemp" ] && send_content="${send_content}\
+		${str_splitline}\
+		${str_title_start}$(translate "Device temperature")${str_title_end}\
+		${str_linefeed}\
+		${str_tab}$(translate "Unable to get device temperature")"
 	fi
 
 	#if [ -z "$1" ] && ( echo "$send_notification"|grep -q "disk_info" ); then
@@ -2340,31 +2417,58 @@ send() {
 	fi
 
 	if [ -z "$1" ] && [ -n "$waninfo_enable" ]; then
-		send_content="${send_content}${str_splitline}${str_title_start} WAN 口信息${str_title_end}"
-		if [ "$send_wanIP" == "$send_hostIP" ]; then
-			send_content="${send_content}${str_linefeed}${str_tab}IPv4: ${send_wanIP}"
-		elif [ "$get_ipv4_mode" -eq "1" ]; then
-			send_content="${send_content}${str_linefeed}${str_tab}接口 IPv4: ${send_wanIP}"
-			[ -n "$send_hostIP" ] && send_content="${send_content}${str_linefeed}${str_tab}外网 IPv4: ${send_hostIP}"
-		elif [ "$get_ipv4_mode" -eq "2" ]; then
-			[ -n "$send_wanIP" ] && send_content="${send_content}${str_linefeed}${str_tab}接口 IPv4: ${send_wanIP}"
-			send_content="${send_content}${str_linefeed}${str_tab}外网 IPv4: ${send_hostIP}"
-		fi
-		if [ -n "$ipv6_enable" ]; then
-			if [ "$send_wanIPv6" == "$send_hostIPv6" ]; then
-				send_content="${send_content}${str_linefeed}${str_tab}IPv6: ${send_wanIPv6}"
-			elif [ "$get_ipv6_mode" -eq "1" ]; then
-				send_content="${send_content}${str_linefeed}${str_tab}接口 IPv6: ${send_wanIPv6}"
-				[ -n "$send_hostIPv6" ] && send_content="${send_content}${str_linefeed}${str_tab}外网 IPv6: ${send_hostIPv6}"
-			elif [ "$get_ipv6_mode" -eq "2" ]; then
-				[ -n "$send_wanIPv6" ] && send_content="${send_content}${str_linefeed}${str_tab}接口 IPv6: ${send_wanIPv6}"
-				send_content="${send_content}${str_linefeed}${str_tab}外网 IPv6: ${send_hostIPv6}"
-			fi
-		fi
-		interfaceuptime=$(getinterfaceuptime)
-		[ -n "$interfaceuptime" ] && wanstatustime=$(printf "在线时间：%d天%d时%d分%d秒" $((interfaceuptime / 86400)) $(((interfaceuptime % 86400) / 3600)) $(((interfaceuptime % 3600) / 60)) $((interfaceuptime % 60)))
-		send_content="${send_content}${str_linefeed}${str_tab}${wanstatustime}"
+	send_content="${send_content}\
+	${str_splitline}\
+	${str_title_start}$(translate "WAN Port Information")${str_title_end}"
+	
+	if [ "$send_wanIP" == "$send_hostIP" ]; then
+		send_content="${send_content}\
+		${str_linefeed}\
+		${str_tab}IPv4: ${send_wanIP}"
+	elif [ "$get_ipv4_mode" -eq "1" ]; then
+		send_content="${send_content}\
+		${str_linefeed}\
+		${str_tab}$(translate "Interface IPv4:") ${send_wanIP}"
+		[ -n "$send_hostIP" ] && send_content="${send_content}\
+		${str_linefeed}\
+		${str_tab}$(translate "Public IPv4:") ${send_hostIP}"
+	elif [ "$get_ipv4_mode" -eq "2" ]; then
+		[ -n "$send_wanIP" ] && send_content="${send_content}\
+		${str_linefeed}\
+		${str_tab}$(translate "Interface IPv4:") ${send_wanIP}"
+		send_content="${send_content}\
+		${str_linefeed}\
+		${str_tab}$(translate "Public IPv4:") ${send_hostIP}"
 	fi
+	
+	if [ -n "$ipv6_enable" ]; then
+		if [ "$send_wanIPv6" == "$send_hostIPv6" ]; then
+			send_content="${send_content}\
+			${str_linefeed}\
+			${str_tab}IPv6: ${send_wanIPv6}"
+		elif [ "$get_ipv6_mode" -eq "1" ]; then
+			send_content="${send_content}\
+			${str_linefeed}\
+			${str_tab}$(translate "Interface IPv6:") ${send_wanIPv6}"
+			[ -n "$send_hostIPv6" ] && send_content="${send_content}\
+			${str_linefeed}\
+			${str_tab}$(translate "Public IPv6:") ${send_hostIPv6}"
+		elif [ "$get_ipv6_mode" -eq "2" ]; then
+			[ -n "$send_wanIPv6" ] && send_content="${send_content}\
+			${str_linefeed}\
+			${str_tab}$(translate "Interface IPv6:") ${send_wanIPv6}"
+			send_content="${send_content}\
+			${str_linefeed}\
+			${str_tab}$(translate "Public IPv6:") ${send_hostIPv6}"
+		fi
+	fi
+	
+	interfaceuptime=$(getinterfaceuptime)
+	[ -n "$interfaceuptime" ] && wanstatustime=$(printf "$(translate "Uptime: %dd%dh%dm%ds")" $((interfaceuptime / 86400)) $(((interfaceuptime % 86400) / 3600)) $(((interfaceuptime % 3600) / 60)) $((interfaceuptime % 60)))
+	send_content="${send_content}\
+	${str_linefeed}\
+	${str_tab}${wanstatustime}"
+fi
 
 	if [ -z "$1" ] && (echo "$send_notification" | grep -q "client_list"); then
 		wait_and_cat
@@ -2372,10 +2476,16 @@ send() {
 	fi
 
 	[ -n "$device_name" ] && send_title="【$device_name】${send_title}"
-	[ -z "$send_content" ] && send_content="${str_splitline}${str_title_start} 我遇到了一个难题${str_title_end}${str_linefeed}${str_tab}定时发送选项错误，你没有选择需要发送的项目，该怎么办呢${str_splitline}"
+	[ -z "$send_content" ] && send_content="\
+	${str_splitline}\
+	${str_title_start}$(translate "I encountered a problem")${str_title_end}\
+	${str_linefeed}\
+	${str_tab}$(translate "Scheduled send option error, you didn't select any items to send, what should I do?")\
+	${str_splitline}"
+
 	diy_send "${send_title}" "${send_content}" "${jsonpath}" "$1" >/dev/null 2>&1
 	RETVAL=$?
-	[ $RETVAL -eq 1 ] && log_change "【！！！】定时推送失败，请检查网络或设置信息" || log_change "${disturb_text}定时推送任务完成"
+	[ $RETVAL -eq 1 ] && log_change "[ERROR] $(translate "Scheduled push failed, please check network or settings")" || log_change "${disturb_text}$(translate "Scheduled push task completed")"
 	deltemp
 	rm -f "${dir}/send_pid"
 	return $RETVAL
@@ -2399,7 +2509,7 @@ login_send() {
 	[ -f "$logfile" ] && login_log=$(grep -w "$login_ip" "$logfile" | grep -v "\【info\】" | tail -n 1)
 	[ -n "$login_log" ] && log_timestamp=$(date -d "$(echo "$login_log" | awk '{print $1, $2}')" +%s) || log_timestamp=0
 	if echo "$login_ip_white_list" | grep -w -q "$login_ip" || ( [ -n "$login_disturb" ] && [ "$login_disturb" -eq 1 ] ); then
-		log_change "【info】设备 ${login_ip} 通过 ${log_type_short} 登录了路由器 " && return
+		log_change "[INFO] $(translate "Device ${login_ip} logged into router via ${log_type_short}")" && return
 	elif [ -n "$login_disturb" ] && [ "$login_disturb" -eq 2 ]; then
 		[ $(($(date +%s) - log_timestamp)) -lt $login_notification_delay ] && [ -n "$login_log_enable" ] && return
 	fi
@@ -2410,7 +2520,7 @@ login_send() {
 	if [[ "$log_type" == "web"* ]]; then
 		# Web 登录、非法登录
 		local login_mode=$(logread notice | grep -E ".* $login_time.*$login_ip.*" | awk '{print $13}' | tail -n 1)
-		[ "$login_mode" = "/" ] && login_mode="/ (首页登录)"
+		[ "$login_mode" = "/" ] && login_mode="$(translate "/ (Homepage login)")"
 	elif [[ "$log_type" == "ssh_login"* ]]; then
 		# SSH 登录
 		local login_mode=$(logread notice | grep -E ".* $login_time.*$login_ip.*" | awk '{print $8}' | tail -n 1)
@@ -2420,21 +2530,23 @@ login_send() {
 
 	if [ -z "$login_disturb" ] || [ "$login_disturb" -ne "1" ]; then
 		if [[ "$log_type" == *"failed"* ]]; then
-			local login_title="${login_ip} 频繁尝试 ${log_type_short} 登录"
-			local login_content_info="${str_splitline}${str_title_start} 封禁信息${str_title_end}"
-			log_change "${disturb_text}设备 ${login_ip} (${login_ip_attribution}) 频繁尝试 ${log_type_short} ${login_mode} 登录"
+			local login_title="$(translate "${login_ip} frequent ${log_type_short} login attempts")"
+			local login_content_info="${str_splitline}${str_title_start}$(translate "Block Information")${str_title_end}"
+			log_change "${disturb_text}$(translate "Device ${login_ip} (${login_ip_attribution}) frequently attempted ${log_type_short} ${login_mode} login")"
 		else
-			local login_title="${login_ip} 通过 ${log_type_short} 登录了路由器"
-			local login_content_info="${str_splitline}${str_title_start} 登录信息${str_title_end}"
-			log_change "${disturb_text}设备 ${login_ip} (${login_ip_attribution}) 通过 ${log_type_short} ${login_mode} 登录了路由器"
+			local login_title="$(translate "${login_ip} logged into router via ${log_type_short}")"
+			local login_content_info="${str_splitline}${str_title_start}$(translate "Login Information")${str_title_end}"
+			log_change "${disturb_text}$(translate "Device ${login_ip} (${login_ip_attribution}) logged into router via ${log_type_short} ${login_mode}")"
 		fi
 
-		
-
-		local login_content_time="${str_linefeed}${str_tab}时间：${str_space}${str_space}${str_space}${str_space}${login_time}"
-		local login_content_ip="${str_linefeed}${str_tab}设备 IP：${str_space}${str_space}${login_ip}"
-		[ -n "$login_ip_attribution" ] && local login_content_attribution="${str_linefeed}${str_tab}归属地：${str_space}${str_space}${login_ip_attribution}"
-		local login_content_mode="${str_linefeed}${str_tab}登录方式：${str_space}${log_type_short} ${login_mode}"
+		local login_content_time="${str_linefeed}${str_tab}$(translate "Time:")\
+		${str_space}${str_space}${str_space}${str_space}${login_time}"
+		local login_content_ip="${str_linefeed}${str_tab}$(translate "Device IP:")\
+		${str_space}${str_space}${login_ip}"
+		[ -n "$login_ip_attribution" ] && local login_content_attribution="${str_linefeed}${str_tab}$(translate "Location:")\
+		${str_space}${str_space}${login_ip_attribution}"
+		local login_content_mode="${str_linefeed}${str_tab}$(translate "Login Method:")\
+		${str_space}${log_type_short} ${login_mode}"
 
 		login_content="${login_content_info}${login_content_time}${login_content_ip}${login_content_attribution}${login_content_mode}"
 	fi
@@ -2464,29 +2576,29 @@ down_send() {
 		local name=$(getname "$ip" "$mac")
 		local time_up=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "offline") | .uptime' "$devices_json")
 		local ip_total=$(usage get "$mac")
-		[ -n "$ip_total" ] && ip_total="${str_linefeed}${str_tab}总计流量： ${str_space}${str_space}${str_space}${str_space}${ip_total}"
+		[ -n "$ip_total" ] && ip_total="${str_linefeed}${str_tab}$(translate "Total Traffic:") ${str_space}${str_space}${str_space}${str_space}${ip_total}"
 		local time1=$(date +%s)
 		local time1=$(time_for_humans $(expr ${time1} - ${time_up}))
 
 		if [ -z "$title" ]; then
-			title="${name} 断开连接"
-			content_title="${str_splitline}${str_title_start} 设备断开连接${str_title_end}"
-		elif echo "$title" | grep -q "断开连接"; then
+			title="$(translate "${name} disconnected")"
+			content_title="${str_splitline}${str_title_start}$(translate "Device Disconnected")${str_title_end}"
+		elif echo "$title" | grep -q "$(translate "disconnected")"; then
 			title="${name} ${title}"
 			content_title=""
 		else
-			title="设备状态变化"
-			content_title="${str_splitline}${str_title_start} 设备断开连接${str_title_end}"
+			title="$(translate "Device Status Changed")"
+			content_title="${str_splitline}${str_title_start}$(translate "Device Disconnected")${str_title_end}"
 		fi
 
-		local content_name="${str_linefeed}${str_tab}客户端名：${str_space}${str_space}${str_space}${str_space}${str_space}${name}"
-		local content_ip="${str_linefeed}${str_tab}客户端IP：${str_space}${str_space}${str_space}${str_space}${ip}"
-		local content_mac="${str_linefeed}${str_tab}客户端MAC：${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}"
-		local content_time="${str_linefeed}${str_tab}在线时间：${str_space}${str_space}${str_space}${str_space}${time1}"
+		content="${content}\
+		${content_title}\
+		${str_linefeed}${str_tab}$(translate "Client Name:")${str_space}${str_space}${str_space}${str_space}${str_space}${name}\
+		${str_linefeed}${str_tab}$(translate "Client IP:")${str_space}${str_space}${str_space}${str_space}${ip}\
+		${str_linefeed}${str_tab}$(translate "Client MAC:")${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}\
+		${str_linefeed}${str_tab}$(translate "Uptime:")${str_space}${str_space}${str_space}${str_space}${time1}"
 
-		content="${content}${content_title}${content_name}${content_ip}${content_mac}${content_time}"
-
-		log_change "${disturb_text}设备 ${name} ${ip} 断开连接 "
+		log_change "${disturb_text}$(translate "Device ${name} ${ip} disconnected")"
 	done
 	silent_run LockFile lock
 	jq 'del(.devices[] | select(.status == "offline"))' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
@@ -2497,28 +2609,34 @@ down_send() {
 diy_send() {
 	[ -z "$jsonpath" ] && return
 	(! echo "$lite_enable" | grep -q "content") && (! echo "$lite_enable" | grep -q "nowtime") && local nowtime=$(date "+%Y-%m-%d %H:%M:%S")
-	! jq -r '.' ${3} >/dev/null 2>&1 && log_change "【！！！】json 文件格式错误，这不是一个标准的 json 文件，请检查 ${3} 文件是否有特殊符号未转义或语法错误" && return 1
+
+	! jq -r '.' ${3} >/dev/null 2>&1 && log_change "[ERROR] $(translate "JSON format error, not a standard JSON file, please check ${3} for unescaped special characters or syntax errors")" && return 1
+
 	local diyurl=$(jq -r .url ${3}) && local diyurl=$(eval echo ${diyurl})
 	local type=$(jq -r '.type' ${3}) && local type=$(eval echo ${type})
 	local data=$(jq -r '.data' ${3}) && local data=$(eval echo ${data})
 	local content_type=$(jq -r '.content_type' ${3})
-	! jq "$type" ${3} >${tempjsonpath} && log_change "【！！！】type:{ } 字段转义变量后格式错误，请检查 type:{ } 字段内是否有特殊符号未转义或语法错误" && return 1
+
+	! jq "$type" ${3} >${tempjsonpath} && log_change "[ERROR] $(translate "type:{ } field format error after variable substitution, please check for unescaped special characters or syntax errors in type:{ } field")" && return 1
 
 	[ -n "$proxy_address" ] && local proxy_cmd="-x $proxy_address"
 	run_with_tag curl $proxy_cmd --connect-timeout 30 --max-time 60 --retry 2 -X POST -H "$content_type" -d "$data" "${diyurl}"
 	local RETVAL=$?
 
 	if [ $RETVAL -ne 0 ] || [[ -n "$4" && "$4" == "test" ]]; then
-		[ $RETVAL -ne 0 ] && log_change "【！！！】网络错误或 URL 错误，推送失败，curl 返回值为 ${RETVAL}，请参考如下调试信息进行排查"
-		[ -n "$4" ] && log_change "【debug】推送测试已开启，当前 curl 返回值为 ${RETVAL}"
+		[ $RETVAL -ne 0 ] && log_change "[ERROR] $(translate "Network or URL error, push failed, curl returned ${RETVAL}, please check the following debug information")"
+		[ -n "$4" ] && log_change "[DEBUG] $(translate "Push test enabled, current curl return value is ${RETVAL}")"
+		
 		echo '{"url":"'${diyurl}'","content_type":"'${content_type}'","type":'$(jq "$type" ${3})'}' >${dir}/debug_send_json
 		echo -e "${send_title}" "${send_content}" >${dir}/debug_send_content
 		cat ${tempjsonpath} >${dir}/debug_send_data
-		! jq -r '.' ${dir}/debug_send_json && log_change "【！！！】转义变量后格式错误，请检查 ${dir}/debug_send_json 字段内是否有特殊符号未转义或语法错误"
-		log_change "【debug】json 文件已保存至：${dir}/debug_send_json"
-		log_change "【debug】推送内容预览文件保存至：${dir}/debug_send_content"
-		log_change "【debug】如果收不到信息，请检查 ${dir}/debug_send_data 文件，或使用下列命令手动测试返回值"
-		log_change "【debug】curl -X POST -H \"$content_type\" -d \"@${dir}/debug_send_data\" \"${diyurl}\""
+		
+		! jq -r '.' ${dir}/debug_send_json && log_change "[ERROR] $(translate "Format error after variable substitution, please check ${dir}/debug_send_json for unescaped special characters or syntax errors")"
+		
+		log_change "[DEBUG] $(translate "JSON file saved to: ${dir}/debug_send_json")"
+		log_change "[DEBUG] $(translate "Push content preview saved to: ${dir}/debug_send_content")"
+		log_change "[DEBUG] $(translate "If no message received, please check ${dir}/debug_send_data or use the following command to test manually")"
+		log_change "[DEBUG] curl -X POST -H \"$content_type\" -d \"@${dir}/debug_send_data\" \"${diyurl}\""
 		return 1
 	else
 		return 0
