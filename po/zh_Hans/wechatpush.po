@@ -1460,3 +1460,63 @@ msgstr "当前 IPv6："
 
 msgid "It's late at night, time to rest"
 msgstr "夜深了，该休息了"
+
+msgid "Failed to get IP, current API: %s & %s"
+msgstr "IP 获取失败，当前使用的 API 为 %s & %s"
+
+msgid "Failed to get IPv6, current API: %s & %s"
+msgstr "IPv6 获取失败，当前使用的 API 为 %s & %s"
+
+msgid "Log exceeded limit, keeping last 300 entries"
+msgstr "日志超出上限，保留最后 300 条"
+
+msgid "%ds"
+msgstr "%d秒"
+
+msgid "%dm%ds"
+msgstr "%d分%d秒"
+
+msgid "%dh%dm"
+msgstr "%d时%d分"
+
+msgid "%dd%dh"
+msgstr "%d天%d时"
+
+msgid "Failed to read settings, please check configuration"
+msgstr "读取设置出错，请检查设置项"
+
+msgid "Loading online devices..."
+msgstr "载入在线设备..."
+
+msgid "Initialization completed"
+msgstr "初始化完成"
+
+msgid "Start running..."
+msgstr "开始运行..."
+
+msgid "Loaded logs from previous restart"
+msgstr "载入上次重启前日志"
+
+msgid "wrtbwmon not installed, traffic statistics unavailable"
+msgstr "未安装 wrtbwmon，流量统计不可用"
+
+msgid "Cannot get iputils-arping version, please confirm if plugin is running properly"
+msgstr "无法获取依赖项 iputils-arping 版本号，请确认插件是否正常运行"
+
+msgid "Cannot get curl version, please confirm if plugin is running properly"
+msgstr "无法获取依赖项 curl 版本号，请确认插件是否正常运行"
+
+msgid "Please fill in the correct API key"
+msgstr "请填写正确的 key"
+
+msgid "Multiple interfaces detected or configuration error, may not get interface uptime information, please confirm if plugin is running properly"
+msgstr "存在多个接口或配置错误，可能无法获取接口在线时间等信息，请确认插件是否正常运行"
+
+msgid "Cannot read device temperature, please check command"
+msgstr "无法读取设备温度，请检查命令"
+
+msgid "Cannot read device load, please check command"
+msgstr "无法读取设备负载，请检查命令"
+
+msgid "Device list file format error, needs reinitialization. Original file saved to %s.err"
+msgstr "设备列表文件格式错误，需重新初始化，原文件已保存至 %s.err"

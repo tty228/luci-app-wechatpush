@@ -116,26 +116,30 @@ init() {
 	enable_detection
 	[ -f "$logfile" ] && local logrow=$(grep -c "" "$logfile") || local logrow="0"
 	[ "$logrow" -ne 0 ] && echo "---------------------------------------------------------------------------------------" >>${logfile}
-	log_change "【初始化】start running..."
+	log_change "[INFO] $(translate "Start running...")"
 	if [ -f "/usr/share/wechatpush/errlog" ]; then
 		cat /usr/share/wechatpush/errlog >${logfile}
-		log_change "【！！！】载入上次重启前日志"
+		log_change "[ERROR] $(translate "Loaded logs from previous restart")"
 	fi
 
 	# 配置检查
-	[ ! -f "/usr/sbin/wrtbwmon" ] && log_change "【info】未安装 wrtbwmon ，流量统计不可用"
-	[ -z "$ip_version" ] && log_change "【！！！】无法获取依赖项 iputils-arping 版本号，请确认插件是否正常运行"
-	[ -z "$cu_version" ] && log_change "【！！！】无法获取依赖项 curl 版本号，请确认插件是否正常运行"
-	[ -n "$jsonpath" ] && [ -z "${sckey}${sc3key}${sc3uid}${sc3tags}${tg_token}${pushplus_token}${corpid}${wxpusher_apptoken}${wxpusher_uids}${wxpusher_topicIds}" -a "${jsonpath}" != "/usr/share/wechatpush/api/diy.json" ] && log_change "【！！！】请填写正确的 key" && return 1
-	local interfacelist=$(getinterfacelist) && [ -z "$interfacelist" ] && log_change "【！！！】存在多个接口或配置错误，可能无法获取接口在线时间等信息，请确认插件是否正常运行"
+	[ ! -f "/usr/sbin/wrtbwmon" ] && log_change "[WARN] $(translate "wrtbwmon not installed, traffic statistics unavailable")"
+	[ -z "$ip_version" ] && log_change "[ERROR] $(translate "Cannot get iputils-arping version, please confirm if plugin is running properly")"
+	[ -z "$cu_version" ] && log_change "[ERROR] $(translate "Cannot get curl version, please confirm if plugin is running properly")"
+
+	[ -n "$jsonpath" ] && [ -z "${sckey}${sc3key}${sc3uid}${sc3tags}${tg_token}${pushplus_token}${corpid}${wxpusher_apptoken}${wxpusher_uids}${wxpusher_topicIds}" -a "${jsonpath}" != "/usr/share/wechatpush/api/diy.json" ] && log_change "[ERROR] $(translate "Please fill in the correct API key")" && return 1
+
+	local interfacelist=$(getinterfacelist) && [ -z "$interfacelist" ] && log_change "[WARN] $(translate "Multiple interfaces detected or configuration error, may not get interface uptime information, please confirm if plugin is running properly")"
+
 	[ -n "$notification_temp" ] && [ -n "$temperature_threshold" ] && local cpu_temp=$(soc_temp) || local cpu_temp="null"
-	[ -z "$cpu_temp" ] && log_change "【！！！】无法读取设备温度，请检查命令"
+	[ -z "$cpu_temp" ] && log_change "[WARN] $(translate "Cannot read device temperature, please check command")"
+
 	[ -n "$notification_load" ] && [ -n "$cpu_load_threshold" ] && local cpu_load=$(cat /proc/loadavg | awk '{print $1}') 2>/dev/null || local cpu_load="null"
-	[ -z "$cpu_load" ] && log_change "【！！！】无法读取设备负载，请检查命令"
+	[ -z "$cpu_load" ] && log_change "[WARN] $(translate "Cannot read device load, please check command")"
 
 	# 检查 JSON 文件格式是否有效
 	if ! jq empty "$devices_json" >/dev/null 2>&1 || ! jq -e 'has("address") and has("devices") and has("disks")' "$devices_json" >/dev/null 2>&1; then
-		[ -f "$devices_json" ] && log_change "【！！！】设备列表文件格式错误，需重新初始化，原文件已保存至 ${devices_json}.err" && mv "$devices_json" "${devices_json}.err"
+		[ -f "$devices_json" ] && log_change "[WARN] $(translate "Device list file format error, needs reinitialization. Original file saved to ${devices_json}.err")" && mv "$devices_json" "${devices_json}.err"
 	fi
 	# 如果设备列表文件为空，初始化
 	[ ! -s "$devices_json" ] && echo '{"address": [], "devices": [], "disks": []}' >"$devices_json"
@@ -288,11 +292,12 @@ main() {
 
 	# 载入在线设备
 	init
-	[ $? -eq 1 ] && log_change "【！！！】读取设置出错，请检查设置项 " && exit
-	log_change "【初始化】载入在线设备..."
+	[ $? -eq 1 ] && log_change "[ERROR] $(translate "Failed to read settings, please check configuration")" && exit
+
+	log_change "[INFO] $(translate "Loading online devices...")"
 	silent_run monitor_logins
 	>"${dir}/send_enable.lock" && first && deltemp
-	log_change "【初始化】初始化完成"
+	log_change "[INFO] $(translate "Initialization completed")"
 
 	# 循环
 	while [ "$enable" -eq "1" ]; do
@@ -407,24 +412,19 @@ time_for_humans() {
 	[ -z "$1" ] && return
 
 	if [ "$1" -lt 60 ]; then
-		echo "${1}秒"
+		printf "$(translate "%ds")\n" "$1"
 	elif [ "$1" -lt 3600 ]; then
-		local usetime_min=$(expr $1 / 60)
-		local usetime_sec=$(expr $usetime_min \* 60)
-		local usetime_sec=$(expr $1 - $usetime_sec)
-		echo "${usetime_min}分${usetime_sec}秒"
+		local minutes=$(( $1 / 60 ))
+		local seconds=$(( $1 % 60 ))
+		printf "$(translate "%dm%ds")\n" "$minutes" "$seconds"
 	elif [ "$1" -lt 86400 ]; then
-		local usetime_hour=$(expr $1 / 3600)
-		local usetime_min=$(expr $usetime_hour \* 3600)
-		local usetime_min=$(expr $1 - $usetime_min)
-		local usetime_min=$(expr $usetime_min / 60)
-		echo "${usetime_hour}小时${usetime_min}分"
+		local hours=$(( $1 / 3600 ))
+		local minutes=$(( ($1 % 3600) / 60 ))
+		printf "$(translate "%dh%dm")\n" "$hours" "$minutes"
 	else
-		local usetime_day=$(expr $1 / 86400)
-		local usetime_hour=$(expr $usetime_day \* 86400)
-		local usetime_hour=$(expr $1 - $usetime_hour)
-		local usetime_hour=$(expr $usetime_hour / 3600)
-		echo "${usetime_day}天${usetime_hour}小时"
+		local days=$(( $1 / 86400 ))
+		local hours=$(( ($1 % 86400) / 3600 ))
+		printf "$(translate "%dd%dh")\n" "$days" "$hours"
 	fi
 }
 
@@ -573,7 +573,7 @@ deltemp() {
 	unset title content gateway_iplist
 	rm -f "${dir}/title" "${dir}/content" "${dir}/send_enable.lock" "${tempjsonpath}" "${dir}/cookies.txt" >/dev/null 2>&1
 	[ -f "$logfile" ] && local logrow=$(grep -c "" "$logfile") || local logrow="0"
-	[ "$logrow" -gt 500 ] && tail -n 300 "$logfile" >"${logfile}.tmp" && mv "${logfile}.tmp" "$logfile" && log_change "【清理】日志超出上限，保留最后 300 条"
+	[ "$logrow" -gt 500 ] && tail -n 300 "$logfile" >"${logfile}.tmp" && mv "${logfile}.tmp" "$logfile" && log_change "[DEBUG] $(translate "Log exceeded limit, keeping last 300 entries")"
 }
 
 # ------------------------------------
@@ -594,7 +594,7 @@ getip() {
 		local ipv4_URL
 		while IFS= read -r ipv4_URL; do
 			[ -n "$ipv4_interface" ] && local tmp_hostIP=$(eval "curl --connect-timeout 2 -m 2 -k -s -4 --interface ${ipv4_interface} -m 5 ${ipv4_URL}") || local tmp_hostIP=$(eval "curl --connect-timeout 2 -m 2 -k -s -4 -m 5 ${ipv4_URL}")
-			[ -z "$tmp_hostIP" ] && log_change "【info】IP 获取失败，当前使用的 API 为 $ipv4_URL & ${ipv4_interface}"
+			[ -z "$tmp_hostIP" ] && log_change "[DEBUG] $(translate "Failed to get IP, current API: ${ipv4_URL} & ${ipv4_interface}")"
 			local tmp_hostIP=$(echo $tmp_hostIP | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | head -n1)
 			[ -n "$tmp_hostIP" ] && local tmp_hostIP="{\"IP\":\"${tmp_hostIP}\", \"URL\":\"${ipv4_URL}\"}" && break
 		done <<<"$sorted_ipv4_urllist"
@@ -610,7 +610,7 @@ getip() {
 		local ipv6_URL
 		while IFS= read -r ipv6_URL; do
 			[ -n "$ipv6_interface" ] && local tmp_hostIPv6=$(eval "curl --connect-timeout 2 -m 2 -k -s -6 --interface ${ipv6_interface} -m 5 ${ipv6_URL}") || local tmp_hostIPv6=$(eval "curl --connect-timeout 2 -m 2 -k -s -6 -m 5 ${ipv6_URL}")
-			[ -z "$tmp_hostIPv6" ] && log_change "【info】IP 获取失败，当前使用的 API 为 $ipv6_URL & ${ipv6_interface}"
+			[ -z "$tmp_hostIPv6" ] && log_change "[DEBUG] $(translate "Failed to get IPv6, current API: ${ipv6_URL} & ${ipv6_interface}")"
 			local tmp_hostIPv6=$(echo $tmp_hostIPv6 | grep -oE "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}" | head -n1)
 			[ -n "$tmp_hostIPv6" ] && local tmp_hostIP="{\"IP\":\"${tmp_hostIPv6}\", \"URL\":\"${ipv6_URL}\"}" && break
 		done <<<"$sorted_ipv6_urllist"
