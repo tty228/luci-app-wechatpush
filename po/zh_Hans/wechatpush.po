@@ -1173,14 +1173,14 @@ msgstr "WAN 口信息"
 msgid "Interface IPv4:"
 msgstr "接口 IPv4:"
 
-msgid "Public IPv4:"
-msgstr "公网 IPv4:"
+msgid "Outbound IPv4:"
+msgstr "出口 IPv4:"
 
 msgid "Interface IPv6:"
 msgstr "接口 IPv6:"
 
-msgid "Public IPv6:"
-msgstr "公网 IPv6:"
+msgid "Outbound IPv6:"
+msgstr "出口 IPv6:"
 
 msgid "Uptime: %dd%dh%dm%ds"
 msgstr "在线: %d天%d时%d分%d秒"
@@ -1520,3 +1520,33 @@ msgstr "无法读取设备负载，请检查命令"
 
 msgid "Device list file format error, needs reinitialization. Original file saved to %s.err"
 msgstr "设备列表文件格式错误，需重新初始化，原文件已保存至 %s.err"
+
+msgid "Starting background update of MAC information file"
+msgstr "开始后台更新 MAC 信息文件"
+
+msgid "Failed to download MAC information file, return code: %s"
+msgstr "设备 MAC 信息文件下载失败，返回码为 %s"
+
+msgid "MAC information file downloaded successfully, processing..."
+msgstr "设备 MAC 信息文件下载成功，处理中"
+
+msgid "MAC information file processing completed"
+msgstr "设备 MAC 信息文件处理完成"
+
+msgid "MAC information file does not need updating"
+msgstr "MAC 信息文件无需更新"
+
+msgid "Location query timeout, current API: %s"
+msgstr "归属地获取超时，当前使用的 API 为 %s"
+
+msgid "Currently %d online devices, details below"
+msgstr "现有在线设备 %d 台，具体如下"
+
+msgid "Rebooting router..."
+msgstr "重启路由器咯"
+
+msgid "Re-establishing PPPoE connection..."
+msgstr "重新拨号咯"
+
+msgid "Failed to add to blacklist, invalid IP format: %s (removed from list)"
+msgstr "黑名单添加失败，IP %s 格式错误，已从列表中移除"
