@@ -1366,7 +1366,7 @@ get_disk() {
 				[ -n "$mount_point" ] && local disk_use=$(df -h 2>/dev/null | awk -v mount="$mount_point" '$NF == mount {sub("^/dev/", "", $1); printf "%s: %s\n", $1, $5}')
 			}
 			[ -n "$disk_use" ] && [ $(echo "$disk_use" | wc -l) -ne "1" ] && disk_use=$(echo "$disk_use" | grep -v -w "0%")
-			[ -n "$disk_use" ] && disk_use=$(echo "$disk_use" | sed ':a;N;$!ba;s/\n/'"${str_linefeed}${str_tab}${str_space}${str_tab}${str_space}${str_space}"'/g')
+			[ -n "$disk_use" ] && disk_use=$(echo "$disk_use" | sed ':a;N;$!ba;s/\n/'"${str_linefeed}${str_tab}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}"'/g')
 			[ -n "$disk_use" ] && [ -n "${disk_use// /}" ] && echo -e -n "${str_linefeed}${str_tab}$(translate "Disk Usage:") ${disk_use}" >>"$output_dir/get_disk"
 			
 			# 寿命使用
