@@ -2388,7 +2388,7 @@ ${str_linefeed}\
 ${str_tab}$(translate "CPU usage:") ${cpu_load}\
 ${str_linefeed}\
 ${str_tab}$(translate "Memory usage:") ${mem_usage}"
-		if [[ "$lang" == "zh-cn" ]]; then
+		if [[ "$lang" == "zh_cn" ]]; then
 			send_content="${send_content}\
 ${str_linefeed}\
 ${str_tab}$(translate "Global connection:")${Qwai_status}"

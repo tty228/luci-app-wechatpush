@@ -1480,7 +1480,7 @@ msgid "%dd %dh"
 msgstr "%d天 %d小时"
 
 msgid "Uptime: %dd %dh %dm %ds"
-msgstr "在线: %d天 %d小时 %d分 %d秒"
+msgstr "运行时间: %d天%d时%d分%d秒"
 
 msgid "Failed to read settings, please check configuration"
 msgstr "读取设置出错，请检查设置项"
