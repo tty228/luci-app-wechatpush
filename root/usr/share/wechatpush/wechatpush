@@ -1049,11 +1049,11 @@ ip_changes() {
 
 	if [ "$1" ] && [ "$1" == "getip" ]; then
 		echo "IPv4: ${IPv4}<br />\
-		$(translate 'Location:') $(get_ip_attribution ${IPv4})<br />\
-		$(translate 'Interface:') ${IPv4_URL}<br />\
-		IPv6: ${IPv6}<br />\
-		$(translate 'Location:') $(get_ip_attribution ${IPv6})<br />\
-		$(translate 'Interface:') ${IPv6_URL}"
+$(translate 'Location:') $(get_ip_attribution ${IPv4})<br />\
+$(translate 'Interface:') ${IPv4_URL}<br />\
+IPv6: ${IPv6}<br />\
+$(translate 'Location:') $(get_ip_attribution ${IPv6})<br />\
+$(translate 'Interface:') ${IPv6_URL}"
 		return
 	fi
 	
@@ -1065,18 +1065,18 @@ ip_changes() {
 		log_change "${disturb_text}$(translate "Router has rebooted!")"
 		title="$(translate "Router Rebooted")"
 		content="${content}\
-		${str_splitline}\
-		${str_title_start}$(translate "Router Rebooted")${str_title_end}"
+${str_splitline}\
+${str_title_start}$(translate "Router Rebooted")${str_title_end}"
 	fi
 	
 	if [ "$get_ipv4_mode" -ne "0" ] && [ -n "$IPv4" ] && [ "$IPv4" != "$last_IPv4" ]; then
 		log_change "${disturb_text}$(translate "Current IP: ${IPv4} from: ${IPv4_URL}")"
 		[ -z "$title" ] && title="$(translate "IP Address Changed")"
 		[ -z "$content" ] && content="${content}\
-		${str_splitline}\
-		${str_title_start}$(translate "IP Address Changed")${str_title_end}"
+${str_splitline}\
+${str_title_start}$(translate "IP Address Changed")${str_title_end}"
 		content="${content}\
-		${str_linefeed}${str_tab}$(translate "Current IP:")  ${IPv4}"
+${str_linefeed}${str_tab}$(translate "Current IP:")  ${IPv4}"
 		jq --arg IPv4 "$IPv4" '.address[0].IPv4 = $IPv4' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
 	fi
 	
@@ -1084,10 +1084,10 @@ ip_changes() {
 		log_change "${disturb_text}$(translate "Current IPv6: ${IPv6} from: ${IPv6_URL}")"
 		[ -z "$title" ] && title="$(translate "IPv6 Address Changed")"
 		[ -z "$content" ] && content="${content}\
-		${str_splitline}\
-		${str_title_start}$(translate "IPv6 Address Changed")${str_title_end}"
+${str_splitline}\
+${str_title_start}$(translate "IPv6 Address Changed")${str_title_end}"
 		content="${content}\
-		${str_linefeed}${str_tab}$(translate "Current IPv6:") ${IPv6}"
+${str_linefeed}${str_tab}$(translate "Current IPv6:") ${IPv6}"
 		jq --arg IPv6 "$IPv6" '.address[0].IPv6 = $IPv6' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
 	fi
 
@@ -1184,13 +1184,12 @@ check_cpu_load() {
 					log_change "${disturb_text}$(translate "CPU temperature too high: ${cpu_temp}")"
 
 					local cpu_overload_duration=$(time_for_humans $(($(date +%s) - $temp_last_overload_time)))
-					local cpu_overload_info="\
-					${str_splitline}\
-					${str_title_start}$(translate "CPU Temperature Alert")${str_title_end}\
-					${str_linefeed}${str_tab}$(translate "CPU temperature has exceeded threshold for ${cpu_overload_duration}")\
-					${str_linefeed}${str_tab}$(translate "No further alerts for ${cpu_notification_duration}")\
-					${str_linefeed}${str_tab}$(translate "Current temperature: ${cpu_temp}℃")"
-					content="${content}${cpu_overload_info}"
+					local content="${content}\
+${str_splitline}\
+${str_title_start}$(translate "CPU Temperature Alert")${str_title_end}\
+${str_linefeed}${str_tab}$(translate "CPU temperature has exceeded threshold for ${cpu_overload_duration}")\
+${str_linefeed}${str_tab}$(translate "No further alerts for ${cpu_notification_duration}")\
+${str_linefeed}${str_tab}$(translate "Current temperature: ${cpu_temp}℃")"
 				fi
 			fi
 		else
@@ -1221,13 +1220,12 @@ check_cpu_load() {
 					log_change "${disturb_text}$(translate "CPU load too high: ${cpu_load}")"
 
 					local cpu_load_duration=$(time_for_humans $(($(date +%s) - $cpu_last_overload_time)))
-					local cpu_load_info="\
-					${str_splitline}\
-					${str_title_start}$(translate "CPU Load Alert")${str_title_end}\
-					${str_linefeed}${str_tab}$(translate "CPU load has exceeded threshold for ${cpu_load_duration}")\
-					${str_linefeed}${str_tab}$(translate "No further alerts for ${cpu_notification_duration}")\
-					${str_linefeed}${str_tab}$(translate "Current load: ${cpu_load}")"
-					content="${content}${cpu_load_info}"
+					local content="${content}\
+${str_splitline}\
+${str_title_start}$(translate "CPU Load Alert")${str_title_end}\
+${str_linefeed}${str_tab}$(translate "CPU load has exceeded threshold for ${cpu_load_duration}")\
+${str_linefeed}${str_tab}$(translate "No further alerts for ${cpu_notification_duration}")\
+${str_linefeed}${str_tab}$(translate "Current load: ${cpu_load}")"
 
 					cputop
 				fi
@@ -1759,12 +1757,12 @@ up() {
 			fi
 
 			content="\
-			${str_splitline}\
-			${content_title}\
-			${str_linefeed}${str_tab}$(translate "Client Name:")${str_space}${str_space}${str_space}${str_space}${str_space}${name}\
-			${str_linefeed}${str_tab}$(translate "Client IP:")${str_space}${str_space}${str_space}${str_space}${ip}\
-			${str_linefeed}${str_tab}$(translate "Client MAC:")${str_space}${str_space}${str_space}${str_space}${mac}\
-			${str_linefeed}${str_tab}$(translate "Network Interface:")${str_space}${str_space}${str_space}${str_space}${str_space}${interface}"
+${str_splitline}\
+${content_title}\
+${str_linefeed}${str_tab}$(translate "Client Name:")${str_space}${str_space}${str_space}${str_space}${str_space}${name}\
+${str_linefeed}${str_tab}$(translate "Client IP:")${str_space}${str_space}${str_space}${str_space}${ip}\
+${str_linefeed}${str_tab}$(translate "Client MAC:")${str_space}${str_space}${str_space}${str_space}${mac}\
+${str_linefeed}${str_tab}$(translate "Network Interface:")${str_space}${str_space}${str_space}${str_space}${str_space}${interface}"
 
 			log_change "${disturb_text}$(translate "New device ${name} ${ip} connected")"
 
@@ -1858,15 +1856,15 @@ current_device() {
 	
 	[ "$logrow" -eq "0" ] && {
 		local explain="${send_content}\
-		${str_splitline}\
-		${str_title_start}$(translate "Currently no online devices")${str_title_end}"
+${str_splitline}\
+${str_title_start}$(translate "Currently no online devices")${str_title_end}"
 		content="${content}${explain}${header}"
 		return
 	}
 
 	local explain="${str_splitline}\
-	${str_title_start}$(translate "Currently %d online devices, details below")${str_title_end}" \
-	$(printf "%d" "$logrow")
+${str_title_start}$(translate "Currently %d online devices, details below")${str_title_end}" \
+$(printf "%d" "$logrow")
 
 	local IPLIST
 	if [ -z "$defaultSortColumn" ] || [ "$defaultSortColumn" = "ip" ]; then
@@ -2027,13 +2025,13 @@ get_client_usage() {
 				fi
 
 				content="\
-				${content}\
-				${content_title}\
-				${str_linefeed}${str_tab}$(translate "Client Name:")${str_space}${str_space}${str_space}${str_space}${str_space}${ip_name}\
-				${str_linefeed}${str_tab}$(translate "Client IP:")${str_space}${str_space}${str_space}${str_space}${ip}\
-				${str_linefeed}${str_tab}$(translate "Client MAC:")${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}\
-				${str_linefeed}${str_tab}$(translate "Traffic in 1 minute:")${str_space}${str_space}${str_space}${tmp_usage}\
-				${str_linefeed}${str_tab}$(translate "Uptime:")${str_space}${str_space}${str_space}${str_space}${time1}"
+${content}\
+${content_title}\
+${str_linefeed}${str_tab}$(translate "Client Name:")${str_space}${str_space}${str_space}${str_space}${str_space}${ip_name}\
+${str_linefeed}${str_tab}$(translate "Client IP:")${str_space}${str_space}${str_space}${str_space}${ip}\
+${str_linefeed}${str_tab}$(translate "Client MAC:")${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}\
+${str_linefeed}${str_tab}$(translate "Traffic in 1 minute:")${str_space}${str_space}${str_space}${tmp_usage}\
+${str_linefeed}${str_tab}$(translate "Uptime:")${str_space}${str_space}${str_space}${str_space}${time1}"
 			fi
 		done
 		cat ${dir}/client_usage_aliases >${dir}/old_client_usage_aliases
@@ -2362,18 +2360,18 @@ send() {
 
 	[ -z "$1" ] && send_title="$(translate "Router status:")"
 	[ -n "$1" ] && send_title="$(translate "Send test:")" && send_content="\
-	${str_splitline}\
-	${str_title_start}$(translate "Content 1")${str_title_end}\
-	${str_linefeed}\
-	${str_tab}$(translate "Device 1")\
-	${str_linefeed}\
-	${str_tab}$(translate "Device 2")\
-	${str_splitline}\
-	${str_title_start}$(translate "Content 2")${str_title_end}\
-	${str_linefeed}\
-	${str_tab}$(translate "Device 3")\
-	${str_linefeed}\
-	${str_tab}$(translate "Device 4")"
+${str_splitline}\
+${str_title_start}$(translate "Content 1")${str_title_end}\
+${str_linefeed}\
+${str_tab}$(translate "Device 1")\
+${str_linefeed}\
+${str_tab}$(translate "Device 2")\
+${str_splitline}\
+${str_title_start}$(translate "Content 2")${str_title_end}\
+${str_linefeed}\
+${str_tab}$(translate "Device 3")\
+${str_linefeed}\
+${str_tab}$(translate "Device 4")"
 
 	wait_and_cat
 	[ -z "$1" ] && (echo "$send_notification" | grep -q "client_list") && current_device & # 设备列表需等待 first & 完成
@@ -2382,35 +2380,35 @@ send() {
 	if [ -z "$1" ] && [ -n "$systeminfo_enable" ]; then
 		[[ $Qwai -eq 200 || $Qwai -eq 301 || $Qwai -eq 302 ]] && Qwai_status="$(translate "Connected!")" || Qwai_status="$(translate "Disconnected!")"
 		send_content="${send_content}\
-		${str_splitline}\
-		${str_title_start}$(translate "System running status")${str_title_end}\
-		${str_linefeed}\
-		${str_tab}$(translate "Average load:") ${systemload}\
-		${str_linefeed}\
-		${str_tab}$(translate "CPU usage:") ${cpu_load}\
-		${str_linefeed}\
-		${str_tab}$(translate "Memory usage:") ${mem_usage}"
+${str_splitline}\
+${str_title_start}$(translate "System running status")${str_title_end}\
+${str_linefeed}\
+${str_tab}$(translate "Average load:") ${systemload}\
+${str_linefeed}\
+${str_tab}$(translate "CPU usage:") ${cpu_load}\
+${str_linefeed}\
+${str_tab}$(translate "Memory usage:") ${mem_usage}"
 		if [[ "$lang" == "zh-cn" ]]; then
 			send_content="${send_content}\
-			${str_linefeed}\
-			${str_tab}$(translate "Global connection:")${Qwai_status}"
+${str_linefeed}\
+${str_tab}$(translate "Global connection:")${Qwai_status}"
 		fi
 		send_content="${send_content}\
-		${str_linefeed}\
-		${str_tab}${systemstatustime}"
+${str_linefeed}\
+${str_tab}${systemstatustime}"
 	fi
 
 	if [ -z "$1" ] && (echo "$send_notification" | grep -q "router_temp"); then
 		[ -n "$cputemp" ] && send_content="${send_content}\
-		${str_splitline}\
-		${str_title_start}$(translate "Device temperature")${str_title_end}\
-		${str_linefeed}\
-		${str_tab}$(translate "CPU:") ${cputemp}℃"
+${str_splitline}\
+${str_title_start}$(translate "Device temperature")${str_title_end}\
+${str_linefeed}\
+${str_tab}$(translate "CPU:") ${cputemp}℃"
 		[ -z "$cputemp" ] && send_content="${send_content}\
-		${str_splitline}\
-		${str_title_start}$(translate "Device temperature")${str_title_end}\
-		${str_linefeed}\
-		${str_tab}$(translate "Unable to get device temperature")"
+${str_splitline}\
+${str_title_start}$(translate "Device temperature")${str_title_end}\
+${str_linefeed}\
+${str_tab}$(translate "Unable to get device temperature")"
 	fi
 
 	#if [ -z "$1" ] && ( echo "$send_notification"|grep -q "disk_info" ); then
@@ -2419,58 +2417,58 @@ send() {
 	fi
 
 	if [ -z "$1" ] && [ -n "$waninfo_enable" ]; then
-	send_content="${send_content}\
-	${str_splitline}\
-	${str_title_start}$(translate "WAN Port Information")${str_title_end}"
-	
-	if [ "$send_wanIP" == "$send_hostIP" ]; then
 		send_content="${send_content}\
-		${str_linefeed}\
-		${str_tab}IPv4: ${send_wanIP}"
-	elif [ "$get_ipv4_mode" -eq "1" ]; then
-		send_content="${send_content}\
-		${str_linefeed}\
-		${str_tab}$(translate "Interface IPv4:") ${send_wanIP}"
-		[ -n "$send_hostIP" ] && send_content="${send_content}\
-		${str_linefeed}\
-		${str_tab}$(translate "Outbound IPv4:") ${send_hostIP}"
-	elif [ "$get_ipv4_mode" -eq "2" ]; then
-		[ -n "$send_wanIP" ] && send_content="${send_content}\
-		${str_linefeed}\
-		${str_tab}$(translate "Interface IPv4:") ${send_wanIP}"
-		send_content="${send_content}\
-		${str_linefeed}\
-		${str_tab}$(translate "Outbound IPv4:") ${send_hostIP}"
-	fi
-	
-	if [ -n "$ipv6_enable" ]; then
-		if [ "$send_wanIPv6" == "$send_hostIPv6" ]; then
+${str_splitline}\
+${str_title_start}$(translate "WAN Port Information")${str_title_end}"
+		
+		if [ "$send_wanIP" == "$send_hostIP" ]; then
 			send_content="${send_content}\
-			${str_linefeed}\
-			${str_tab}IPv6: ${send_wanIPv6}"
-		elif [ "$get_ipv6_mode" -eq "1" ]; then
+${str_linefeed}\
+${str_tab}IPv4: ${send_wanIP}"
+		elif [ "$get_ipv4_mode" -eq "1" ]; then
 			send_content="${send_content}\
-			${str_linefeed}\
-			${str_tab}$(translate "Interface IPv6:") ${send_wanIPv6}"
-			[ -n "$send_hostIPv6" ] && send_content="${send_content}\
-			${str_linefeed}\
-			${str_tab}$(translate "Outbound IPv6:") ${send_hostIPv6}"
-		elif [ "$get_ipv6_mode" -eq "2" ]; then
-			[ -n "$send_wanIPv6" ] && send_content="${send_content}\
-			${str_linefeed}\
-			${str_tab}$(translate "Interface IPv6:") ${send_wanIPv6}"
+${str_linefeed}\
+${str_tab}$(translate "Interface IPv4:") ${send_wanIP}"
+			[ -n "$send_hostIP" ] && send_content="${send_content}\
+${str_linefeed}\
+${str_tab}$(translate "Outbound IPv4:") ${send_hostIP}"
+		elif [ "$get_ipv4_mode" -eq "2" ]; then
+			[ -n "$send_wanIP" ] && send_content="${send_content}\
+${str_linefeed}\
+${str_tab}$(translate "Interface IPv4:") ${send_wanIP}"
 			send_content="${send_content}\
-			${str_linefeed}\
-			${str_tab}$(translate "Outbound IPv6:") ${send_hostIPv6}"
+${str_linefeed}\
+${str_tab}$(translate "Outbound IPv4:") ${send_hostIP}"
 		fi
+		
+		if [ -n "$ipv6_enable" ]; then
+			if [ "$send_wanIPv6" == "$send_hostIPv6" ]; then
+				send_content="${send_content}\
+${str_linefeed}\
+${str_tab}IPv6: ${send_wanIPv6}"
+			elif [ "$get_ipv6_mode" -eq "1" ]; then
+				send_content="${send_content}\
+${str_linefeed}\
+${str_tab}$(translate "Interface IPv6:") ${send_wanIPv6}"
+				[ -n "$send_hostIPv6" ] && send_content="${send_content}\
+${str_linefeed}\
+${str_tab}$(translate "Outbound IPv6:") ${send_hostIPv6}"
+			elif [ "$get_ipv6_mode" -eq "2" ]; then
+				[ -n "$send_wanIPv6" ] && send_content="${send_content}\
+${str_linefeed}\
+${str_tab}$(translate "Interface IPv6:") ${send_wanIPv6}"
+				send_content="${send_content}\
+${str_linefeed}\
+${str_tab}$(translate "Outbound IPv6:") ${send_hostIPv6}"
+			fi
+		fi
+
+		interfaceuptime=$(getinterfaceuptime)
+		[ -n "$interfaceuptime" ] && wanstatustime=$(printf "$(translate "Uptime: %dd%dh%dm%ds")" $((interfaceuptime / 86400)) $(((interfaceuptime % 86400) / 3600)) $(((interfaceuptime % 3600) / 60)) $((interfaceuptime % 60)))
+		send_content="${send_content}\
+${str_linefeed}\
+${str_tab}${wanstatustime}"
 	fi
-	
-	interfaceuptime=$(getinterfaceuptime)
-	[ -n "$interfaceuptime" ] && wanstatustime=$(printf "$(translate "Uptime: %dd%dh%dm%ds")" $((interfaceuptime / 86400)) $(((interfaceuptime % 86400) / 3600)) $(((interfaceuptime % 3600) / 60)) $((interfaceuptime % 60)))
-	send_content="${send_content}\
-	${str_linefeed}\
-	${str_tab}${wanstatustime}"
-fi
 
 	if [ -z "$1" ] && (echo "$send_notification" | grep -q "client_list"); then
 		wait_and_cat
@@ -2479,11 +2477,11 @@ fi
 
 	[ -n "$device_name" ] && send_title="【$device_name】${send_title}"
 	[ -z "$send_content" ] && send_content="\
-	${str_splitline}\
-	${str_title_start}$(translate "I encountered a problem")${str_title_end}\
-	${str_linefeed}\
-	${str_tab}$(translate "Scheduled send option error, you didn't select any items to send, what should I do?")\
-	${str_splitline}"
+${str_splitline}\
+${str_title_start}$(translate "I encountered a problem")${str_title_end}\
+${str_linefeed}\
+${str_tab}$(translate "Scheduled send option error, you didn't select any items to send, what should I do?")\
+${str_splitline}"
 
 	diy_send "${send_title}" "${send_content}" "${jsonpath}" "$1" >/dev/null 2>&1
 	RETVAL=$?
@@ -2542,13 +2540,13 @@ login_send() {
 		fi
 
 		local login_content_time="${str_linefeed}${str_tab}$(translate "Time:")\
-		${str_space}${str_space}${str_space}${str_space}${login_time}"
+${str_space}${str_space}${str_space}${str_space}${login_time}"
 		local login_content_ip="${str_linefeed}${str_tab}$(translate "Device IP:")\
-		${str_space}${str_space}${login_ip}"
+${str_space}${str_space}${login_ip}"
 		[ -n "$login_ip_attribution" ] && local login_content_attribution="${str_linefeed}${str_tab}$(translate "Location:")\
-		${str_space}${str_space}${login_ip_attribution}"
+${str_space}${str_space}${login_ip_attribution}"
 		local login_content_mode="${str_linefeed}${str_tab}$(translate "Login Method:")\
-		${str_space}${log_type_short} ${login_mode}"
+${str_space}${log_type_short} ${login_mode}"
 
 		login_content="${login_content_info}${login_content_time}${login_content_ip}${login_content_attribution}${login_content_mode}"
 	fi
@@ -2594,11 +2592,11 @@ down_send() {
 		fi
 
 		content="${content}\
-		${content_title}\
-		${str_linefeed}${str_tab}$(translate "Client Name:")${str_space}${str_space}${str_space}${str_space}${str_space}${name}\
-		${str_linefeed}${str_tab}$(translate "Client IP:")${str_space}${str_space}${str_space}${str_space}${ip}\
-		${str_linefeed}${str_tab}$(translate "Client MAC:")${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}\
-		${str_linefeed}${str_tab}$(translate "Uptime:")${str_space}${str_space}${str_space}${str_space}${time1}"
+${content_title}\
+${str_linefeed}${str_tab}$(translate "Client Name:")${str_space}${str_space}${str_space}${str_space}${str_space}${name}\
+${str_linefeed}${str_tab}$(translate "Client IP:")${str_space}${str_space}${str_space}${str_space}${ip}\
+${str_linefeed}${str_tab}$(translate "Client MAC:")${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}\
+${str_linefeed}${str_tab}$(translate "Uptime:")${str_space}${str_space}${str_space}${str_space}${time1}"
 
 		log_change "${disturb_text}$(translate "Device ${name} ${ip} disconnected")"
 	done
