@@ -1182,9 +1182,6 @@ msgstr "接口 IPv6:"
 msgid "Outbound IPv6:"
 msgstr "出口 IPv6:"
 
-msgid "Uptime: %dd%dh%dm%ds"
-msgstr "在线: %d天%d时%d分%d秒"
-
 msgid "I encountered a problem"
 msgstr "我遇到了一个难题"
 
@@ -1473,14 +1470,17 @@ msgstr "日志超出上限，保留最后 300 条"
 msgid "%ds"
 msgstr "%d秒"
 
-msgid "%dm%ds"
-msgstr "%d分%d秒"
+msgid "%dm %ds"
+msgstr "%d分 %d秒"
 
-msgid "%dh%dm"
-msgstr "%d时%d分"
+msgid "%dh %dm"
+msgstr "%d时 %d分"
 
-msgid "%dd%dh"
-msgstr "%d天%d时"
+msgid "%dd %dh"
+msgstr "%d天 %d时"
+
+msgid "Uptime: %dd %dh %dm %ds"
+msgstr "在线: %d天 %d时 %d分 %d秒"
 
 msgid "Failed to read settings, please check configuration"
 msgstr "读取设置出错，请检查设置项"
@@ -1550,3 +1550,6 @@ msgstr "重新拨号咯"
 
 msgid "Failed to add to blacklist, invalid IP format: %s (removed from list)"
 msgstr "黑名单添加失败，IP %s 格式错误，已从列表中移除"
+
+msgid "Currently %s devices online"  
+msgstr "当前共 %s 台设备在线"

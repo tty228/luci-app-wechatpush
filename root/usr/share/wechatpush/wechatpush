@@ -416,15 +416,15 @@ time_for_humans() {
 	elif [ "$1" -lt 3600 ]; then
 		local minutes=$(( $1 / 60 ))
 		local seconds=$(( $1 % 60 ))
-		printf "$(translate "%dm%ds")\n" "$minutes" "$seconds"
+		printf "$(translate "%dm %ds")\n" "$minutes" "$seconds"
 	elif [ "$1" -lt 86400 ]; then
 		local hours=$(( $1 / 3600 ))
 		local minutes=$(( ($1 % 3600) / 60 ))
-		printf "$(translate "%dh%dm")\n" "$hours" "$minutes"
+		printf "$(translate "%dh %dm")\n" "$hours" "$minutes"
 	else
 		local days=$(( $1 / 86400 ))
 		local hours=$(( ($1 % 86400) / 3600 ))
-		printf "$(translate "%dd%dh")\n" "$days" "$hours"
+		printf "$(translate "%dd %dh")\n" "$days" "$hours"
 	fi
 }
 
@@ -2330,7 +2330,7 @@ send() {
 		cat /proc/loadavg | awk '{print $1" "$2" "$3}' >"$output_dir/systemload" &
 		free -m | sed -n '2p' | awk '{printf "%.2f%%\n",($3/$2)*100}' >"$output_dir/mem_usage" &
 		curl -o /dev/null --connect-timeout 5 -s -w %{http_code} www.google.com >"$output_dir/Qwai" &
-		uptime_format=$(translate "Uptime: %dd%dh%dm%ds")
+		uptime_format=$(translate "Uptime: %dd %dh %dm %ds")
 		cat /proc/uptime | awk -F. -v fmt="$uptime_format" '{
 			run_days=$1 / 86400
 			run_hour=($1 % 86400)/3600
@@ -2338,7 +2338,7 @@ send() {
 			run_second=$1 % 60
 			printf(fmt"\n", run_days, run_hour, run_minute, run_second)
 		}' > "$output_dir/systemstatustime" &
-		[ -n "$interfaceuptime" ] && wanstatustime=$(printf "$(translate "Uptime: %dd%dh%dm%ds")" $((interfaceuptime / 86400)) $(((interfaceuptime % 86400) / 3600)) $(((interfaceuptime % 3600) / 60)) $((interfaceuptime % 60)))
+		[ -n "$interfaceuptime" ] && wanstatustime=$(printf "$(translate "Uptime: %dd %dh %dm %ds")" $((interfaceuptime / 86400)) $(((interfaceuptime % 86400) / 3600)) $(((interfaceuptime % 3600) / 60)) $((interfaceuptime % 60)))
 		systeminfo_enable="1"
 	fi
 	[ -z "$1" ] && (echo "$send_notification" | grep -q "router_temp") && soc_temp >"$output_dir/cputemp" &
@@ -2464,7 +2464,7 @@ ${str_tab}$(translate "Outbound IPv6:") ${send_hostIPv6}"
 		fi
 
 		interfaceuptime=$(getinterfaceuptime)
-		[ -n "$interfaceuptime" ] && wanstatustime=$(printf "$(translate "Uptime: %dd%dh%dm%ds")" $((interfaceuptime / 86400)) $(((interfaceuptime % 86400) / 3600)) $(((interfaceuptime % 3600) / 60)) $((interfaceuptime % 60)))
+		[ -n "$interfaceuptime" ] && wanstatustime=$(printf "$(translate "Uptime: %dd %dh %dm %ds")" $((interfaceuptime / 86400)) $(((interfaceuptime % 86400) / 3600)) $(((interfaceuptime % 3600) / 60)) $((interfaceuptime % 60)))
 		send_content="${send_content}\
 ${str_linefeed}\
 ${str_tab}${wanstatustime}"
