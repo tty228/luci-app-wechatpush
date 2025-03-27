@@ -440,10 +440,6 @@ return view.extend({
 		}
 
 		var container = document.createElement('div');
-		container.appendChild(document.createElement('h2')).textContent = _('Currently %s devices online').replace('%s', totalDevices);
-		container.appendChild(createTable());
-		container.appendChild(document.createElement('style')).textContent = style;
-
 		container.addEventListener('click', function (event) {
 			if (event.target.tagName === 'TH' && event.target.parentNode.rowIndex === 0) {
 				var columnIndex = event.target.cellIndex;
@@ -480,6 +476,12 @@ return view.extend({
 			// 存储排序设置
 			localStorage.setItem('sortColumn', currentSortColumn);
 			localStorage.setItem('sortDirection', currentSortDirection);
+
+			// 重新生成表格
+			container.innerHTML = '';
+			container.appendChild(document.createElement('h2')).textContent = _('Currently %s devices online').replace('%s', totalDevices);
+			container.appendChild(createTable());
+			container.appendChild(document.createElement('style')).textContent = style;
 		}
 
 		return container;
