@@ -1,0 +1,18 @@
+{
+	"url": "msmtp ${recipient_email}",
+	"data": "${tempjsonpath}",
+	"content_type": "",
+	"command": "'\"To: \\(.to)\\nSubject: \\(.subject)\\nContent-Type: text/html\\n\\n\\(.body)\"'",
+	"str_title_start": "<h3>",
+	"str_title_end": "</h3>",
+	"str_linefeed": "<br>",
+	"str_splitline": "<br>----<br>",
+	"str_space": " ",
+	"str_tab": "    ",
+	"type":
+	  {
+		"to":"\"${recipient_email}\"",
+		"subject":"\"${1}\"",
+		"body":"\"${nowtime}${2}\""
+	  }
+}

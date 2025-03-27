@@ -108,6 +108,10 @@ msgstr "Telegram bot 推送，若无梯子，请勿使用"
 msgid "Custom Push"
 msgstr "自定义推送"
 
+#: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:152
+msgid "To send emails using msmtp, you must manually install msmtp and configure `/etc/msmtprc`."
+msgstr "使用 msmtp 发送邮件，你必须自行安装 msmtp 和配置 `/etc/msmtprc`"
+
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:148
 msgid "By modifying the JSON file, you can use a custom API"
 msgstr "通过修改 JSON 文件，使用自定义接口"
@@ -205,6 +209,9 @@ msgstr "<br />与创建的机器人发一条消息，开启对话"
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:208
 msgid "Get chat_id"
 msgstr "获取 chat_id"
+
+msgid "Recipient Email Address"
+msgstr "收件邮箱地址"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:208
 msgid "<br />If you want to send to a group/channel, please create a non-Chinese group/channel (for easier chatid lookup, you can rename it later).<br />Add the bot to the group, send a message, and use https://api.telegram.org/bot token /getUpdates to obtain the chatid."

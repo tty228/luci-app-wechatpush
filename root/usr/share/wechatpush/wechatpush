@@ -37,7 +37,7 @@ wait_and_cat() {
 read_config() {
 	get_config \
 		"enable" "lite_enable" "device_name" "proxy_address" "sleeptime" "oui_data" "reset_regularly" "debuglevel" \
-		"jsonpath" "sckey" "sc3key" "sc3uid" "sc3tags" "corpid" "userid" "agentid" "corpsecret" "mediapath" "wxpusher_apptoken" "wxpusher_uids" "wxpusher_topicIds" "pushplus_token" "tg_token" "chat_id" \
+		"jsonpath" "sckey" "sc3key" "sc3uid" "sc3tags" "corpid" "userid" "agentid" "corpsecret" "mediapath" "wxpusher_apptoken" "wxpusher_uids" "wxpusher_topicIds" "pushplus_token" "tg_token" "chat_id" "recipient_email" \
 		"get_ipv4_mode" "ipv4_interface" "get_ipv6_mode" "ipv6_interface" \
 		"device_notification" "cpu_notification" "cpu_load_threshold" "temperature_threshold" \
 		"client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" \
@@ -2487,7 +2487,7 @@ ${str_linefeed}\
 ${str_tab} - $(translate "Scheduled send option error, you didn't select any items to send, what should I do?")\
 ${str_splitline}"
 
-	diy_send "${send_title}" "${send_content}" "${jsonpath}" "$1" >/dev/null 2>&1
+	diy_send "${send_title}" "${send_content}" "${jsonpath}" "$1"
 	RETVAL=$?
 	[ $RETVAL -eq 1 ] && log_change "[ERROR] $(translate "Scheduled push failed, please check network or settings")" || log_change "${disturb_text} $(translate "Scheduled push task completed")"
 	deltemp
@@ -2624,8 +2624,13 @@ diy_send() {
 
 	! jq "$type" ${3} >${tempjsonpath} && log_change "[ERROR] $(translate "type:{ } field format error after variable substitution, please check for unescaped special characters or syntax errors in type:{ } field")" && return 1
 
-	[ -n "$proxy_address" ] && local proxy_cmd="-x $proxy_address"
-	run_with_tag curl $proxy_cmd --connect-timeout 30 --max-time 60 --retry 2 -X POST -H "$content_type" -d "$data" "${diyurl}"
+	if [[ "$diyurl" =~ ^https?:// ]]; then
+		[ -n "$proxy_address" ] && local proxy_cmd="-x $proxy_address"
+		run_with_tag curl $proxy_cmd --connect-timeout 30 --max-time 60 --retry 2 -X POST -H "$content_type" -d "$data" "${diyurl}"
+	else
+		local command=$(jq -r '.command' ${3}) && local command=$(eval echo ${command})
+		run_with_tag jq -r "$command" "$data" | eval "$diyurl"
+	fi
 	local RETVAL=$?
 
 	if [ $RETVAL -ne 0 ] || [[ -n "$4" && "$4" == "test" ]]; then

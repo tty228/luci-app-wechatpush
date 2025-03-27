@@ -148,6 +148,8 @@ return view.extend({
 			_('Another channel for WeChat push, the configuration is relatively simple, and it supports multiple push methods'));
 		o.value('/usr/share/wechatpush/api/telegram.json', _('Telegram'),
 			_('Telegram Bot Push'));
+		o.value('/usr/share/wechatpush/api/msmtp.json', _('msmtp'),
+			_('To send emails using msmtp, you must manually install msmtp and configure `/etc/msmtprc`.'));
 		o.value('/usr/share/wechatpush/api/diy.json', _('Custom Push'),
 			_('By modifying the JSON file, you can use a custom API'));
 
@@ -229,6 +231,9 @@ return view.extend({
 		o.description = _('Get chat_id') + ' <a href="https://t.me/getuserIDbot" target="_blank">' + _('Click here') + '</a>' + _('<br />If you want to send to a group/channel, please create a non-Chinese group/channel (for easier chatid lookup, you can rename it later).<br />Add the bot to the group, send a message, and use https://api.telegram.org/bot token /getUpdates to obtain the chatid.');
 		o.rmempty = false;
 		o.depends('jsonpath', '/usr/share/wechatpush/api/telegram.json');
+
+		o = s.taboption('basic', form.Value, 'recipient_email', _('Recipient Email Address'));
+		o.depends('jsonpath', '/usr/share/wechatpush/api/msmtp.json');
 
 		o = s.taboption('basic', form.TextValue, 'diy_json', _('Custom Push'));
 		o.rows = 28;
