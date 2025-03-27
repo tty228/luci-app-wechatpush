@@ -1873,8 +1873,7 @@ ${str_title_start}$(translate "Currently no online devices")${str_title_end}"
 	}
 
 	local explain="${str_splitline}\
-${str_title_start}$(translate "Currently %d online devices, details below")${str_title_end}" \
-$(printf "%d" "$logrow")
+${str_title_start}$(translate "Currently %d online devices, details below" "$logrow")${str_title_end}"
 
 	local IPLIST
 	if [ -z "$defaultSortColumn" ] || [ "$defaultSortColumn" = "ip" ]; then
