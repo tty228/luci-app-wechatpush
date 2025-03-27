@@ -5,25 +5,9 @@
 
 [中文文档](README.md) | [English](README_en.md)
 
-这是一款用于 OpenWRT 路由器上进行 微信/Telegram 推送的插件
+这是一款用于 OpenWRT 路由器上进行 微信、Telegram、邮件 通知的插件。
 
-推送服务支持列表：
-
-| 推送应用 | 方式 | 接口说明 |
-| :-------- | :----- | :----- |
-| 微信 | Server酱 | https://sct.ftqq.com/
-| 微信 | 推送加 | http://www.pushplus.plus/
-| 微信 | WxPusher | https://wxpusher.zjiecode.com/docs
-| 企业微信 | 应用推送 | https://work.weixin.qq.com/api/doc/90000/90135/90248
-| Telegram | bot | https://t.me/BotFather
-
-精力有限，如需要钉钉推送、飞书推送、Bark 推送等请尝试另一个分支 https://github.com/zzsj0928/luci-app-pushbot ，或使用自定义 API 设置
-
-v2.06.2 之后的版本不再支持 LuCI 18.06，如需编译，请使用 openwrt-18.06 分支，拉取源码时请使用 `git clone -b openwrt-18.06 https://github.com/tty228/luci-app-wechatpush.git` 命令
-
-
-## 主要功能
-
+主要功能：
 - [x] 路由 IP、IPv6 变动推送
 - [x] 设备 上线、离线 推送
 - [x] 设备在线列表及流量使用情况
@@ -32,6 +16,19 @@ v2.06.2 之后的版本不再支持 LuCI 18.06，如需编译，请使用 openwr
 - [x] 路由 Web、SSH 登录提示，自动拉黑、端口敲门
 - [x] 无人值守任务
 
+通知服务支持列表：
+| 推送应用 | 方式 | 接口说明 |
+| :-------- | :----- | :----- |
+| 微信 | Server酱 | https://sct.ftqq.com/
+| 微信 | 推送加 | http://www.pushplus.plus/
+| 微信 | WxPusher | https://wxpusher.zjiecode.com/docs
+| 企业微信 | 应用推送 | https://work.weixin.qq.com/api/doc/90000/90135/90248
+| Telegram | bot | https://t.me/BotFather
+| Mail | msmtp | https://marlam.de/msmtp/
+
+精力有限，如需要钉钉推送、飞书推送、Bark 推送等请尝试另一个分支 https://github.com/zzsj0928/luci-app-pushbot ，或使用自定义 API 设置
+
+v2.06.2 之后的版本不再支持 LuCI 18.06，如需编译，请使用 openwrt-18.06 分支，拉取源码时请使用 `git clone -b openwrt-18.06 https://github.com/tty228/luci-app-wechatpush.git` 命令
 
 ## 说明
 

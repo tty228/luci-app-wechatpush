@@ -7,7 +7,7 @@
 
 **OpenWrt Notification Plugin – Send Alerts to WeChat or Telegram**
 
-This OpenWrt plugin delivers real-time router notifications to your mobile device via **WeChat** or **Telegram**. Monitor your network with alerts for:
+This OpenWrt plugin delivers real-time router notifications to your mobile device via **WeChat** or **Telegram** or **Mail**. Monitor your network with alerts for:
 
 - [x] IP changes (IPv4/IPv6)
 - [x] Device connections (online/offline)
@@ -25,6 +25,7 @@ Supported services:
 | WeChat | WxPusher | https://wxpusher.zjiecode.com/docs
 | WeChat for Enterprise | Application Push | https://work.weixin.qq.com/api/doc/90000/90135/90248
 | Telegram | bot | https://t.me/BotFather
+| Mail | msmtp | https://marlam.de/msmtp/
 
 Limited resources are available. If you need services such as DingTalk push, Feishu push, Bark push, etc., please try another branch at https://github.com/zzsj0928/luci-app-pushbot, or use **custom API settings**.
 

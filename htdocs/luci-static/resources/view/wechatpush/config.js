@@ -150,7 +150,6 @@ return view.extend({
 			_('Telegram Bot Push'));
 		o.value('/usr/share/wechatpush/api/msmtp.json', _('msmtp'),
 			_('To send emails using msmtp, you must manually install msmtp and configure `/etc/msmtprc`.'));
-		o.description = _('opkg update<br />opkg install msmtp');
 		o.value('/usr/share/wechatpush/api/diy.json', _('Custom Push'),
 			_('By modifying the JSON file, you can use a custom API'));
 
@@ -235,6 +234,7 @@ return view.extend({
 
 		o = s.taboption('basic', form.Value, 'recipient_email', _('Recipient Email Address'));
 		o.depends('jsonpath', '/usr/share/wechatpush/api/msmtp.json');
+		o.description = _('opkg update<br />opkg install msmtp');
 
 		o = s.taboption('basic', form.TextValue, 'diy_json', _('Custom Push'));
 		o.rows = 28;
