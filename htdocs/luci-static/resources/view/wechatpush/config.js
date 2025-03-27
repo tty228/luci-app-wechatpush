@@ -150,6 +150,7 @@ return view.extend({
 			_('Telegram Bot Push'));
 		o.value('/usr/share/wechatpush/api/msmtp.json', _('msmtp'),
 			_('To send emails using msmtp, you must manually install msmtp and configure `/etc/msmtprc`.'));
+		o.description = _('opkg update<br />opkg install msmtp');
 		o.value('/usr/share/wechatpush/api/diy.json', _('Custom Push'),
 			_('By modifying the JSON file, you can use a custom API'));
 
