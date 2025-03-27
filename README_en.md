@@ -5,7 +5,18 @@
 
 [中文文档](README.md) | [English](README_en.md)
 
-A plugin for OpenWRT routers to send various information notifications to a mobile phone via WeChat or Telegram.
+**OpenWrt Notification Plugin – Send Alerts to WeChat or Telegram**
+
+This OpenWrt plugin delivers real-time router notifications to your mobile device via **WeChat** or **Telegram**. Monitor your network with alerts for:
+
+- [x] IP changes (IPv4/IPv6)
+- [x] Device connections (online/offline)
+- [x] Online client list & traffic usage
+- [x] CPU load & temperature (including virtualized hosts like PVE)
+- [x] Router status reports
+- [x] Security alerts (failed web/SSH logins with auto blacklist)
+- [x] Port knocking & automated tasks
+
 Supported services:
 | Push application | Method | description |
 | :-------- | :----- | :----- |
@@ -15,17 +26,7 @@ Supported services:
 | WeChat for Enterprise | Application Push | https://work.weixin.qq.com/api/doc/90000/90135/90248
 | Telegram | bot | https://t.me/BotFather
 
-Limited resources are available. If you need services such as DingTalk push, Feishu push, Bark push, etc., please try another branch at https://github.com/zzsj0928/luci-app-pushbot, or use custom API settings.
-
-## Main Features
-
-- [x] Push notifications for changes in router IP and IPv6.
-- [x] Push notifications for device online/offline status.
-- [x] Device online list and traffic usage.
-- [x] CPU load and temperature monitoring, PVE host temperature monitoring.
-- [x] Periodic push notifications for router status.
-- [x] Web and SSH login prompts for the router, automatic blacklist and port knocking.
-- [x] Unattended tasks.
+Limited resources are available. If you need services such as DingTalk push, Feishu push, Bark push, etc., please try another branch at https://github.com/zzsj0928/luci-app-pushbot, or use **custom API settings**.
 
 ## Instructions
 
