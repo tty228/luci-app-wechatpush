@@ -412,19 +412,19 @@ time_for_humans() {
 	[ -z "$1" ] && return
 
 	if [ "$1" -lt 60 ]; then
-		printf "$(translate "%ds")\n" "$1"
+		translate "%ds" "$1"
 	elif [ "$1" -lt 3600 ]; then
 		local minutes=$(( $1 / 60 ))
 		local seconds=$(( $1 % 60 ))
-		printf "$(translate "%dm %ds")\n" "$minutes" "$seconds"
+		translate "%dm %ds" "$minutes" "$seconds"
 	elif [ "$1" -lt 86400 ]; then
 		local hours=$(( $1 / 3600 ))
 		local minutes=$(( ($1 % 3600) / 60 ))
-		printf "$(translate "%dh %dm")\n" "$hours" "$minutes"
+		translate "%dh %dm" "$hours" "$minutes"
 	else
 		local days=$(( $1 / 86400 ))
 		local hours=$(( ($1 % 86400) / 3600 ))
-		printf "$(translate "%dd %dh")\n" "$days" "$hours"
+		translate "%dd %dh" "$days" "$hours"
 	fi
 }
 
@@ -491,14 +491,24 @@ cut_str() {
 
 # 翻译
 translate() {
-	# 处理特殊字符
+	local template="$1"
+	shift  # 移出第一个参数，剩余参数作为变量
+	
+	# 获取基础翻译
+	
 	local lua_script=$(cat <<LUA
 	require "luci.i18n".setlanguage("$lang")
-	print(require "luci.i18n".translate([==[$1]==]))
+	print(require "luci.i18n".translate([==[$template]==]))
 LUA
 	)
-
-	lua -e "$lua_script"
+	local translated=$(lua -e "$lua_script")
+	
+	# 如果有额外参数则进行格式化
+	if [ $# -gt 0 ]; then
+		printf "$translated" "$@"
+	else
+		echo "$translated"
+	fi
 }
 
 # 随机数
@@ -594,7 +604,7 @@ getip() {
 		local ipv4_URL
 		while IFS= read -r ipv4_URL; do
 			[ -n "$ipv4_interface" ] && local tmp_hostIP=$(eval "curl --connect-timeout 2 -m 2 -k -s -4 --interface ${ipv4_interface} -m 5 ${ipv4_URL}") || local tmp_hostIP=$(eval "curl --connect-timeout 2 -m 2 -k -s -4 -m 5 ${ipv4_URL}")
-			[ -z "$tmp_hostIP" ] && log_change "[DEBUG] $(translate "Failed to get IP, current API: ${ipv4_URL} & ${ipv4_interface}")"
+			[ -z "$tmp_hostIP" ] && log_change "[DEBUG] $(translate "Failed to get IP, current API: %s & %s" "$ipv4_URL" "$ipv4_interface")"
 			local tmp_hostIP=$(echo $tmp_hostIP | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | head -n1)
 			[ -n "$tmp_hostIP" ] && local tmp_hostIP="{\"IP\":\"${tmp_hostIP}\", \"URL\":\"${ipv4_URL}\"}" && break
 		done <<<"$sorted_ipv4_urllist"
@@ -610,7 +620,7 @@ getip() {
 		local ipv6_URL
 		while IFS= read -r ipv6_URL; do
 			[ -n "$ipv6_interface" ] && local tmp_hostIPv6=$(eval "curl --connect-timeout 2 -m 2 -k -s -6 --interface ${ipv6_interface} -m 5 ${ipv6_URL}") || local tmp_hostIPv6=$(eval "curl --connect-timeout 2 -m 2 -k -s -6 -m 5 ${ipv6_URL}")
-			[ -z "$tmp_hostIPv6" ] && log_change "[DEBUG] $(translate "Failed to get IPv6, current API: ${ipv6_URL} & ${ipv6_interface}")"
+			[ -z "$tmp_hostIPv6" ] && log_change "[DEBUG] $(translate "Failed to get IPv6, current API: %s & %s" "$ipv6_URL" "$ipv6_interface")"
 			local tmp_hostIPv6=$(echo $tmp_hostIPv6 | grep -oE "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}" | head -n1)
 			[ -n "$tmp_hostIPv6" ] && local tmp_hostIP="{\"IP\":\"${tmp_hostIPv6}\", \"URL\":\"${ipv6_URL}\"}" && break
 		done <<<"$sorted_ipv6_urllist"
@@ -775,8 +785,8 @@ get_ip_attribution() {
 	local ip_attribution_url
 	while IFS= read -r ip_attribution_url; do
 		local login_ip_attribution=$(eval curl --connect-timeout 2 -m 2 -k -s "$ip_attribution_url" 2>/dev/null)
-		#logfile=logfile="${dir}/wechatpush.log" # 此处保留排查时使用，增加日志调试等级后再加入
-		#[ -z "$login_ip_attribution" ] && echo "$(date "+%Y-%m-%d %H:%M:%S") [DEBUG] $(translate "Location query timeout, current API: ${ip_attribution_url}")" >> "${logfile}"
+		#logfile=logfile="${dir}/wechatpush.log" # 此处保留排查时使用，增加日志调试等级后再加入 ip_attribution_url
+		#[ -z "$login_ip_attribution" ] && echo "$(date "+%Y-%m-%d %H:%M:%S") [DEBUG] $(translate "Location query timeout, current API: %s" "$ip_attribution_url")" >> "${logfile}"
 		[ -n "$login_ip_attribution" ] && echo "$login_ip_attribution" && break
 	done <<<"$sorted_attribution_urls"
 }
@@ -958,7 +968,7 @@ disturb() {
 	if [ $(date +%H) -ge $do_not_disturb_endtime -a $do_not_disturb_starttime -lt $do_not_disturb_endtime ] || [ $(date +%H) -lt $do_not_disturb_starttime -a $do_not_disturb_starttime -lt $do_not_disturb_endtime ] || [ $(date +%H) -lt $do_not_disturb_starttime -a $(date +%H) -ge $do_not_disturb_endtime -a $do_not_disturb_starttime -gt $do_not_disturb_endtime ]; then
 		unset sheep_starttime
 		rm -f ${dir}/sheep_usage ${dir}/old_sheep_usage 2>/dev/null
-		[ -z "$jsonpath" ] && disturb_text="【info】"
+		[ -z "$jsonpath" ] && disturb_text="[INFO]"
 		[ -n "$jsonpath" ] && disturb_text=$(jq -r '._api' ${jsonpath})
 		return 0
 	# 免打扰
@@ -972,7 +982,7 @@ disturb() {
 			done
 		# 静默
 		elif [ "$do_not_disturb_mode" -eq "2" ]; then
-			disturb_text="[DND] "
+			disturb_text="[DND]"
 			return 1
 		fi
 	fi
@@ -1062,7 +1072,7 @@ $(translate 'Interface:') ${IPv6_URL}"
 	silent_run LockFile lock
 
 	if [ -z "$last_IPv4" ] && [ -z "$last_IPv6" ] && [[ -n "$IPv4" || -n "$IPv6" ]]; then
-		log_change "${disturb_text}$(translate "Router has rebooted!")"
+		log_change "${disturb_text} $(translate "Router has rebooted!")"
 		title="$(translate "Router Rebooted")"
 		content="${content}\
 ${str_splitline}\
@@ -1070,24 +1080,24 @@ ${str_title_start}$(translate "Router Rebooted")${str_title_end}"
 	fi
 	
 	if [ "$get_ipv4_mode" -ne "0" ] && [ -n "$IPv4" ] && [ "$IPv4" != "$last_IPv4" ]; then
-		log_change "${disturb_text}$(translate "Current IP: ${IPv4} from: ${IPv4_URL}")"
+		log_change "${disturb_text} $(translate "Current IP: %s from: %s" "$IPv4" "$IPv4_URL")"
 		[ -z "$title" ] && title="$(translate "IP Address Changed")"
 		[ -z "$content" ] && content="${content}\
 ${str_splitline}\
 ${str_title_start}$(translate "IP Address Changed")${str_title_end}"
 		content="${content}\
-${str_linefeed}${str_tab}$(translate "Current IP:")  ${IPv4}"
+${str_linefeed}${str_tab} - $(translate "Current IP:")  ${IPv4}"
 		jq --arg IPv4 "$IPv4" '.address[0].IPv4 = $IPv4' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
 	fi
 	
 	if [ "$get_ipv6_mode" -ne "0" ] && [ -n "$IPv6" ] && [ "$IPv6" != "$last_IPv6" ]; then
-		log_change "${disturb_text}$(translate "Current IPv6: ${IPv6} from: ${IPv6_URL}")"
+		log_change "${disturb_text} $(translate "Current IPv6: %s from: %s" "$IPv6" "$IPv6_URL")"
 		[ -z "$title" ] && title="$(translate "IPv6 Address Changed")"
 		[ -z "$content" ] && content="${content}\
 ${str_splitline}\
 ${str_title_start}$(translate "IPv6 Address Changed")${str_title_end}"
 		content="${content}\
-${str_linefeed}${str_tab}$(translate "Current IPv6:") ${IPv6}"
+${str_linefeed}${str_tab} - $(translate "Current IPv6:") ${IPv6}"
 		jq --arg IPv6 "$IPv6" '.address[0].IPv6 = $IPv6' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
 	fi
 
@@ -1136,14 +1146,14 @@ check_connect() {
 					if [ "$network_disconnect_event" -eq "1" ]; then
 						if [ "$retry_count" -lt "3" ]; then
 							echo "$retry_count" >/usr/share/wechatpush/autoreboot_count
-							log_change "[WARN] $(translate "Attempting router reboot (attempt ${retry_count}/3)")"
+							log_change "[WARN] $(translate "Attempting router reboot (attempt %s/3)" "$retry_count")"
 							cat ${logfile} >/usr/share/wechatpush/errlog
 							getgateway "reboot"
 							sleep 2 && reboot && exit
 						fi
 						[ "$retry_count" -eq "3" ] && log_change "[ERROR] $(translate "Failed after 2 router reboots, please fix manually")"
 					elif [ "$network_disconnect_event" -eq "2" ]; then
-						[ "$retry_count" -lt "3" ] && log_change "[WARN] $(translate "Attempting network restart (attempt ${retry_count}/3)")"
+						[ "$retry_count" -lt "3" ] && log_change "[WARN] $(translate "Attempting network restart (attempt %s/3)" "$retry_count")"
 						[ "$retry_count" -eq "3" ] && log_change "[ERROR] $(translate "Failed after 2 network restarts, please fix manually")"
 					fi
 				fi
@@ -1168,7 +1178,7 @@ check_cpu_load() {
 		local cpu_temp=$(soc_temp)
 
 		if [ -n "$cpu_temp" ] && awk -v t="$cpu_temp" -v th="$temperature_threshold" 'BEGIN { exit !(t > th) }'; then
-			log_change "[ALERT] $(translate "CPU temperature too high: ${cpu_temp}")"
+			log_change "[WARN] $(translate "CPU temperature too high: %s" "$cpu_temp")"
 
 			# 检查是否达到持续时间阈值
 			if [ "$cpu_threshold_duration" -eq 0 ] || [ "$(($(date +%s) - $temp_last_overload_time))" -ge "$cpu_threshold_duration" ]; then
@@ -1181,15 +1191,15 @@ check_cpu_load() {
 					fi
 
 					temperaturecd_time=$(date +%s) # 记录本次推送的时间戳
-					log_change "${disturb_text}$(translate "CPU temperature too high: ${cpu_temp}")"
+					log_change "[WARN] $(translate "CPU temperature too high: %s" "$cpu_temp")"
 
 					local cpu_overload_duration=$(time_for_humans $(($(date +%s) - $temp_last_overload_time)))
 					local content="${content}\
 ${str_splitline}\
 ${str_title_start}$(translate "CPU Temperature Alert")${str_title_end}\
-${str_linefeed}${str_tab}$(translate "CPU temperature has exceeded threshold for ${cpu_overload_duration}")\
-${str_linefeed}${str_tab}$(translate "No further alerts for ${cpu_notification_duration}")\
-${str_linefeed}${str_tab}$(translate "Current temperature: ${cpu_temp}℃")"
+${str_linefeed}${str_tab} - $(translate "CPU temperature has exceeded threshold for %s" "$cpu_overload_duration")\
+${str_linefeed}${str_tab} - $(translate "No further alerts for %s" "$cpu_notification_duration")\
+${str_linefeed}${str_tab} - $(translate "Current temperature: %s℃" "$cpu_temp")"
 				fi
 			fi
 		else
@@ -1217,15 +1227,15 @@ ${str_linefeed}${str_tab}$(translate "Current temperature: ${cpu_temp}℃")"
 					fi
 
 					cpucd_time=$(date +%s) # 记录本次推送的时间戳
-					log_change "${disturb_text}$(translate "CPU load too high: ${cpu_load}")"
+					log_change "${disturb_text} $(translate "CPU load too high: %s" "${cpu_load}")"
 
 					local cpu_load_duration=$(time_for_humans $(($(date +%s) - $cpu_last_overload_time)))
 					local content="${content}\
 ${str_splitline}\
 ${str_title_start}$(translate "CPU Load Alert")${str_title_end}\
-${str_linefeed}${str_tab}$(translate "CPU load has exceeded threshold for ${cpu_load_duration}")\
-${str_linefeed}${str_tab}$(translate "No further alerts for ${cpu_notification_duration}")\
-${str_linefeed}${str_tab}$(translate "Current load: ${cpu_load}")"
+${str_linefeed}${str_tab} - $(translate "CPU load has exceeded threshold for %s" "$cpu_load_duration")\
+${str_linefeed}${str_tab} - $(translate "No further alerts for %s" "$cpu_notification_duration")\
+${str_linefeed}${str_tab} - $(translate "Current load: %s" "$cpu_load")"
 
 					cputop
 				fi
@@ -1249,10 +1259,10 @@ cputop() {
 		local temp_top="${top_name} ${top_load}"
 		[ -n "$1" ] && local logtop="$logtop  $temp_top"
 		[ -z "$1" ] && content="${content}\
-		${str_linefeed}${str_tab}${temp_top}"
+		${str_linefeed}${str_tab} - ${temp_top}"
 	done
 	unset i
-	[ -n "$1" ] && log_change "[ALERT] $(translate "Top 3 CPU processes: ${logtop}")"
+	[ -n "$1" ] && log_change "[ALERT] $(translate "Top 3 CPU processes: %s" "$logtop")"
 }
 
 # 检测硬盘状态
@@ -1335,7 +1345,7 @@ get_disk() {
 				local disk_name=$(cut_str "$disk_name" "20")
 				local disk_name="${disk_name}_$(run_with_tag ${tmp_command} lsblk -o NAME,SIZE | awk "/^${tmp_name}/ {print \$NF}")"
 			}
-			echo -n "${str_linefeed}${str_title_start}$(translate "Disk Name:") ${disk_name}${disk_type}${str_title_end}${str_linefeed}${str_tab}$(translate "Disk in standby")" >>"$output_dir/get_disk"
+			echo -n "${str_linefeed}${str_title_start}$(translate "Disk Name:") ${disk_name}${disk_type}${str_title_end}${str_linefeed}${str_tab} - $(translate "Disk in standby")" >>"$output_dir/get_disk"
 		elif [ -f "${file_path}" ]; then
 			# 硬盘名称
 			local disk_name=$(jq -r .model_name ${file_path})
@@ -1350,11 +1360,11 @@ get_disk() {
 			
 			# 硬盘温度
 			local disk_temp=$(jq -r .temperature.current ${file_path})
-			[[ -n $disk_temp && $disk_temp != null && $disk_temp != 0 ]] && echo -n "${str_linefeed}${str_tab}$(translate "Disk Temp:") ${disk_temp}℃" >>"$output_dir/get_disk"
+			[[ -n $disk_temp && $disk_temp != null && $disk_temp != 0 ]] && echo -n "${str_linefeed}${str_tab} - $(translate "Disk Temp:") ${disk_temp}℃" >>"$output_dir/get_disk"
 			
 			# 通电时间
 			local disk_time=$(jq -r .power_on_time.hours ${file_path})
-			[[ -n $disk_time && $disk_time != null ]] && echo -n "${str_linefeed}${str_tab}$(translate "Power On:") ${disk_time}h" >>"$output_dir/get_disk"
+			[[ -n $disk_time && $disk_time != null ]] && echo -n "${str_linefeed}${str_tab} - $(translate "Power On:") ${disk_time}h" >>"$output_dir/get_disk"
 			
 			# 空间使用
 			local disk_use=$(run_with_tag ${tmp_command} lsblk -no NAME,FSUSE% "/dev/${tmp_name}" 2>/dev/null | awk '$2 != "" { gsub(/^[^a-zA-Z0-9]+/, "", $1); printf "%s: %s\n", $1, $2 }')
@@ -1366,32 +1376,32 @@ get_disk() {
 				[ -n "$mount_point" ] && local disk_use=$(df -h 2>/dev/null | awk -v mount="$mount_point" '$NF == mount {sub("^/dev/", "", $1); printf "%s: %s\n", $1, $5}')
 			}
 			[ -n "$disk_use" ] && [ $(echo "$disk_use" | wc -l) -ne "1" ] && disk_use=$(echo "$disk_use" | grep -v -w "0%")
-			[ -n "$disk_use" ] && disk_use=$(echo "$disk_use" | sed ':a;N;$!ba;s/\n/'"${str_linefeed}${str_tab}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}"'/g')
-			[ -n "$disk_use" ] && [ -n "${disk_use// /}" ] && echo -e -n "${str_linefeed}${str_tab}$(translate "Disk Usage:") ${disk_use}" >>"$output_dir/get_disk"
+			[ -n "$disk_use" ] && disk_use=$(echo "$disk_use" | sed ':a;N;$!ba;s/\n/'"${str_linefeed}${str_tab} - ${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}${str_space}"'/g')
+			[ -n "$disk_use" ] && [ -n "${disk_use// /}" ] && echo -e -n "${str_linefeed}${str_tab} - $(translate "Disk Usage:") ${disk_use}" >>"$output_dir/get_disk"
 			
 			# 寿命使用
 			local disk_health=$(jq -r .nvme_smart_health_information_log.percentage_used ${file_path})
-			[[ -n $disk_health && $disk_health != null ]] && echo -e -n "${str_linefeed}${str_tab}$(translate "Health Used:") ${disk_health}%" >>"$output_dir/get_disk"
+			[[ -n $disk_health && $disk_health != null ]] && echo -e -n "${str_linefeed}${str_tab} - $(translate "Health Used:") ${disk_health}%" >>"$output_dir/get_disk"
 			
 			# 错误日志
 			local disk_log_err=$(jq -r .ata_smart_error_log.summary.count ${file_path})
-			[[ -n $disk_log_err && $disk_log_err != null && $disk_log_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab}$(translate "Error Logs:") ${disk_log_err}" >>"$output_dir/get_disk"
+			[[ -n $disk_log_err && $disk_log_err != null && $disk_log_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab} - $(translate "Error Logs:") ${disk_log_err}" >>"$output_dir/get_disk"
 			
 			# 自检错误
 			local disk_test_err=$(jq -r .ata_smart_self_test_log.standard.error_count_total ${file_path})
-			[[ -n $disk_test_err && $disk_test_err != null && $disk_test_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab}$(translate "Self-Test Errors:") ${disk_test_err}" >>"$output_dir/get_disk"
+			[[ -n $disk_test_err && $disk_test_err != null && $disk_test_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab} - $(translate "Self-Test Errors:") ${disk_test_err}" >>"$output_dir/get_disk"
 			
 			# 0E 错误
 			local disk_0e_err=$(jq -r .nvme_smart_health_information_log.media_errors ${file_path})
-			[[ -n $disk_0e_err && $disk_0e_err != null && $disk_0e_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab}$(translate "0E Errors:") ${disk_0e_err}" >>"$output_dir/get_disk"
+			[[ -n $disk_0e_err && $disk_0e_err != null && $disk_0e_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab} - $(translate "0E Errors:") ${disk_0e_err}" >>"$output_dir/get_disk"
 			
 			# 整体健康
 			local smart_status=$(jq -r .smart_status.passed ${file_path})
 			[[ -n $smart_status && $smart_status != null && $smart_status != "true" ]] && {
-				echo -e -n "${str_linefeed}${str_tab}${str_title_start}$(translate "Disk health assessment FAILED!!!")${str_title_end}" >>"$output_dir/get_disk"
+				echo -e -n "${str_linefeed}${str_tab} - ${str_title_start}$(translate "Disk health assessment FAILED!!!")${str_title_end}" >>"$output_dir/get_disk"
 				local disk_err="true"
 			}
-			[ -n "$disk_err" ] && echo -e -n "${str_linefeed}${str_tab}${str_title_start}$(translate "Disk has errors, please backup data immediately!!!")${str_title_end}" >>"$output_dir/get_disk"
+			[ -n "$disk_err" ] && echo -e -n "${str_linefeed}${str_tab} - ${str_title_start}$(translate "Disk has errors, please backup data immediately!!!")${str_title_end}" >>"$output_dir/get_disk"
 		fi
 	done
 	unset i
@@ -1747,7 +1757,7 @@ up() {
 			[ -f "${dir}/content" ] && local content=$(cat "${dir}/content")
 
 			if [ -z "$title" ]; then
-				local title="$(translate "${name} connected to your router")"
+				local title=$(translate "%s connected to your router" "$name")
 				local content_title="${str_title_start}$(translate "New device connected")${str_title_end}"
 			elif echo "$title" | grep -q "$(translate "connected to your router")"; then
 				local title="${name} ${title}"
@@ -1759,12 +1769,12 @@ up() {
 			content="\
 ${str_splitline}\
 ${content_title}\
-${str_linefeed}${str_tab}$(translate "Client Name:")${str_space}${str_space}${str_space}${str_space}${str_space}${name}\
-${str_linefeed}${str_tab}$(translate "Client IP:")${str_space}${str_space}${str_space}${str_space}${ip}\
-${str_linefeed}${str_tab}$(translate "Client MAC:")${str_space}${str_space}${str_space}${str_space}${mac}\
-${str_linefeed}${str_tab}$(translate "Network Interface:")${str_space}${str_space}${str_space}${str_space}${str_space}${interface}"
+${str_linefeed}${str_tab} - $(translate "Client Name:")${str_space}${str_space}${str_space}${str_space}${str_space}${name}\
+${str_linefeed}${str_tab} - $(translate "Client IP:")${str_space}${str_space}${str_space}${str_space}${ip}\
+${str_linefeed}${str_tab} - $(translate "Client MAC:")${str_space}${str_space}${str_space}${str_space}${mac}\
+${str_linefeed}${str_tab} - $(translate "Network Interface:")${str_space}${str_space}${str_space}${str_space}${str_space}${interface}"
 
-			log_change "${disturb_text}$(translate "New device ${name} ${ip} connected")"
+			log_change "${disturb_text} $(translate "New device %s %s connected" "$name" "$ip")"
 
 			[ -n "$title" ] && echo "$title" >"${dir}/title"
 			[ -n "$content" ] && echo -n "$content" >>"${dir}/content"
@@ -1934,7 +1944,7 @@ $(printf "%d" "$logrow")
 
 	# 表头
 	local explain="${str_splitline}\
-	${str_title_start}$(translate "Currently ${logrow} online devices, details below")${str_title_end}"
+${str_title_start}$(translate "Currently %d online devices, details below" "$logrow")${str_title_end}"
 
 	local header="${str_linefeed}${str_tab}"
 	header+=$(pad_field "$(translate "IP Address")" "$ip_max")"${str_space}"
@@ -2010,12 +2020,12 @@ get_client_usage() {
 				local ip_name=$(getname ${ip} ${mac})
 				local tmp_usage=$(bytes_for_humans $(expr $(usage get ${mac} bytes) - ${get_client_usage_bytes}))
 				local time_up=$(jq -r --arg mac "$mac" '.devices[] | select((.mac | ascii_downcase) == ($mac | ascii_downcase) and .status == "online") | .uptime' "$devices_json")
-				local ip_total=$(usage get $mac) && [ -n "$ip_total" ] && local ip_total="${str_linefeed}${str_tab}$(translate "Total Traffic:") ${str_space}${str_space}${str_space}${str_space}${ip_total}"
+				local ip_total=$(usage get $mac) && [ -n "$ip_total" ] && local ip_total="${str_linefeed}${str_tab} - $(translate "Total Traffic:") ${str_space}${str_space}${str_space}${str_space}${ip_total}"
 				local time1=$(date +%s)
 				local time1=$(time_for_humans $(expr ${time1} - ${time_up}))
 				
 				if [ -z "$title" ]; then
-					title="$(translate "${ip_name} abnormal traffic")"
+					title=$(translate "%s abnormal traffic" "$name")
 					local content_title="${str_splitline}${str_title_start}$(translate "Device abnormal traffic")${str_title_end}"
 				elif echo "$title" | grep -q "$(translate "abnormal traffic")"; then
 					title="${ip_name} ${title}"
@@ -2027,11 +2037,11 @@ get_client_usage() {
 				content="\
 ${content}\
 ${content_title}\
-${str_linefeed}${str_tab}$(translate "Client Name:")${str_space}${str_space}${str_space}${str_space}${str_space}${ip_name}\
-${str_linefeed}${str_tab}$(translate "Client IP:")${str_space}${str_space}${str_space}${str_space}${ip}\
-${str_linefeed}${str_tab}$(translate "Client MAC:")${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}\
-${str_linefeed}${str_tab}$(translate "Traffic in 1 minute:")${str_space}${str_space}${str_space}${tmp_usage}\
-${str_linefeed}${str_tab}$(translate "Uptime:")${str_space}${str_space}${str_space}${str_space}${time1}"
+${str_linefeed}${str_tab} - $(translate "Client Name:")${str_space}${str_space}${str_space}${str_space}${str_space}${ip_name}\
+${str_linefeed}${str_tab} - $(translate "Client IP:")${str_space}${str_space}${str_space}${str_space}${ip}\
+${str_linefeed}${str_tab} - $(translate "Client MAC:")${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}\
+${str_linefeed}${str_tab} - $(translate "Traffic in 1 minute:")${str_space}${str_space}${str_space}${tmp_usage}\
+${str_linefeed}${str_tab} - $(translate "Uptime:")${str_space}${str_space}${str_space}${str_space}${time1}"
 			fi
 		done
 		cat ${dir}/client_usage_aliases >${dir}/old_client_usage_aliases
@@ -2152,7 +2162,7 @@ add_ip_black() {
 	unset ipset_name
 	(echo "$login_ip" | grep -Eq '^([0-9]{1,3}\.){3}[0-9]{1,3}$') && ipset_name="wechatpush_blacklist"
 	(echo "$login_ip" | grep -Eq '^([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}$') && ipset_name="wechatpush_blacklistv6"
-	[ -z "$ipset_name" ] && sed -i "/^$login_ip /d" "$ip_blacklist_path" && log_change "[WARN] $(translate "Failed to add to blacklist, invalid IP format: %s (removed from list)")" "$login_ip" && return 1
+	[ -z "$ipset_name" ] && sed -i "/^$login_ip /d" "$ip_blacklist_path" && log_change "[WARN] $(translate "Failed to add to blacklist, invalid IP format: %s (removed from list)" "$login_ip")" && return 1
 
 	! cat "$ip_blacklist_path" | grep -q -w -i $login_ip && echo "$login_ip timeout $login_ip_black_timeout" >>"$ip_blacklist_path"
 
@@ -2319,7 +2329,7 @@ send() {
 	>"${dir}/send_enable.lock"
 	disturb
 	disturb_RETVAL=$?
-	[ "$disturb_RETVAL" -ne "0" ] && log_change "${disturb_text}$(translate "Do not disturb time, exit scheduled push")" && return
+	[ "$disturb_RETVAL" -ne "0" ] && log_change "${disturb_text} $(translate "Do not disturb time, exit scheduled push")" && return
 	get_config "send_title" "send_notification"
 
 	[ -z "$1" ] && cpu_load=$(getcpu)
@@ -2330,15 +2340,10 @@ send() {
 		cat /proc/loadavg | awk '{print $1" "$2" "$3}' >"$output_dir/systemload" &
 		free -m | sed -n '2p' | awk '{printf "%.2f%%\n",($3/$2)*100}' >"$output_dir/mem_usage" &
 		curl -o /dev/null --connect-timeout 5 -s -w %{http_code} www.google.com >"$output_dir/Qwai" &
-		uptime_format=$(translate "Uptime: %dd %dh %dm %ds")
-		cat /proc/uptime | awk -F. -v fmt="$uptime_format" '{
-			run_days=$1 / 86400
-			run_hour=($1 % 86400)/3600
-			run_minute=($1 % 3600)/60
-			run_second=$1 % 60
-			printf(fmt"\n", run_days, run_hour, run_minute, run_second)
-		}' > "$output_dir/systemstatustime" &
-		[ -n "$interfaceuptime" ] && wanstatustime=$(printf "$(translate "Uptime: %dd %dh %dm %ds")" $((interfaceuptime / 86400)) $(((interfaceuptime % 86400) / 3600)) $(((interfaceuptime % 3600) / 60)) $((interfaceuptime % 60)))
+
+		system_uptime=$(cat /proc/uptime | awk '{print int($1)}')
+		[ -n "$system_uptime" ] && system_status_time=$(translate "Uptime: %dd %dh %dm %ds" "$((system_uptime / 86400))" "$(((system_uptime % 86400) / 3600))" "$(((system_uptime % 3600) / 60))" "$((system_uptime % 60))")
+
 		systeminfo_enable="1"
 	fi
 	[ -z "$1" ] && (echo "$send_notification" | grep -q "router_temp") && soc_temp >"$output_dir/cputemp" &
@@ -2363,39 +2368,39 @@ send() {
 ${str_splitline}\
 ${str_title_start}$(translate "Content 1")${str_title_end}\
 ${str_linefeed}\
-${str_tab}$(translate "Device 1")\
+${str_tab} - $(translate "Device 1")\
 ${str_linefeed}\
-${str_tab}$(translate "Device 2")\
+${str_tab} - $(translate "Device 2")\
 ${str_splitline}\
 ${str_title_start}$(translate "Content 2")${str_title_end}\
 ${str_linefeed}\
-${str_tab}$(translate "Device 3")\
+${str_tab} - $(translate "Device 3")\
 ${str_linefeed}\
-${str_tab}$(translate "Device 4")"
+${str_tab} - $(translate "Device 4")"
 
 	wait_and_cat
 	[ -z "$1" ] && (echo "$send_notification" | grep -q "client_list") && current_device & # 设备列表需等待 first & 完成
 
-	[ "$disturb_RETVAL" -ne "0" ] && log_change "${disturb_text}$(translate "Do not disturb time, exit scheduled push")" && return
+	[ "$disturb_RETVAL" -ne "0" ] && log_change "${disturb_text} $(translate "Do not disturb time, exit scheduled push")" && return
 	if [ -z "$1" ] && [ -n "$systeminfo_enable" ]; then
 		[[ $Qwai -eq 200 || $Qwai -eq 301 || $Qwai -eq 302 ]] && Qwai_status="$(translate "Connected!")" || Qwai_status="$(translate "Disconnected!")"
 		send_content="${send_content}\
 ${str_splitline}\
 ${str_title_start}$(translate "System running status")${str_title_end}\
 ${str_linefeed}\
-${str_tab}$(translate "Average load:") ${systemload}\
+${str_tab} - $(translate "Average load:") ${systemload}\
 ${str_linefeed}\
-${str_tab}$(translate "CPU usage:") ${cpu_load}\
+${str_tab} - $(translate "CPU usage:") ${cpu_load}\
 ${str_linefeed}\
-${str_tab}$(translate "Memory usage:") ${mem_usage}"
+${str_tab} - $(translate "Memory usage:") ${mem_usage}"
 		if [[ "$lang" == "zh_cn" ]]; then
 			send_content="${send_content}\
 ${str_linefeed}\
-${str_tab}$(translate "Global connection:")${Qwai_status}"
+${str_tab} - $(translate "Global connection:")${Qwai_status}"
 		fi
 		send_content="${send_content}\
 ${str_linefeed}\
-${str_tab}${systemstatustime}"
+${str_tab} - ${system_status_time}"
 	fi
 
 	if [ -z "$1" ] && (echo "$send_notification" | grep -q "router_temp"); then
@@ -2403,12 +2408,12 @@ ${str_tab}${systemstatustime}"
 ${str_splitline}\
 ${str_title_start}$(translate "Device temperature")${str_title_end}\
 ${str_linefeed}\
-${str_tab}$(translate "CPU:") ${cputemp}℃"
+${str_tab} - $(translate "CPU:") ${cputemp}℃"
 		[ -z "$cputemp" ] && send_content="${send_content}\
 ${str_splitline}\
 ${str_title_start}$(translate "Device temperature")${str_title_end}\
 ${str_linefeed}\
-${str_tab}$(translate "Unable to get device temperature")"
+${str_tab} - $(translate "Unable to get device temperature")"
 	fi
 
 	#if [ -z "$1" ] && ( echo "$send_notification"|grep -q "disk_info" ); then
@@ -2424,50 +2429,50 @@ ${str_title_start}$(translate "WAN Port Information")${str_title_end}"
 		if [ "$send_wanIP" == "$send_hostIP" ]; then
 			send_content="${send_content}\
 ${str_linefeed}\
-${str_tab}IPv4: ${send_wanIP}"
+${str_tab} - IPv4: ${send_wanIP}"
 		elif [ "$get_ipv4_mode" -eq "1" ]; then
 			send_content="${send_content}\
 ${str_linefeed}\
-${str_tab}$(translate "Interface IPv4:") ${send_wanIP}"
+${str_tab} - $(translate "Interface IPv4:") ${send_wanIP}"
 			[ -n "$send_hostIP" ] && send_content="${send_content}\
 ${str_linefeed}\
-${str_tab}$(translate "Outbound IPv4:") ${send_hostIP}"
+${str_tab} - $(translate "Outbound IPv4:") ${send_hostIP}"
 		elif [ "$get_ipv4_mode" -eq "2" ]; then
 			[ -n "$send_wanIP" ] && send_content="${send_content}\
 ${str_linefeed}\
-${str_tab}$(translate "Interface IPv4:") ${send_wanIP}"
+${str_tab} - $(translate "Interface IPv4:") ${send_wanIP}"
 			send_content="${send_content}\
 ${str_linefeed}\
-${str_tab}$(translate "Outbound IPv4:") ${send_hostIP}"
+${str_tab} - $(translate "Outbound IPv4:") ${send_hostIP}"
 		fi
 		
 		if [ -n "$ipv6_enable" ]; then
 			if [ "$send_wanIPv6" == "$send_hostIPv6" ]; then
 				send_content="${send_content}\
 ${str_linefeed}\
-${str_tab}IPv6: ${send_wanIPv6}"
+${str_tab} - IPv6: ${send_wanIPv6}"
 			elif [ "$get_ipv6_mode" -eq "1" ]; then
 				send_content="${send_content}\
 ${str_linefeed}\
-${str_tab}$(translate "Interface IPv6:") ${send_wanIPv6}"
+${str_tab} - $(translate "Interface IPv6:") ${send_wanIPv6}"
 				[ -n "$send_hostIPv6" ] && send_content="${send_content}\
 ${str_linefeed}\
-${str_tab}$(translate "Outbound IPv6:") ${send_hostIPv6}"
+${str_tab} - $(translate "Outbound IPv6:") ${send_hostIPv6}"
 			elif [ "$get_ipv6_mode" -eq "2" ]; then
 				[ -n "$send_wanIPv6" ] && send_content="${send_content}\
 ${str_linefeed}\
-${str_tab}$(translate "Interface IPv6:") ${send_wanIPv6}"
+${str_tab} - $(translate "Interface IPv6:") ${send_wanIPv6}"
 				send_content="${send_content}\
 ${str_linefeed}\
-${str_tab}$(translate "Outbound IPv6:") ${send_hostIPv6}"
+${str_tab} - $(translate "Outbound IPv6:") ${send_hostIPv6}"
 			fi
 		fi
 
-		interfaceuptime=$(getinterfaceuptime)
-		[ -n "$interfaceuptime" ] && wanstatustime=$(printf "$(translate "Uptime: %dd %dh %dm %ds")" $((interfaceuptime / 86400)) $(((interfaceuptime % 86400) / 3600)) $(((interfaceuptime % 3600) / 60)) $((interfaceuptime % 60)))
+		interface_uptime=$(getinterfaceuptime)
+		[ -n "$interface_uptime" ] && wanstatustime=$(translate "Uptime: %dd %dh %dm %ds" "$((interface_uptime / 86400))" "$(((interface_uptime % 86400) / 3600))" "$(((interface_uptime % 3600) / 60))" "$((interface_uptime % 60))")
 		send_content="${send_content}\
 ${str_linefeed}\
-${str_tab}${wanstatustime}"
+${str_tab} - ${wanstatustime}"
 	fi
 
 	if [ -z "$1" ] && (echo "$send_notification" | grep -q "client_list"); then
@@ -2480,12 +2485,12 @@ ${str_tab}${wanstatustime}"
 ${str_splitline}\
 ${str_title_start}$(translate "I encountered a problem")${str_title_end}\
 ${str_linefeed}\
-${str_tab}$(translate "Scheduled send option error, you didn't select any items to send, what should I do?")\
+${str_tab} - $(translate "Scheduled send option error, you didn't select any items to send, what should I do?")\
 ${str_splitline}"
 
 	diy_send "${send_title}" "${send_content}" "${jsonpath}" "$1" >/dev/null 2>&1
 	RETVAL=$?
-	[ $RETVAL -eq 1 ] && log_change "[ERROR] $(translate "Scheduled push failed, please check network or settings")" || log_change "${disturb_text}$(translate "Scheduled push task completed")"
+	[ $RETVAL -eq 1 ] && log_change "[ERROR] $(translate "Scheduled push failed, please check network or settings")" || log_change "${disturb_text} $(translate "Scheduled push task completed")"
 	deltemp
 	rm -f "${dir}/send_pid"
 	return $RETVAL
@@ -2509,7 +2514,7 @@ login_send() {
 	[ -f "$logfile" ] && login_log=$(grep -w "$login_ip" "$logfile" | grep -v "\【info\】" | tail -n 1)
 	[ -n "$login_log" ] && log_timestamp=$(date -d "$(echo "$login_log" | awk '{print $1, $2}')" +%s) || log_timestamp=0
 	if echo "$login_ip_white_list" | grep -w -q "$login_ip" || ( [ -n "$login_disturb" ] && [ "$login_disturb" -eq 1 ] ); then
-		log_change "[INFO] $(translate "Device ${login_ip} logged into router via ${log_type_short}")" && return
+		log_change "[INFO] $(translate "Device %s logged into router via %s" "$login_ip" "$log_type_short")" && return
 	elif [ -n "$login_disturb" ] && [ "$login_disturb" -eq 2 ]; then
 		[ $(($(date +%s) - log_timestamp)) -lt $login_notification_delay ] && [ -n "$login_log_enable" ] && return
 	fi
@@ -2530,22 +2535,22 @@ login_send() {
 
 	if [ -z "$login_disturb" ] || [ "$login_disturb" -ne "1" ]; then
 		if [[ "$log_type" == *"failed"* ]]; then
-			local login_title="$(translate "${login_ip} frequent ${log_type_short} login attempts")"
+			local login_title=$(translate "%s frequent %s login attempts" "$login_ip" "$log_type_short")
 			local login_content_info="${str_splitline}${str_title_start}$(translate "Block Information")${str_title_end}"
-			log_change "${disturb_text}$(translate "Device ${login_ip} (${login_ip_attribution}) frequently attempted ${log_type_short} ${login_mode} login")"
+			log_change "${disturb_text} $(translate "Device %s (%s) frequently attempted %s %s login" "$login_ip" "$login_ip_attribution" "$log_type_short" "$login_mode")"
 		else
-			local login_title="$(translate "${login_ip} logged into router via ${log_type_short}")"
+			local login_title=$(translate "%s logged into router via %s" "$login_ip" "$log_type_short")
 			local login_content_info="${str_splitline}${str_title_start}$(translate "Login Information")${str_title_end}"
-			log_change "${disturb_text}$(translate "Device ${login_ip} (${login_ip_attribution}) logged into router via ${log_type_short} ${login_mode}")"
+			log_change "${disturb_text} $(translate "Device %s (%s) logged into router via %s %s" "$login_ip" "$login_ip_attribution" "$log_type_short" "$login_mode")"
 		fi
 
-		local login_content_time="${str_linefeed}${str_tab}$(translate "Time:")\
+		local login_content_time="${str_linefeed}${str_tab} - $(translate "Time:")\
 ${str_space}${str_space}${str_space}${str_space}${login_time}"
-		local login_content_ip="${str_linefeed}${str_tab}$(translate "Device IP:")\
+		local login_content_ip="${str_linefeed}${str_tab} - $(translate "Device IP:")\
 ${str_space}${str_space}${login_ip}"
-		[ -n "$login_ip_attribution" ] && local login_content_attribution="${str_linefeed}${str_tab}$(translate "Location:")\
+		[ -n "$login_ip_attribution" ] && local login_content_attribution="${str_linefeed}${str_tab} - $(translate "Location:")\
 ${str_space}${str_space}${login_ip_attribution}"
-		local login_content_mode="${str_linefeed}${str_tab}$(translate "Login Method:")\
+		local login_content_mode="${str_linefeed}${str_tab} - $(translate "Login Method:")\
 ${str_space}${log_type_short} ${login_mode}"
 
 		login_content="${login_content_info}${login_content_time}${login_content_ip}${login_content_attribution}${login_content_mode}"
@@ -2576,12 +2581,12 @@ down_send() {
 		local name=$(getname "$ip" "$mac")
 		local time_up=$(jq -r --arg ip "$ip" '.devices[] | select(.ip == $ip and .status == "offline") | .uptime' "$devices_json")
 		local ip_total=$(usage get "$mac")
-		[ -n "$ip_total" ] && ip_total="${str_linefeed}${str_tab}$(translate "Total Traffic:") ${str_space}${str_space}${str_space}${str_space}${ip_total}"
+		[ -n "$ip_total" ] && ip_total="${str_linefeed}${str_tab} - $(translate "Total Traffic:") ${str_space}${str_space}${str_space}${str_space}${ip_total}"
 		local time1=$(date +%s)
 		local time1=$(time_for_humans $(expr ${time1} - ${time_up}))
 
 		if [ -z "$title" ]; then
-			title="$(translate "${name} disconnected")"
+			title=$(translate "%s disconnected" "$name")
 			content_title="${str_splitline}${str_title_start}$(translate "Device Disconnected")${str_title_end}"
 		elif echo "$title" | grep -q "$(translate "disconnected")"; then
 			title="${name} ${title}"
@@ -2593,12 +2598,13 @@ down_send() {
 
 		content="${content}\
 ${content_title}\
-${str_linefeed}${str_tab}$(translate "Client Name:")${str_space}${str_space}${str_space}${str_space}${str_space}${name}\
-${str_linefeed}${str_tab}$(translate "Client IP:")${str_space}${str_space}${str_space}${str_space}${ip}\
-${str_linefeed}${str_tab}$(translate "Client MAC:")${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}\
-${str_linefeed}${str_tab}$(translate "Uptime:")${str_space}${str_space}${str_space}${str_space}${time1}"
+${str_linefeed}${str_tab} - $(translate "Client Name:")${str_space}${str_space}${str_space}${str_space}${str_space}${name}\
+${str_linefeed}${str_tab} - $(translate "Client IP:")${str_space}${str_space}${str_space}${str_space}${ip}\
+${str_linefeed}${str_tab} - $(translate "Client MAC:")${str_space}${str_space}${str_space}${str_space}${mac}${ip_total}\
+${str_linefeed}${str_tab} - $(translate "Uptime:")${str_space}${str_space}${str_space}${str_space}${time1}"
 
-		log_change "${disturb_text}$(translate "Device ${name} ${ip} disconnected")"
+		log_change "${disturb_text} $(translate "Device %s %s disconnected" "$name" "$ip")"
+		
 	done
 	silent_run LockFile lock
 	jq 'del(.devices[] | select(.status == "offline"))' "$devices_json" >"$tmp_devices_json" && mv "$tmp_devices_json" "$devices_json"
@@ -2610,7 +2616,7 @@ diy_send() {
 	[ -z "$jsonpath" ] && return
 	(! echo "$lite_enable" | grep -q "content") && (! echo "$lite_enable" | grep -q "nowtime") && local nowtime=$(date "+%Y-%m-%d %H:%M:%S")
 
-	! jq -r '.' ${3} >/dev/null 2>&1 && log_change "[ERROR] $(translate "JSON format error, not a standard JSON file, please check ${3} for unescaped special characters or syntax errors")" && return 1
+	! jq -r '.' ${3} >/dev/null 2>&1 && log_change "[ERROR] $(translate "JSON format error, not a standard JSON file, please check %s for unescaped special characters or syntax errors" "$3")" && return 1
 
 	local diyurl=$(jq -r .url ${3}) && local diyurl=$(eval echo ${diyurl})
 	local type=$(jq -r '.type' ${3}) && local type=$(eval echo ${type})
@@ -2624,18 +2630,18 @@ diy_send() {
 	local RETVAL=$?
 
 	if [ $RETVAL -ne 0 ] || [[ -n "$4" && "$4" == "test" ]]; then
-		[ $RETVAL -ne 0 ] && log_change "[ERROR] $(translate "Network or URL error, push failed, curl returned ${RETVAL}, please check the following debug information")"
-		[ -n "$4" ] && log_change "[DEBUG] $(translate "Push test enabled, current curl return value is ${RETVAL}")"
+		[ $RETVAL -ne 0 ] && log_change "[ERROR] $(translate "Network or URL error, push failed, curl returned %s, please check the following debug information" "$RETVAL")"
+		[ -n "$4" ] && log_change "[DEBUG] $(translate "Push test enabled, current curl return value is %s" "$RETVAL")"
 		
 		echo '{"url":"'${diyurl}'","content_type":"'${content_type}'","type":'$(jq "$type" ${3})'}' >${dir}/debug_send_json
 		echo -e "${send_title}" "${send_content}" >${dir}/debug_send_content
 		cat ${tempjsonpath} >${dir}/debug_send_data
 		
-		! jq -r '.' ${dir}/debug_send_json && log_change "[ERROR] $(translate "Format error after variable substitution, please check ${dir}/debug_send_json for unescaped special characters or syntax errors")"
+		! jq -r '.' ${dir}/debug_send_json && log_change "[ERROR] $(translate "Format error after variable substitution, please check %s for unescaped special characters or syntax errors" "$dir")"
 		
-		log_change "[DEBUG] $(translate "JSON file saved to: ${dir}/debug_send_json")"
-		log_change "[DEBUG] $(translate "Push content preview saved to: ${dir}/debug_send_content")"
-		log_change "[DEBUG] $(translate "If no message received, please check ${dir}/debug_send_data or use the following command to test manually")"
+		log_change "[DEBUG] $(translate "JSON file saved to: %s" "$dir")"
+		log_change "[DEBUG] $(translate "Push content preview saved to: %s" "$dir")"
+		log_change "[DEBUG] $(translate "If no message received, please check %s or use the following command to test manually" "$dir")"
 		log_change "[DEBUG] curl -X POST -H \"$content_type\" -d \"@${dir}/debug_send_data\" \"${diyurl}\""
 		return 1
 	else

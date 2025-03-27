@@ -1299,14 +1299,17 @@ msgstr "白名单添加失败，IP 格式错误"
 msgid "Currently no online devices"
 msgstr "当前无在线设备"
 
-msgid "Currently %s online devices, details below"
-msgstr "现有在线设备 %s 台，具体如下"
+msgid "Currently %d online devices, details below"
+msgstr "当前有 %d 台在线设备，具体如下"
 
 msgid "IP Address"
 msgstr "IP 地址"
 
 msgid "Uptime"
 msgstr "在线时间"
+
+msgid "Client Name"
+msgstr "客户端名"
 
 msgid "%s connected to your router"
 msgstr "%s 连接了你的路由器"
@@ -1471,16 +1474,16 @@ msgid "%ds"
 msgstr "%d秒"
 
 msgid "%dm %ds"
-msgstr "%d分 %d秒"
+msgstr "%d分%d秒"
 
 msgid "%dh %dm"
-msgstr "%d小时 %d分"
+msgstr "%d小时%d分"
 
 msgid "%dd %dh"
-msgstr "%d天 %d小时"
+msgstr "%d天%d小时"
 
 msgid "Uptime: %dd %dh %dm %ds"
-msgstr "运行时间: %d天%d时%d分%d秒"
+msgstr "运行时间： %d天%d时%d分%d秒"
 
 msgid "Failed to read settings, please check configuration"
 msgstr "读取设置出错，请检查设置项"
