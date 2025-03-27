@@ -440,6 +440,8 @@ return view.extend({
 		}
 
 		var container = document.createElement('div');
+		refreshContainer();
+
 		container.addEventListener('click', function (event) {
 			if (event.target.tagName === 'TH' && event.target.parentNode.rowIndex === 0) {
 				var columnIndex = event.target.cellIndex;
@@ -461,11 +463,18 @@ return view.extend({
 					direction = 'asc';
 				}
 
-				sortTable(column, direction, container);
+				sortTable(column, direction);
 			}
 		});
 
-		function sortTable(column, direction, container) {
+		function refreshContainer() {
+			container.innerHTML = '';
+			container.appendChild(document.createElement('h2')).textContent = _('Currently %s devices online').replace('%s', totalDevices);
+			container.appendChild(createTable());
+			container.appendChild(document.createElement('style')).textContent = style;
+		}
+
+		function sortTable(column, direction) {
 			devices.sort(function (a, b) {
 				return compareDevices(a, b, column, direction);
 			});
@@ -477,11 +486,7 @@ return view.extend({
 			localStorage.setItem('sortColumn', currentSortColumn);
 			localStorage.setItem('sortDirection', currentSortDirection);
 
-			// 重新生成表格
-			container.innerHTML = '';
-			container.appendChild(document.createElement('h2')).textContent = _('Currently %s devices online').replace('%s', totalDevices);
-			container.appendChild(createTable());
-			container.appendChild(document.createElement('style')).textContent = style;
+			refreshContainer();
 		}
 
 		return container;
