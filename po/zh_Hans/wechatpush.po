@@ -1492,7 +1492,10 @@ msgstr "%d天%d小时"
 msgid "Uptime: %dd %dh %dm %ds"
 msgstr "运行时间： %d天%d时%d分%d秒"
 
-msgid "Failed to read settings, please check configuration"
+msgid "Failed to retrieve remote host temperature. To prevent SSH connection timeout from affecting program functionality, the temperature retrieval feature has been disabled. Please verify your configuration and restart the script, or manually delete /tmp/wechatpush/temp_err to retry."
+msgstr "远程主机温度获取失败，为避免 SSH 连接超时影响程序功能，已禁用温度获取功能，请确认配置正确后重启脚本或手动删除 `/tmp/wechatpush/temp_err` 重试"
+
+msgid "Failed to read settings, please check configuration."
 msgstr "读取设置出错，请检查设置项"
 
 msgid "Loading online devices..."

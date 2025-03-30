@@ -70,7 +70,7 @@ read_config() {
 	tempjsonpath="${dir}/temp.json"
 	ip_blacklist_path="/usr/share/wechatpush/api/ip_blacklist"
 	oui_base="${dir}/oui_base.txt"
-	debuglevel=$(echo "$debuglevel") && [ -z "$debuglevel" ] && logfile="/dev/null" || logfile="${dir}/wechatpush.log"
+	[ -z "$debuglevel" ] && logfile="/dev/null" || logfile="${dir}/wechatpush.log"
 	login_port_forward_list=$(echo "$login_port_forward_list" | sed 's/ /\n/g') 2>/dev/null
 	up_down_push_blacklist=$(echo "$up_down_push_blacklist" | sed 's/ /\n/g') 2>/dev/null
 	up_down_push_whitelist=$(echo "$up_down_push_whitelist" | sed 's/ /\n/g') 2>/dev/null
@@ -175,7 +175,7 @@ init() {
 	/usr/libexec/wechatpush-call "down_oui"
 
 	# 文件清理
-	rm -f ${dir}/sheep_usage ${dir}/old_sheep_usage ${dir}/client_usage_aliases ${dir}/old_client_usage_aliases /usr/share/wechatpush/errlog >/dev/null 2>&1
+	rm -f "${dir}/sheep_usage" "${dir}/old_sheep_usage" "${dir}/client_usage_aliases" "${dir}/old_client_usage_aliases" "/usr/share/wechatpush/errlog" "${dir}/temp_err" >/dev/null 2>&1
 	LockFile unlock
 
 	# 防火墙初始化
@@ -268,8 +268,26 @@ main() {
 
 	# 初始化
 	if [ "$1" ]; then
-		[ $1 == "soc" ] && get_config "soc_code" "server_host" "server_port"
-		[ $1 == "soc" ] && soc_temp && exit $?
+		[ $1 == "soc" ] && {
+			get_config "soc_code" "server_host" "server_port"
+
+			if [ -n "$server_host" ]; then
+				if [ ! -f "${dir}/temp_err" ]; then
+					cputemp=$(soc_temp)
+					if [ -n "$cputemp" ] && [[ "$cputemp" != "0.0" ]]; then
+						echo "$cputemp" && exit
+					else
+						>"${dir}/temp_err"
+						get_config "debuglevel"
+						[ -z "$debuglevel" ] && logfile="/dev/null" || logfile="${dir}/wechatpush.log"
+						log_change "[ERROR] $(translate "Failed to retrieve remote host temperature. To prevent SSH connection timeout from affecting program functionality, the temperature retrieval feature has been disabled. Please verify your configuration and restart the script, or manually delete /tmp/wechatpush/temp_err to retry.")"
+					fi
+				fi
+				exit 1
+			else
+				soc_temp && exit $?
+			fi
+		}
 		[ $1 == "getip" ] && {
 			get_config "get_ipv4_mode" "ipv4_interface" "get_ipv6_mode" "ipv6_interface"
 			ipv4_urllist=$(cat /usr/share/wechatpush/api/ipv4.list) 2>/dev/null
@@ -292,7 +310,7 @@ main() {
 
 	# 载入在线设备
 	init
-	[ $? -eq 1 ] && log_change "[ERROR] $(translate "Failed to read settings, please check configuration")" && exit
+	[ $? -eq 1 ] && log_change "[ERROR] $(translate "Failed to read settings, please check configuration.")" && exit
 
 	log_change "[INFO] $(translate "Loading online devices...")"
 	silent_run monitor_logins
@@ -912,7 +930,8 @@ soc_temp() {
 		"
 	}
 
-	[ -n "$server_host" ] && local ssh_command="ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -i /root/.ssh/id_rsa root@${server_host} -p ${server_port}"
+	[ -n "$server_host" ] && local ssh_command="ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=yes -o BatchMode=yes -i /root/.ssh/id_rsa root@${server_host} -p ${server_port}"
+
 	local temperature=$(getsensors "$ssh_command" 2>/dev/null)
 	# 通用（只能取最高温度，不一定是 CPU，特殊设备自行修改）
 	# 将 grep °C 改为温度所在行的特别字符串，如 grep Core 0 等，就可以指定设备了
@@ -1280,7 +1299,7 @@ get_disk() {
 
 	# 查询远程硬盘名
 	if [ -n "$server_host" ]; then
-		local ssh_command="ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -i /root/.ssh/id_rsa root@${server_host} -p ${server_port}"
+		local ssh_command="ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=yes -o BatchMode=yes -i /root/.ssh/id_rsa root@${server_host} -p ${server_port}"
 		local remote_disk_names=$(run_with_tag $ssh_command "$(declare -f get_disk_names); get_disk_names" | tr -d '\r')
 		local remote_disk_names=($remote_disk_names)
 		local remote_disk_tags=($(for _ in "${remote_disk_names[@]}"; do echo "remote"; done))
@@ -1533,15 +1552,15 @@ getopenwrt() {
 		# 初始化一个空数组（bash 数组）
 		local json_array=()
 		for op_host_ip in $op_host_ips; do
-			local wlan_interfaces=$(run_with_tag ssh -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip 'iw dev 2>/dev/null | grep Interface | awk '\''{print $2}'\''')
-			local leases_info=$(run_with_tag ssh -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "cat /tmp/dhcp.leases 2>/dev/null")
-			local arp_info=$(run_with_tag ssh -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "cat /proc/net/arp | grep '0x[26]' | grep -v '^169.254.' | grep -v '^$' | sort -u 2>/dev/null")
+			local wlan_interfaces=$(run_with_tag ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip 'iw dev 2>/dev/null | grep Interface | awk '\''{print $2}'\''')
+			local leases_info=$(run_with_tag ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "cat /tmp/dhcp.leases 2>/dev/null")
+			local arp_info=$(run_with_tag ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "cat /proc/net/arp | grep '0x[26]' | grep -v '^169.254.' | grep -v '^$' | sort -u 2>/dev/null")
 			local openwrt_arp_iplist+="$(echo "$arp_info" | awk '{print $1}')"$'\n'
 
 			# 遍历每个接口
 			for iface in $wlan_interfaces; do
 				# 获取接口信息
-				local info=$(run_with_tag ssh -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "iw dev $iface info 2>/dev/null")
+				local info=$(run_with_tag ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "iw dev $iface info 2>/dev/null")
 
 				# 获取频道和频段
 				local channel=$(echo "$info" | grep channel | awk '{print $2}')
@@ -1553,7 +1572,7 @@ getopenwrt() {
 				fi
 
 				# 获取连接的设备列表
-				local devices=$(run_with_tag ssh -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "iw dev $iface station dump 2>/dev/null")
+				local devices=$(run_with_tag ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no -i /root/.ssh/id_rsa root@$op_host_ip "iw dev $iface station dump 2>/dev/null")
 
 				# 逐行输出设备信息
 				while read -r line; do
@@ -1604,7 +1623,7 @@ getmikrotik() {
 	local last_getmikrotik_time=$(file_date "${dir}/mikrotik_info")
 
 	if [ "$last_getmikrotik_time" -ge "$device_info_helper_sleeptime" ]; then
-		lease_info=$(run_with_tag ssh ${mikrotik_username}@${mikrotik_ip} "/ip dhcp-server lease print terse where status=bound")
+		lease_info=$(run_with_tag ssh -o ConnectTimeout=5 ${mikrotik_username}@${mikrotik_ip} "/ip dhcp-server lease print terse where status=bound")
 
 		echo "$lease_info" | awk '
 			BEGIN {
