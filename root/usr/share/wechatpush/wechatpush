@@ -85,7 +85,7 @@ read_config() {
 	ipv6_urllist=$(cat /usr/share/wechatpush/api/ipv6.list) 2>/dev/null
 	lang=$(uci get luci.main.lang 2>/dev/null)
 	if [ -z "$lang" ] || [[ "$lang" == "auto" ]]; then
-		lang=$(echo "${LANG:-${LANGUAGE:-${LC_ALL:-${LC_MESSAGES:-zh_cn}}}}" | awk -F'[ .@]' '{print tolower($1)}' | sed 's/-/_/'2>/dev/null)
+		lang=$(echo "${LANG:-${LANGUAGE:-${LC_ALL:-${LC_MESSAGES:-zh_cn}}}}" | awk -F'[ .@]' '{print tolower($1)}' | sed 's/-/_/' 2>/dev/null)
 	fi
 	[ -z "$get_ipv4_mode" ] && get_ipv4_mode=0
 	[ -z "$get_ipv6_mode" ] && get_ipv6_mode=0

@@ -7,7 +7,7 @@ oui_data=$(uci get wechatpush.config.oui_data 2>/dev/null)
 oui_url="https://standards-oui.ieee.org/oui/oui.txt"
 lang=$(uci get luci.main.lang 2>/dev/null)
 if [ -z "$lang" ] || [[ "$lang" == "auto" ]]; then
-	lang=$(echo "${LANG:-${LANGUAGE:-${LC_ALL:-${LC_MESSAGES:-zh_cn}}}}" | awk -F'[ .@]' '{print tolower($1)}' | sed 's/-/_/'2>/dev/null)
+	lang=$(echo "${LANG:-${LANGUAGE:-${LC_ALL:-${LC_MESSAGES:-zh_cn}}}}" | awk -F'[ .@]' '{print tolower($1)}' | sed 's/-/_/'2 >/dev/null)
 fi
 
 translate() {
