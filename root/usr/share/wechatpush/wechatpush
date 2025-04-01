@@ -6,7 +6,14 @@
 # 读取设置文件
 get_config() {
 	while [[ "$*" != "" ]]; do
-		eval "${1}='$(uci get wechatpush.config.$1 2>/dev/null)'"
+		[[ "$1" == "lang" ]] && {
+			lang=$(uci get luci.main.lang 2>/dev/null)
+			if [ -z "$lang" ] || [[ "$lang" == "auto" ]]; then
+				lang=$(echo "${LANG:-${LANGUAGE:-${LC_ALL:-${LC_MESSAGES:-zh_cn}}}}" | awk -F'[ .@]' '{print tolower($1)}' | sed 's/-/_/' 2>/dev/null)
+			fi
+		} || {
+			eval "${1}='$(uci get wechatpush.config.$1 2>/dev/null)'"
+		}
 		shift
 	done
 }
@@ -36,7 +43,7 @@ wait_and_cat() {
 # 初始化设置信息
 read_config() {
 	get_config \
-		"enable" "lite_enable" "device_name" "proxy_address" "sleeptime" "oui_data" "reset_regularly" "debuglevel" \
+		"enable" "lite_enable" "device_name" "proxy_address" "sleeptime" "oui_data" "reset_regularly" "debuglevel" "lang" \
 		"jsonpath" "sckey" "sc3key" "sc3uid" "sc3tags" "corpid" "userid" "agentid" "corpsecret" "mediapath" "wxpusher_apptoken" "wxpusher_uids" "wxpusher_topicIds" "pushplus_token" "tg_token" "chat_id" "recipient_email" \
 		"get_ipv4_mode" "ipv4_interface" "get_ipv6_mode" "ipv6_interface" \
 		"device_notification" "cpu_notification" "cpu_load_threshold" "temperature_threshold" \
@@ -83,10 +90,6 @@ read_config() {
 	mark_mac_list=$(echo "$mark_mac_list" | sed 's/ /\n/g' | sed 's/-/ /') 2>/dev/null
 	ipv4_urllist=$(cat /usr/share/wechatpush/api/ipv4.list) 2>/dev/null
 	ipv6_urllist=$(cat /usr/share/wechatpush/api/ipv6.list) 2>/dev/null
-	lang=$(uci get luci.main.lang 2>/dev/null)
-	if [ -z "$lang" ] || [[ "$lang" == "auto" ]]; then
-		lang=$(echo "${LANG:-${LANGUAGE:-${LC_ALL:-${LC_MESSAGES:-zh_cn}}}}" | awk -F'[ .@]' '{print tolower($1)}' | sed 's/-/_/' 2>/dev/null)
-	fi
 	[ -z "$get_ipv4_mode" ] && get_ipv4_mode=0
 	[ -z "$get_ipv6_mode" ] && get_ipv6_mode=0
 	[ -z "$sleeptime" ] && sleeptime="60"
@@ -292,10 +295,11 @@ main() {
 			fi
 		}
 		[ $1 == "getip" ] && {
-			get_config "get_ipv4_mode" "ipv4_interface" "get_ipv6_mode" "ipv6_interface"
+			get_config "get_ipv4_mode" "ipv4_interface" "get_ipv6_mode" "ipv6_interface" "lang"
 			ipv4_urllist=$(cat /usr/share/wechatpush/api/ipv4.list) 2>/dev/null
 			ipv6_urllist=$(cat /usr/share/wechatpush/api/ipv6.list) 2>/dev/null
 			output_dir="${dir}/json_output" && mkdir -p "$output_dir"
+			devices_json="${dir}/devices.json"
 			ip_changes getip && exit $?
 		}
 		silent_run read_config
@@ -800,7 +804,7 @@ getinterfaceuptime() {
 # 查询 IP 归属地
 get_ip_attribution() {
 	ip="$1"
-	jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip) | .ip' "$devices_json" >/dev/null && echo "本地局域网" && return
+	jq -e --arg ip "$ip" '.devices[] | select(.ip == $ip)' "$devices_json" >/dev/null 2>&1 && echo "本地局域网" && return
 	local ip_attribution_urls=$(cat /usr/share/wechatpush/api/ip_attribution.list)
 	local sorted_attribution_urls=$(echo "$ip_attribution_urls" | awk 'BEGIN {srand()} {print rand() "\t" $0}' | sort -k1,1n | cut -f2-)
 	local ip_attribution_url
