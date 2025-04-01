@@ -625,7 +625,7 @@ getip() {
 		local ipv4_URL
 		while IFS= read -r ipv4_URL; do
 			[ -n "$ipv4_interface" ] && local tmp_hostIP=$(eval "curl --connect-timeout 2 -m 2 -k -s -4 --interface ${ipv4_interface} -m 5 ${ipv4_URL}") || local tmp_hostIP=$(eval "curl --connect-timeout 2 -m 2 -k -s -4 -m 5 ${ipv4_URL}")
-			[ -z "$tmp_hostIP" ] && log_change "[DEBUG] $(translate "Failed to get IP, current API: %s & %s" "$ipv4_URL" "$ipv4_interface")"
+			#[ -z "$tmp_hostIP" ] && log_change "[DEBUG] $(translate "Failed to get IP, current API: %s & %s" "$ipv4_URL" "$ipv4_interface")"
 			local tmp_hostIP=$(echo $tmp_hostIP | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | head -n1)
 			[ -n "$tmp_hostIP" ] && local tmp_hostIP="{\"IP\":\"${tmp_hostIP}\", \"URL\":\"${ipv4_URL}\"}" && break
 		done <<<"$sorted_ipv4_urllist"
@@ -641,7 +641,7 @@ getip() {
 		local ipv6_URL
 		while IFS= read -r ipv6_URL; do
 			[ -n "$ipv6_interface" ] && local tmp_hostIPv6=$(eval "curl --connect-timeout 2 -m 2 -k -s -6 --interface ${ipv6_interface} -m 5 ${ipv6_URL}") || local tmp_hostIPv6=$(eval "curl --connect-timeout 2 -m 2 -k -s -6 -m 5 ${ipv6_URL}")
-			[ -z "$tmp_hostIPv6" ] && log_change "[DEBUG] $(translate "Failed to get IPv6, current API: %s & %s" "$ipv6_URL" "$ipv6_interface")"
+			#[ -z "$tmp_hostIPv6" ] && log_change "[DEBUG] $(translate "Failed to get IPv6, current API: %s & %s" "$ipv6_URL" "$ipv6_interface")"
 			local tmp_hostIPv6=$(echo $tmp_hostIPv6 | grep -oE "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}" | head -n1)
 			[ -n "$tmp_hostIPv6" ] && local tmp_hostIP="{\"IP\":\"${tmp_hostIPv6}\", \"URL\":\"${ipv6_URL}\"}" && break
 		done <<<"$sorted_ipv6_urllist"
