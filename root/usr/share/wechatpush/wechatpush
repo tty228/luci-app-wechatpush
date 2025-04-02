@@ -5,25 +5,44 @@
 #
 # 读取设置文件
 get_config() {
-	while [[ "$*" != "" ]]; do
-		[[ "$1" == "lang" ]] && {
+	while [ $# -gt 0 ]; do
+		local param="$1"
+		shift
+
+		if [[ "$param" == "lang" ]]; then
 			lang=$(uci get luci.main.lang 2>/dev/null)
 			if [ -z "$lang" ] || [[ "$lang" == "auto" ]]; then
 				lang=$(echo "${LANG:-${LANGUAGE:-${LC_ALL:-${LC_MESSAGES:-zh_cn}}}}" | awk -F'[ .@]' '{print tolower($1)}' | sed 's/-/_/' 2>/dev/null)
 			fi
-		} || {
-			eval "${1}='$(uci get wechatpush.config.$1 2>/dev/null)'"
-		}
-		shift
-	done
-}
+			continue
+		fi
 
-# 后台读取 json 中的变量
-read_json() {
-	local json_key="$1"
-	local json_path="$2"
-	local output_file="$output_dir/${json_key}"
-	jq -r ."$json_key" "$json_path" >"$output_file" &
+		# 检查参数是否包含特殊标记
+		if [[ "$param" == *"@"* ]]; then
+			# 分离参数名和标记
+			local base_param="${param% @*}"
+			local value=$(uci get wechatpush.config."$base_param" 2>/dev/null)
+
+			case "${param#*@}" in
+				"list")
+					# 空格转换行
+					eval "$base_param=\$(echo \"$value\" | sed 's/ /\\n/g' 2>/dev/null)"
+					;;
+				"flags"*)
+					local flags="${param#* @flags }"
+					for flag in $flags; do
+						echo "$value" | grep -q "$flag" && eval "${flag}=\"true\""
+					done
+					;;
+				*)
+					eval "$param='$value'"
+					;;
+			esac
+		else
+			# 普通参数直接赋值
+			eval "$param='$(uci get wechatpush.config."$param" 2>/dev/null)'"
+		fi
+	done
 }
 
 # 遍历输出目录，将文件内容保存到对应的变量
@@ -47,14 +66,15 @@ read_config() {
 		"jsonpath" "sckey" "sc3key" "sc3uid" "sc3tags" "corpid" "userid" "agentid" "corpsecret" "mediapath" "wxpusher_apptoken" "wxpusher_uids" "wxpusher_topicIds" "pushplus_token" "tg_token" "chat_id" "recipient_email" \
 		"get_ipv4_mode" "ipv4_interface" "get_ipv6_mode" "ipv6_interface" \
 		"device_notification" "cpu_notification" "cpu_load_threshold" "temperature_threshold" \
-		"client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist" \
-		"login_notification" "login_max_num" "login_web_black" "login_ip_black_timeout" "login_ip_white_list" "port_knocking_enable" "login_ip_white_timeout" "login_port_white" "login_port_forward_list" \
+		"client_usage" "client_usage_max" "client_usage_disturb" "client_usage_whitelist @list" \
+		"login_notification" "login_max_num" "login_web_black" "login_ip_black_timeout" "login_ip_white_list @list" "port_knocking_enable" "login_ip_white_timeout" "login_port_white" "login_port_forward_list @list" \
 		"crontab_regular_time" "crontab_interval_time" \
-		"do_not_disturb_mode" "do_not_disturb_starttime" "do_not_disturb_endtime" "up_down_push_whitelist" "up_down_push_blacklist" "up_down_push_interface" "mac_online_list" "mac_offline_list" "cpu_threshold_duration" "cpu_notification_delay" "login_disturb" "login_notification_delay" "login_log_enable" \
-		"up_timeout" "down_timeout" "timeout_retry_count" "always_check_ip_list" "only_timeout_push" "passive_mode" "thread_num" "defaultSortColumn" "soc_code" "server_host" "server_port" \
-		"unattended_enable" "zerotier_helper" "unattended_only_on_disturb_time" "unattended_device_aliases" "network_disconnect_event" "unattended_autoreboot_mode" "autoreboot_system_uptime" "autoreboot_network_uptime" \
-		"device_info_helper" "gateway_host_url" "gateway_info_url" "gateway_logout_url" "gateway_username_id" "gateway_password_id" "gateway_username" "gateway_password" "miwifi_ip" "miwifi_password" "mikrotik_ip" "mikrotik_username" "op_host_ips" "scan_ip_range" "device_info_helper_sleeptime"
+		"do_not_disturb_mode" "do_not_disturb_starttime" "do_not_disturb_endtime" "up_down_push_whitelist @list" "up_down_push_blacklist @list" "up_down_push_interface" "mac_online_list @list" "mac_offline_list @list" "cpu_threshold_duration" "cpu_notification_delay" "login_disturb" "login_notification_delay" "login_log_enable" \
+		"up_timeout" "down_timeout" "timeout_retry_count" "always_check_ip_list @list" "only_timeout_push" "passive_mode" "thread_num" "defaultSortColumn" "soc_code" "server_host" "server_port" \
+		"unattended_enable" "zerotier_helper" "unattended_only_on_disturb_time" "unattended_device_aliases @list" "network_disconnect_event" "unattended_autoreboot_mode" "autoreboot_system_uptime" "autoreboot_network_uptime" \
+		"device_info_helper" "gateway_host_url" "gateway_info_url" "gateway_logout_url" "gateway_username_id" "gateway_password_id" "gateway_username" "gateway_password" "miwifi_ip" "miwifi_password" "mikrotik_ip" "mikrotik_username" "op_host_ips @list" "scan_ip_range" "device_info_helper_sleeptime"
 
+	# 变量名未统一，下次再改了
 	(echo "$device_notification" | grep -q "online") && notification_online="true"
 	(echo "$device_notification" | grep -q "offline") && notification_offline="true"
 	(echo "$cpu_notification" | grep -q "load") && notification_load="true"
@@ -67,51 +87,44 @@ read_config() {
 	(echo "$device_info_helper" | grep -q "miwifi_info") && miwifi_info_enable="true"
 	(echo "$device_info_helper" | grep -q "mikrotik_info") && mikrotik_info_enable="true"
 	(echo "$device_info_helper" | grep -q "openwrt_info") && openwrt_info_enable="true"
-	op_host_ips=$(echo "$op_host_ips" | sed 's/ /\n/g') 2>/dev/null
+
+	mark_mac_list="${mac_online_list}\n${mac_offline_list}"
+
 	for str_version in "wrtbwmon" "iputils-arping" "curl" "iw"; do
 		eval $(echo ${str_version:0:2}"_version")=$(opkg list-installed | grep -w ^${str_version} | awk '{print $3}') 2>/dev/null
 	done
 	(opkg list-installed | grep -w -q "^firewall4") && nftables_version="true"
+	[ "$iw_version" ] && wlan_interface=$(iw dev 2>/dev/null | grep Interface | awk '{print $2}') >/dev/null 2>&1
+
 	devices_json="${dir}/devices.json"
 	tmp_devices_json="${dir}/devices.json.tmp"
 	tempjsonpath="${dir}/temp.json"
 	ip_blacklist_path="/usr/share/wechatpush/api/ip_blacklist"
 	oui_base="${dir}/oui_base.txt"
+	output_dir="${dir}/json_output" && mkdir -p "$output_dir"
 	[ -z "$debuglevel" ] && logfile="/dev/null" || logfile="${dir}/wechatpush.log"
-	login_port_forward_list=$(echo "$login_port_forward_list" | sed 's/ /\n/g') 2>/dev/null
-	up_down_push_blacklist=$(echo "$up_down_push_blacklist" | sed 's/ /\n/g') 2>/dev/null
-	up_down_push_whitelist=$(echo "$up_down_push_whitelist" | sed 's/ /\n/g') 2>/dev/null
 	device_aliases_path="/usr/share/wechatpush/api/device_aliases.list"
-	always_check_ip_list=$(echo "$always_check_ip_list" | sed 's/ /\n/g') 2>/dev/null
-	unattended_device_aliases=$(echo "$unattended_device_aliases" | sed 's/ /\n/g') 2>/dev/null
-	client_usage_whitelist=$(echo "$client_usage_whitelist" | sed 's/ /\n/g') 2>/dev/null
-	login_ip_white_list=$(echo "$login_ip_white_list" | sed 's/ /\n/g') 2>/dev/null
-	mark_mac_list="${mac_online_list} ${mac_offline_list}"
-	mark_mac_list=$(echo "$mark_mac_list" | sed 's/ /\n/g' | sed 's/-/ /') 2>/dev/null
 	ipv4_urllist=$(cat /usr/share/wechatpush/api/ipv4.list) 2>/dev/null
 	ipv6_urllist=$(cat /usr/share/wechatpush/api/ipv6.list) 2>/dev/null
+	user_agent="luci-app-wechatpush/1.0 (+https://github.com/tty228/luci-app-wechatpush)"
+
 	[ -z "$get_ipv4_mode" ] && get_ipv4_mode=0
 	[ -z "$get_ipv6_mode" ] && get_ipv6_mode=0
 	[ -z "$sleeptime" ] && sleeptime="60"
 	[ -z "$login_ip_black_timeout" ] && login_ip_black_timeout="86400"
 	[ -z "$login_ip_white_timeout" ] && login_ip_white_timeout="600"
-	[ "$iw_version" ] && wlan_interface=$(iw dev 2>/dev/null | grep Interface | awk '{print $2}') >/dev/null 2>&1
 	[ -z "$server_port" ] && server_port="22"
-	output_dir="${dir}/json_output"
-	mkdir -p "$output_dir"
 	if (echo "$lite_enable" | grep -q "content") || [ -z "$jsonpath" ]; then
 		str_title_start="" && str_title_end="" && str_splitline="" && str_linefeed="" && str_tab=""
 	else
-		read_json "str_title_start" "$jsonpath"
-		read_json "str_title_end" "$jsonpath"
-		read_json "str_linefeed" "$jsonpath"
-		read_json "str_splitline" "$jsonpath"
-		read_json "str_space" "$jsonpath"
-		read_json "str_tab" "$jsonpath"
-		read_json "_api" "$jsonpath"
+		str_title_start=$(jq -r .str_title_start "$jsonpath")
+		str_title_end=$(jq -r .str_title_end "$jsonpath")
+		str_linefeed=$(jq -r .str_linefeed "$jsonpath")
+		str_splitline=$(jq -r .str_splitline "$jsonpath")
+		str_space=$(jq -r .str_space "$jsonpath")
+		str_tab=$(jq -r .str_tab "$jsonpath")
 	fi
-	wait_and_cat
-	disturb_text=$_api
+	disturb_text=$(jq -r ._api "$jsonpath")
 	deltemp
 	cron
 }
@@ -628,7 +641,7 @@ getip() {
 		local sorted_ipv4_urllist=$(echo "$ipv4_urllist" | awk 'BEGIN {srand()} {print rand() "\t" $0}' | sort -k1,1n | cut -f2-)
 		local ipv4_URL
 		while IFS= read -r ipv4_URL; do
-			[ -n "$ipv4_interface" ] && local tmp_hostIP=$(eval "curl --connect-timeout 2 -m 2 -k -s -4 --interface ${ipv4_interface} -m 5 ${ipv4_URL}") || local tmp_hostIP=$(eval "curl --connect-timeout 2 -m 2 -k -s -4 -m 5 ${ipv4_URL}")
+			[ -n "$ipv4_interface" ] && local tmp_hostIP=$(curl --connect-timeout 2 -m 5 -k -s -4 --interface "$ipv4_interface" -A "$user_agent" "$ipv4_URL") || local tmp_hostIP=$(curl --connect-timeout 2 -m 5 -k -s -4 -A "$user_agent" "$ipv4_URL")
 			#[ -z "$tmp_hostIP" ] && log_change "[DEBUG] $(translate "Failed to get IP, current API: %s & %s" "$ipv4_URL" "$ipv4_interface")"
 			local tmp_hostIP=$(echo $tmp_hostIP | grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' | head -n1)
 			[ -n "$tmp_hostIP" ] && local tmp_hostIP="{\"IP\":\"${tmp_hostIP}\", \"URL\":\"${ipv4_URL}\"}" && break
@@ -644,7 +657,7 @@ getip() {
 		local sorted_ipv6_urllist=$(echo "$ipv6_urllist" | awk 'BEGIN {srand()} {print rand() "\t" $0}' | sort -k1,1n | cut -f2-)
 		local ipv6_URL
 		while IFS= read -r ipv6_URL; do
-			[ -n "$ipv6_interface" ] && local tmp_hostIPv6=$(eval "curl --connect-timeout 2 -m 2 -k -s -6 --interface ${ipv6_interface} -m 5 ${ipv6_URL}") || local tmp_hostIPv6=$(eval "curl --connect-timeout 2 -m 2 -k -s -6 -m 5 ${ipv6_URL}")
+			[ -n "$ipv6_interface" ] && local tmp_hostIPv6=$(curl --connect-timeout 2 -m 5 -k -s -6 --interface "$ipv6_interface" -A "$user_agent" "$ipv6_URL") || local tmp_hostIPv6=$(curl --connect-timeout 2 -m 5 -k -s -6 -A "$user_agent" "$ipv6_URL")
 			#[ -z "$tmp_hostIPv6" ] && log_change "[DEBUG] $(translate "Failed to get IPv6, current API: %s & %s" "$ipv6_URL" "$ipv6_interface")"
 			local tmp_hostIPv6=$(echo $tmp_hostIPv6 | grep -oE "([\da-fA-F0-9]{1,4}(:{1,2})){1,15}[\da-fA-F0-9]{1,4}" | head -n1)
 			[ -n "$tmp_hostIPv6" ] && local tmp_hostIP="{\"IP\":\"${tmp_hostIPv6}\", \"URL\":\"${ipv6_URL}\"}" && break
@@ -1373,7 +1386,7 @@ get_disk() {
 			echo -n "${str_linefeed}${str_title_start}$(translate "Disk Name:") ${disk_name}${disk_type}${str_title_end}${str_linefeed}${str_tab} - $(translate "Disk in standby")" >>"$output_dir/get_disk"
 		elif [ -f "${file_path}" ]; then
 			# 硬盘名称
-			local disk_name=$(jq -r .model_name ${file_path})
+			local disk_name=$(jq -r .model_name "$file_path")
 			[ -z "$disk_name" ] && local disk_name=$(cat /sys/block/"${tmp_name}"/device/model)
 			[[ -n $disk_name && $disk_name != null && $disk_name != 0 ]] && {
 				local disk_name=$(cut_str "$disk_name" "20")
@@ -1384,11 +1397,11 @@ get_disk() {
 			echo -n "${str_linefeed}${str_title_start}$(translate "Disk Name:") ${disk_name}${disk_type}${str_title_end}" >>"$output_dir/get_disk"
 			
 			# 硬盘温度
-			local disk_temp=$(jq -r .temperature.current ${file_path})
+			local disk_temp=$(jq -r .temperature.current "$file_path")
 			[[ -n $disk_temp && $disk_temp != null && $disk_temp != 0 ]] && echo -n "${str_linefeed}${str_tab} - $(translate "Disk Temp:") ${disk_temp}℃" >>"$output_dir/get_disk"
 			
 			# 通电时间
-			local disk_time=$(jq -r .power_on_time.hours ${file_path})
+			local disk_time=$(jq -r .power_on_time.hours "$file_path")
 			[[ -n $disk_time && $disk_time != null ]] && echo -n "${str_linefeed}${str_tab} - $(translate "Power On:") ${disk_time}h" >>"$output_dir/get_disk"
 			
 			# 空间使用
@@ -1405,23 +1418,23 @@ get_disk() {
 			[ -n "$disk_use" ] && [ -n "${disk_use// /}" ] && echo -e -n "${str_linefeed}${str_tab} - $(translate "Disk Usage:") ${disk_use}" >>"$output_dir/get_disk"
 			
 			# 寿命使用
-			local disk_health=$(jq -r .nvme_smart_health_information_log.percentage_used ${file_path})
+			local disk_health=$(jq -r .nvme_smart_health_information_log.percentage_used "$file_path")
 			[[ -n $disk_health && $disk_health != null ]] && echo -e -n "${str_linefeed}${str_tab} - $(translate "Health Used:") ${disk_health}%" >>"$output_dir/get_disk"
 			
 			# 错误日志
-			local disk_log_err=$(jq -r .ata_smart_error_log.summary.count ${file_path})
+			local disk_log_err=$(jq -r .ata_smart_error_log.summary.count "$file_path")
 			[[ -n $disk_log_err && $disk_log_err != null && $disk_log_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab} - $(translate "Error Logs:") ${disk_log_err}" >>"$output_dir/get_disk"
 			
 			# 自检错误
-			local disk_test_err=$(jq -r .ata_smart_self_test_log.standard.error_count_total ${file_path})
+			local disk_test_err=$(jq -r .ata_smart_self_test_log.standard.error_count_total "$file_path")
 			[[ -n $disk_test_err && $disk_test_err != null && $disk_test_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab} - $(translate "Self-Test Errors:") ${disk_test_err}" >>"$output_dir/get_disk"
 			
 			# 0E 错误
-			local disk_0e_err=$(jq -r .nvme_smart_health_information_log.media_errors ${file_path})
+			local disk_0e_err=$(jq -r .nvme_smart_health_information_log.media_errors "$file_path")
 			[[ -n $disk_0e_err && $disk_0e_err != null && $disk_0e_err != 0 ]] && local disk_err="true" && echo -n "${str_linefeed}${str_tab} - $(translate "0E Errors:") ${disk_0e_err}" >>"$output_dir/get_disk"
 			
 			# 整体健康
-			local smart_status=$(jq -r .smart_status.passed ${file_path})
+			local smart_status=$(jq -r .smart_status.passed "$file_path")
 			[[ -n $smart_status && $smart_status != null && $smart_status != "true" ]] && {
 				echo -e -n "${str_linefeed}${str_tab} - ${str_title_start}$(translate "Disk health assessment FAILED!!!")${str_title_end}" >>"$output_dir/get_disk"
 				local disk_err="true"
