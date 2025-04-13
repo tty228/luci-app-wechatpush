@@ -1219,7 +1219,7 @@ check_cpu_load() {
 					log_change "[WARN] $(translate "CPU temperature too high: %s" "$cpu_temp")"
 
 					local cpu_overload_duration=$(time_for_humans $(($(date +%s) - $temp_last_overload_time)))
-					local content="${content}\
+					content="${content}\
 ${str_splitline}\
 ${str_title_start}$(translate "CPU Temperature Alert")${str_title_end}\
 ${str_linefeed}${str_tab} - $(translate "CPU temperature has exceeded threshold for %s" "$cpu_overload_duration")\
@@ -1255,7 +1255,7 @@ ${str_linefeed}${str_tab} - $(translate "Current temperature: %s℃" "$cpu_temp"
 					log_change "${disturb_text} $(translate "CPU load too high: %s" "${cpu_load}")"
 
 					local cpu_load_duration=$(time_for_humans $(($(date +%s) - $cpu_last_overload_time)))
-					local content="${content}\
+					content="${content}\
 ${str_splitline}\
 ${str_title_start}$(translate "CPU Load Alert")${str_title_end}\
 ${str_linefeed}${str_tab} - $(translate "CPU load has exceeded threshold for %s" "$cpu_load_duration")\
