@@ -1503,7 +1503,7 @@ getgateway() {
 		echo "$get_gateway" | jq --arg gateway_host_ip "$gateway_host_ip" '
 			to_entries | map(select(.value | type == "object" and has("ip"))) | map({
 				ip: .value.ip,
-				name: (.value.devName // "unknown"),
+				name: (if .value.model != "" then .value.model else .value.devName end // "unknown"),
 				mac: "unknown",
 				type: (if .key | startswith("wifi") then "WiFi" else "LAN" end),
 				parent: (if .key | startswith("wifi") then $gateway_host_ip else "" end)
