@@ -68,10 +68,17 @@ read_config() {
 	(echo "$device_info_helper" | grep -q "mikrotik_info") && mikrotik_info_enable="true"
 	(echo "$device_info_helper" | grep -q "openwrt_info") && openwrt_info_enable="true"
 	op_host_ips=$(echo "$op_host_ips" | sed 's/ /\n/g') 2>/dev/null
-	for str_version in "wrtbwmon" "iputils-arping" "curl" "iw"; do
-		eval $(echo ${str_version:0:2}"_version")=$(opkg list-installed | grep -w ^${str_version} | awk '{print $3}') 2>/dev/null
-	done
-	(opkg list-installed | grep -w -q "^firewall4") && nftables_version="true"
+	if [ -x "/usr/bin/apk" ]; then
+		for str_version in "wrtbwmon" "iputils-arping" "curl" "iw"; do
+			eval $(echo ${str_version:0:2}"_version")=$(apk list | grep -w ^${str_version} | grep 'installed' | awk '{print $1}' | awk -F ${str_version}"-" '{print $2}') 2>/dev/null
+		done
+		(apk list | grep -w -q "^firewall4" | grep 'installed') && nftables_version="true"
+	else
+		for str_version in "wrtbwmon" "iputils-arping" "curl" "iw"; do
+			eval $(echo ${str_version:0:2}"_version")=$(opkg list-installed | grep -w ^${str_version} | awk '{print $3}') 2>/dev/null
+		done
+		(opkg list-installed | grep -w -q "^firewall4") && nftables_version="true"
+	fi
 	devices_json="${dir}/devices.json"
 	tmp_devices_json="${dir}/devices.json.tmp"
 	tempjsonpath="${dir}/temp.json"
