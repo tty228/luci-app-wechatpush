@@ -12,7 +12,7 @@ PKG_CONFIG_DEPENDS:= \
 
 LUCI_TITLE:=LuCI support for wechatpush
 LUCI_PKGARCH:=all
-LUCI_DEPENDS:=+iputils-arping +curl +jq +bash \
+LUCI_DEPENDS:=+iputils-arping +curl +jq +bash +luci-lua-runtime \
         +PACKAGE_$(PKG_NAME)_Enable_Traffic_Monitoring:wrtbwmon \
         +PACKAGE_$(PKG_NAME)_Enable_Local_Disk_Information_Detection:lsblk \
         +PACKAGE_$(PKG_NAME)_Enable_Local_Disk_Information_Detection:smartmontools \
