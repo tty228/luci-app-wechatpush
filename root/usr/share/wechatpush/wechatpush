@@ -2658,31 +2658,31 @@ diy_send() {
 
 	if [[ "$diyurl" =~ ^https?:// ]]; then
 		[ -n "$proxy_address" ] && local proxy_cmd="-x $proxy_address"
-		run_with_tag curl $proxy_cmd --connect-timeout 30 --max-time 60 --retry 2 -X POST -H "$content_type" -d "$data" "${diyurl}"
+		local curl_response=$(run_with_tag curl $proxy_cmd --connect-timeout 30 --max-time 60 --retry 2 -X POST -H "$content_type" -d "$data" "${diyurl}")
 	else
 		local command=$(jq -r '.command' ${3}) && local command=$(eval echo ${command})
-		run_with_tag jq -r "$command" "$data" | eval "$diyurl"
+		local curl_response=$(run_with_tag jq -r "$command" "$data" | eval "$diyurl")
 	fi
 	local RETVAL=$?
 
 	if [ $RETVAL -ne 0 ] || [[ -n "$4" && "$4" == "test" ]]; then
 		[ $RETVAL -ne 0 ] && log_change "[ERROR] $(translate "Network or URL error, push failed, curl returned %s, please check the following debug information" "$RETVAL")"
 		[ -n "$4" ] && log_change "[DEBUG] $(translate "Push test enabled, current curl return value is %s" "$RETVAL")"
-		
+		log_change "[INFO] Response:  $curl_response"
+
 		echo '{"url":"'${diyurl}'","content_type":"'${content_type}'","type":'$(jq "$type" ${3})'}' >${dir}/debug_send_json
 		echo -e "${send_title}" "${send_content}" >${dir}/debug_send_content
 		cat ${tempjsonpath} >${dir}/debug_send_data
-		
-		! jq -r '.' ${dir}/debug_send_json && log_change "[ERROR] $(translate "Format error after variable substitution, please check %s for unescaped special characters or syntax errors" "$dir")"
-		
-		log_change "[DEBUG] $(translate "JSON file saved to: %s" "$dir")"
-		log_change "[DEBUG] $(translate "Push content preview saved to: %s" "$dir")"
-		log_change "[DEBUG] $(translate "If no message received, please check %s or use the following command to test manually" "$dir")"
+
+		! jq -r '.' ${dir}/debug_send_json && log_change "[ERROR] $(translate "Format error after variable substitution, please check %s for unescaped special characters or syntax errors" "${dir}/debug_send_json")"
+
+		log_change "[DEBUG] $(translate "JSON file saved to: %s" "${dir}/debug_send_json")"
+		log_change "[DEBUG] $(translate "Push content preview saved to: %s" "${dir}/debug_send_content")"
+		log_change "[DEBUG] $(translate "If no message received, please check %s or use the following command to test manually" "${dir}/debug_send_data")"
 		log_change "[DEBUG] curl -X POST -H \"$content_type\" -d \"@${dir}/debug_send_data\" \"${diyurl}\""
-		return 1
-	else
-		return 0
+		[ $RETVAL -ne 0 ] && return 1
 	fi
+	return 0
 }
 
 # ------------------------------------
