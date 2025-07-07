@@ -418,7 +418,7 @@ process_and_check() {
 	[ -z "$1" ] && return 1
 	local value=$(echo "$1" | tr -d '\n\r' | awk '$1=$1' | sed 's/_/ /g' | grep -v "^$" | sort -u | head -n1)
 	[ "$value" == "unknown" ] && value=""
-	[ -n "$value" ] && [ -n "$2" ] && echo $(cut_str "$value" "$2") && return 0
+	[ -n "$value" ] && [ -n "$2" ] && echo "$(cut_str "$value" "$2")" && return 0
 	[ -n "$value" ] && echo "$value" && return 0
 	return 1
 }
