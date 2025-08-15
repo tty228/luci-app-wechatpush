@@ -140,7 +140,7 @@ init() {
 	[ -z "$ip_version" ] && log_change "[ERROR] $(translate "Cannot get iputils-arping version, please confirm if plugin is running properly")"
 	[ -z "$cu_version" ] && log_change "[ERROR] $(translate "Cannot get curl version, please confirm if plugin is running properly")"
 
-	[ -n "$jsonpath" ] && [ -z "${sckey}${sc3key}${sc3uid}${sc3tags}${tg_token}${pushplus_token}${corpid}${wxpusher_apptoken}${wxpusher_uids}${wxpusher_topicIds}" -a "${jsonpath}" != "/usr/share/wechatpush/api/diy.json" ] && log_change "[ERROR] $(translate "Please fill in the correct API key")" && return 1
+	[ -n "$jsonpath" ] && [ -z "${sckey}${sc3key}${sc3uid}${sc3tags}${tg_token}${pushplus_token}${corpid}${wxpusher_apptoken}${wxpusher_uids}${wxpusher_topicIds}${recipient_email}" -a "${jsonpath}" != "/usr/share/wechatpush/api/diy.json" ] && log_change "[ERROR] $(translate "Please fill in the correct API key")" && return 1
 
 	local interfacelist=$(getinterfacelist) && [ -z "$interfacelist" ] && log_change "[WARN] $(translate "Multiple interfaces detected or configuration error, may not get interface uptime information, please confirm if plugin is running properly")"
 
