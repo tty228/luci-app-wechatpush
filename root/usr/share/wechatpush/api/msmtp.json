@@ -1,4 +1,7 @@
 {
+	"_api": "这是 msmtp api 文件",
+	"_api": "【msmtp】",
+
 	"url": "msmtp ${recipient_email}",
 	"data": "${tempjsonpath}",
 	"content_type": "",
