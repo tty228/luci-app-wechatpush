@@ -109,8 +109,8 @@ msgid "Custom Push"
 msgstr "自定义推送"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:152
-msgid "To send emails using msmtp, you must manually install msmtp and configure `/etc/msmtprc`."
-msgstr "使用 msmtp 发送邮件，你必须自行安装 msmtp 和配置 `/etc/msmtprc`"
+msgid "To send emails using msmtp, you can manually install msmtp and configure `/etc/msmtprc`, or configure the SMTP service here to override the default msmtp configuration file."
+msgstr "使用 msmtp 发送邮件，你可以自行安装 msmtp 和配置 `/etc/msmtprc`，也可以在此处配置 smtp 服务以覆写 msmtp 默认配置文件"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:148
 msgid "By modifying the JSON file, you can use a custom API"
@@ -212,6 +212,36 @@ msgstr "获取 chat_id"
 
 msgid "Recipient Email Address"
 msgstr "收件邮箱地址"
+
+msgid "SMTP Host"
+msgstr "SMTP 服务器"
+
+msgid "SMTP Port"
+msgstr "SMTP 端口"
+
+msgid "Enable TLS"
+msgstr "启用 TLS"
+
+msgid "Enable STARTTLS"
+msgstr "启用 STARTTLS"
+
+msgid "User"
+msgstr "用户名"
+
+msgid "Password Command"
+msgstr "密码获取命令"
+
+msgid "Set the password for authentication to the output (stdout) of the command."
+msgstr "将认证所需的密码设置为命令输出（stdout）的内容"
+
+msgid "From Address"
+msgstr "发件人"
+
+msgid "From Full Name"
+msgstr "发件人全称"
+
+msgid "If set, it is usually displayed as a nickname of the sender in email clients."
+msgstr "若此配置项已配置，通常将在电子邮件客户端作为发件人的昵称显示"
 
 #: applications/luci-app-wechatpush/htdocs/luci-static/resources/view/wechatpush/config.js:208
 msgid "<br />If you want to send to a group/channel, please create a non-Chinese group/channel (for easier chatid lookup, you can rename it later).<br />Add the bot to the group, send a message, and use https://api.telegram.org/bot token /getUpdates to obtain the chatid."

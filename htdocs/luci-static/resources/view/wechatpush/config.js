@@ -149,7 +149,7 @@ return view.extend({
 		o.value('/usr/share/wechatpush/api/telegram.json', _('Telegram'),
 			_('Telegram Bot Push'));
 		o.value('/usr/share/wechatpush/api/msmtp.json', _('msmtp'),
-			_('To send emails using msmtp, you must manually install msmtp and configure `/etc/msmtprc`.'));
+			_('To send emails using msmtp, you can manually install msmtp and configure `/etc/msmtprc`, or configure the SMTP service here to override the default msmtp configuration file.'));
 		o.value('/usr/share/wechatpush/api/diy.json', _('Custom Push'),
 			_('By modifying the JSON file, you can use a custom API'));
 
@@ -234,7 +234,37 @@ return view.extend({
 
 		o = s.taboption('basic', form.Value, 'recipient_email', _('Recipient Email Address'));
 		o.depends('jsonpath', '/usr/share/wechatpush/api/msmtp.json');
+		o.rmempty = false;
 		o.description = _('opkg update<br />opkg install msmtp');
+
+		o = s.taboption('basic', form.Value, 'smtp_host', _('SMTP Host'));
+		o.depends('jsonpath', '/usr/share/wechatpush/api/msmtp.json');
+		o.placeholder = "mail.oursite.example";
+
+		o = s.taboption('basic', form.Value, 'smtp_port', _('SMTP Port'));
+		o.depends('jsonpath', '/usr/share/wechatpush/api/msmtp.json');
+		o.placeholder = "25";
+
+		o = s.taboption('basic', form.Flag, 'smtp_tls', _('Enable TLS'));
+		o.depends('jsonpath', '/usr/share/wechatpush/api/msmtp.json');
+
+		o = s.taboption('basic', form.Flag, 'smtp_starttls', _('Enable STARTTLS'));
+		o.depends('jsonpath', '/usr/share/wechatpush/api/msmtp.json');
+
+		o = s.taboption('basic', form.Value, 'smtp_user', _('User'));
+		o.depends('jsonpath', '/usr/share/wechatpush/api/msmtp.json');
+
+		o = s.taboption('basic', form.Value, 'smtp_passwordeval', _('Password Command'));
+		o.depends('jsonpath', '/usr/share/wechatpush/api/msmtp.json');
+		o.description = _('Set the password for authentication to the output (stdout) of the command.');
+
+		o = s.taboption('basic', form.Value, 'smtp_from', _('From Address'));
+		o.depends('jsonpath', '/usr/share/wechatpush/api/msmtp.json');
+		o.placeholder = "user@oursite.example";
+
+		o = s.taboption('basic', form.Value, 'smtp_from_full_name', _('From Full Name'));
+		o.depends('jsonpath', '/usr/share/wechatpush/api/msmtp.json');
+		o.description = _('If set, it is usually displayed as a nickname of the sender in email clients.');
 
 		o = s.taboption('basic', form.TextValue, 'diy_json', _('Custom Push'));
 		o.rows = 28;
