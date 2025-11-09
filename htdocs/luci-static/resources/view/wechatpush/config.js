@@ -232,6 +232,12 @@ return view.extend({
 		o.rmempty = false;
 		o.depends('jsonpath', '/usr/share/wechatpush/api/telegram.json');
 
+		o = s.taboption('basic', form.Value, 'tg_thread_id', _('TG_threadid'));
+		o.description = _('Optional: specify a thread (topic) ID for forum-style Telegram chats.');
+		o.rmempty = false;
+		o.optional = true;
+		o.depends('jsonpath', '/usr/share/wechatpush/api/telegram.json');
+		
 		o = s.taboption('basic', form.Value, 'recipient_email', _('Recipient Email Address'));
 		o.depends('jsonpath', '/usr/share/wechatpush/api/msmtp.json');
 		o.rmempty = false;
