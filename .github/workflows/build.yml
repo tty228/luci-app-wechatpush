@@ -1,0 +1,194 @@
+# https://github.com/Tokisaki-Galaxy/openwrt-package-builder-action
+
+name: Build OpenWrt Package
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+# ======================================================================================
+# ==                        👇 User configuration area 👇                            ==
+# ======================================================================================
+env:
+  # 1. Set the name of the package you want to compile (it must be the same as your package directory name).
+  # For example: Luci-App-Adguardhome, V2ray-Core, KMOD-Wireguard, etc.
+  # 1. 设置你要编译的软件包名称 (必须与你的软件包目录名相同)
+  #    例如: luci-app-adguardhome, v2ray-core, kmod-wireguard 等
+  PACKAGE_NAME: luci-app-wechatpush
+
+  # 2. Set the version of OpenWrt to compile (it must be the official release label, such as' v23.05.3').
+  # Note: this method does not support' master' or' openwrt-23.05' and other branch names.
+  # 2. 设置要编译的 OpenWrt 版本 (必须是官方的正式发布版标签, 例如 'v23.05.3')
+  #    注意：此方法不支持 'master' 或 'openwrt-23.05' 等分支名
+  OPENWRT_VERSION: 'v23.05.3'
+
+  # 3. Specify the SDK save directory, generally without modification.
+  # 3. 指定SDK保存目录，一般不用修改
+  SDK_DIR: /home/runner/work/openwrt-sdk
+# ======================================================================================
+# ==                        👆 User configuration area 👆                            ==
+# ======================================================================================
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build for ${{ matrix.target.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          # The compiled path is found here in https://downloads.openwrt.org/releases/24.10.3/targets, and the name is anything.
+          # 编译的path在https://downloads.openwrt.org/releases/24.10.3/targets 这里查找，name随意
+          - name: x86_64
+            path: x86/64
+          #- name: mediatek_filogic
+          #  path: mediatek/filogic
+          #- name: mips_mt7621
+          #  path: ramips/mt7621
+
+    steps:
+      # 步骤 1: 检出代码
+      - name: Checkout package repository
+        uses: actions/checkout@v4
+
+      # 步骤 2: 安装依赖
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential rsync unzip zstd
+
+      # 步骤 3: 缓存 OpenWrt SDK
+      # 缓存已下载和初步设置好的 SDK 目录。
+      - name: Cache OpenWrt SDK
+        id: cache-sdk
+        uses: actions/cache@v4
+        with:
+          # 需要缓存的目录路径
+          path: ${{ env.SDK_DIR }}
+          # 缓存键：结合操作系统、目标架构和 OpenWrt 版本，确保环境变化时缓存失效
+          key: ${{ runner.os }}-sdk-${{ matrix.target.name }}-${{ env.OPENWRT_VERSION }}
+
+      # 步骤 4: 准备 SDK (仅在缓存未命中时运行)
+      # 这个组合步骤包含了下载、解压 SDK 和更新 feeds，因为这些都是 SDK 准备过程的一部分，应该一起被缓存。
+      - name: Download, extract OpenWrt SDK and update feeds
+        if: steps.cache-sdk.outputs.cache-hit != 'true'
+        run: |
+          # 从环境变量中移除 'v' 前缀以匹配版本号
+          release_version="${OPENWRT_VERSION#v}"
+          sdk_url_prefix="https://downloads.openwrt.org/releases/${release_version}/targets/${{ matrix.target.path }}"
+          
+          # 查找 SDK 文件名
+          sdk_filename=$(curl -s "$sdk_url_prefix/" | \
+                        grep -o '<a href="openwrt-sdk-.*-x86_64\.tar\.\(xz\|zst\)">' | \
+                        sed -e 's/.*<a href="//' -e 's/">//' | \
+                        head -n 1)
+
+          if [ -z "$sdk_filename" ]; then
+            echo "::error::Could not find SDK file at ${sdk_url_prefix}/"
+            echo "Available files:"
+            curl -s "$sdk_url_prefix/" | grep -o '<a href="[^"]*">[^<]*</a>' | sed -e 's/<a href="\(.*\)".*>\(.*\)/\1\t\2/'
+            exit 1
+          fi
+          
+          echo "Downloading SDK: ${sdk_url_prefix}/${sdk_filename}"
+          wget -q "${sdk_url_prefix}/${sdk_filename}"
+          
+          echo "Extracting SDK..."
+          # 解压 SDK 并重命名为固定的目录名，以匹配缓存路径
+          tar -xf "$sdk_filename"
+          mv $(find . -maxdepth 1 -type d -name 'openwrt-sdk-*') ${{ env.SDK_DIR }}
+
+          echo "Updating feeds..."
+          cd ${{ env.SDK_DIR }}
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          cd ..
+
+      # 步骤 5: 准备构建配置
+      - name: Prepare build environment
+        working-directory: ${{ env.SDK_DIR }}
+        run: |
+          rm -rf package/${PACKAGE_NAME}
+          src_dir="${{ github.workspace }}"
+          if [ -f "$src_dir/Makefile" ]; then
+            pkg_src="$src_dir"
+          else
+            pkg_src=$(find "$src_dir" -maxdepth 1 -type d -name "${PACKAGE_NAME}" -o -name "luci-app-*${PACKAGE_NAME#luci-app-}*" | head -n 1)
+            if [ -z "$pkg_src" ]; then
+              echo "::error::Could not locate package directory for ${PACKAGE_NAME}"
+              exit 1
+            fi
+          fi
+          mkdir -p ./package/${PACKAGE_NAME}
+          rsync -a --delete "$pkg_src"/ ./package/${PACKAGE_NAME}/
+          translation_pkg=${PACKAGE_NAME#luci-app-}
+          find ./bin/packages -type f -name "${PACKAGE_NAME}*.ipk" -delete
+          find ./bin/packages -type f -name "luci-i18n-${translation_pkg}-*.ipk" -delete
+          {
+            echo "CONFIG_PACKAGE_${PACKAGE_NAME}=m"
+            echo "CONFIG_PACKAGE_luci-i18n-${translation_pkg}-zh-cn=m"
+            echo "CONFIG_LUCI_LANG_zh_Hans=y"
+          } > .config
+          make defconfig
+
+      # 步骤 6: 编译软件包
+      - name: Compile the package
+        working-directory: ${{ env.SDK_DIR }}
+        run: |
+          make package/${PACKAGE_NAME}/compile V=s -j$(($(nproc) + 1))
+
+      # 步骤 7: 查找并准备 .ipk 文件
+      - name: Find and prepare .ipk file
+        id: find_ipk
+        working-directory: ${{ env.SDK_DIR }}
+        run: |
+          translation_pkg=${PACKAGE_NAME#luci-app-}
+          rm -rf upload
+          mkdir -p upload
+          find ./bin/packages -type f \( -name "${PACKAGE_NAME}*.ipk" -o -name "luci-i18n-${translation_pkg}-*.ipk" \) | while read -r ipk; do
+            rel_path=${ipk#./}
+            echo "Found IPK: $rel_path"
+            cp "$ipk" upload/
+          done
+          if ! find upload -maxdepth 1 -type f -name '*.ipk' | grep -q '.'; then
+            echo "::error::No IPK files found in ./bin/packages/"
+            # 显示编译输出目录树，方便调试
+            echo "Directory tree of ./bin/:"
+            ls -R ./bin/
+            exit 1
+          fi
+          echo "path=upload" >> $GITHUB_OUTPUT
+
+      # 步骤 8: 上传 .ipk 文件作为构建产物
+      - name: Upload .ipk artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_NAME }}-${{ matrix.target.name }}
+          path: ${{ env.SDK_DIR }}/${{ steps.find_ipk.outputs.path }}
+          if-no-files-found: error
+
+  release:
+    name: Publish Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: release-assets/**/*.ipk
