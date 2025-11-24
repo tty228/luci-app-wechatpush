@@ -129,6 +129,7 @@ jobs:
           mkdir -p ./package/${PACKAGE_NAME}
           rsync -a --delete "$pkg_src"/ ./package/${PACKAGE_NAME}/
           translation_pkg=${PACKAGE_NAME#luci-app-}
+          mkdir -p ./bin/packages
           find ./bin/packages -type f -name "${PACKAGE_NAME}*.ipk" -delete
           find ./bin/packages -type f -name "luci-i18n-${translation_pkg}-*.ipk" -delete
           {
