@@ -85,5 +85,4 @@ When submitting a bug, please provide the following information if possible:
 
 If you feel that this project is helpful to you, please donate to us so that the project can continue to develop and be more perfect.
 
-![image](https://github.com/tty228/Python-100-Days/blob/master/res/WX.jpg)
-
+![image](https://github.com/tty228/luci-app-wechatpush/blob/master/.github/others/20260303202537_34_664.png)

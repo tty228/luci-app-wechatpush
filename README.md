@@ -87,4 +87,4 @@ v2.06.2 之后的版本不再支持 LuCI 18.06，如需编译，请使用 openwr
 
 如果你觉得此项目对你有帮助，请捐助我们，使项目能持续发展和更加完善。
 
-![image](https://github.com/tty228/Python-100-Days/blob/master/res/WX.jpg)
+![image](https://github.com/tty228/luci-app-wechatpush/blob/master/.github/others/20260303202537_34_664.png)
