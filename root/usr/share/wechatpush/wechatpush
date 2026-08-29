@@ -2509,7 +2509,7 @@ send() {
 	if [ -z "$1" ] && (echo "$send_notification" | grep -q "router_status"); then
 		cat /proc/loadavg | awk '{print $1" "$2" "$3}' >"$output_dir/systemload" &
 		free -m | sed -n '2p' | awk '{printf "%.2f%%\n",($3/$2)*100}' >"$output_dir/mem_usage" &
-		curl -o /dev/null --connect-timeout 5 -s -w %{http_code} www.google.com >"$output_dir/Qwai" &
+		curl -o /dev/null --connect-timeout 5 -s -w %{http_code} https://www.google.com >"$output_dir/Qwai" &
 
 		system_uptime=$(cat /proc/uptime | awk '{print int($1)}')
 		[ -n "$system_uptime" ] && system_status_time=$(translate "Uptime: %dd %dh %dm %ds" "$((system_uptime / 86400))" "$(((system_uptime % 86400) / 3600))" "$(((system_uptime % 3600) / 60))" "$((system_uptime % 60))")
